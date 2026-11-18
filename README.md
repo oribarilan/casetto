@@ -28,7 +28,7 @@ Build the app from the command line:
 xcodebuild -project Casterr.xcodeproj -scheme Casterr -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build
 ```
 
-Run the end-to-end UI test on the simulator. It needs a network connection, because it subscribes to a real public feed and streams an episode:
+Run the UI tests on the simulator. They need a network connection, because they subscribe to a real public feed and stream an episode:
 
 ```sh
 xcodebuild -project Casterr.xcodeproj -scheme Casterr -destination 'platform=iOS Simulator,name=iPhone 18 Pro' test

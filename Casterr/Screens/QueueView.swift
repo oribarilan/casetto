@@ -17,6 +17,7 @@ struct QueueView: View {
                     EpisodeRow(episode: episode, caption: index == 0 ? "Now Playing" : nil)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("queueItem")
             }
             .onMove { from, to in
                 guard let source = from.first else { return }

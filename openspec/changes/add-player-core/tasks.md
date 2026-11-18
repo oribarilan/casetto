@@ -48,11 +48,11 @@
 ## 6. Screens
 
 - [ ] 6.1 Build the Queue home screen (Now Playing first, drag to reorder, swipe to remove, empty state linking to shows), and verify by hand on the simulator against the "Queue is the home screen" and "Manage Queue order" scenarios
-- [ ] 6.2 Build the show list, plus the add-by-URL sheet with its error messages, and verify by hand that each "Subscribe by RSS URL" scenario shows the right result
+- [x] 6.2 Build the show list, plus the add-by-URL sheet with its error messages, and verify by hand that each "Subscribe by RSS URL" scenario shows the right result
 - [ ] 6.3 Build the OPML import flow (file picker, then a report sheet listing failed feeds and reasons), and verify by hand with the fixture OPML files
-- [ ] 6.4 Build the show page (episodes newest first, play, add to Queue, mark played or unplayed, unsubscribe, last-refresh status, pull to refresh), and verify by hand against the related scenarios
+- [x] 6.4 Build the show page (episodes newest first, play, add to Queue, mark played or unplayed, unsubscribe, last-refresh status, pull to refresh), and verify by hand against the related scenarios
 - [x] 6.5 Mock up 2 or 3 options for setting the global speed and the per-show speed override (Now Playing, show page, or both), and verify that the user picked one and that the choice is recorded in design.md
-- [ ] 6.6 Build Now Playing (play and pause, skip, scrubber, speed control as chosen in 6.5, sleep timer), and verify by hand against the speed, skip, and sleep timer scenarios
+- [x] 6.6 Build Now Playing (play and pause, skip, scrubber, speed control as chosen in 6.5, sleep timer), and verify by hand against the speed, skip, and sleep timer scenarios
 - [x] 6.7 Add an XCTest smoke test that launches the app, adds a fixture feed, queues an episode, and checks the Queue. Add the `xcodebuild test` command to the README, and verify that it passes on the simulator
 
 ## 7. Integration check
