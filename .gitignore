@@ -60,3 +60,7 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# XcodeGen output (project.yml is the source)
+Casterr.xcodeproj/
+Casterr/Info.plist

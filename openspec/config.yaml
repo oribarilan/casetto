@@ -2,11 +2,11 @@ schema: spec-driven
 
 context: |
   Simplicity is the top rule. Choose the simplest design that meets the current milestone. If a decision can be made simpler, tell the user and propose the simpler option, even when the user already approved the complex one.
-  Casetto is a native iOS podcast player. The product decisions are in podcast_app_concept.md. Read that file before you plan a change. Do not contradict it. If a change needs a different decision, write the conflict in the proposal and ask the user.
+  Casterr is a native iOS podcast player. The product decisions are in podcast_app_concept.md. Read that file before you plan a change. Do not contradict it. If a change needs a different decision, write the conflict in the proposal and ask the user.
   Each roadmap milestone in podcast_app_concept.md is one change.
   Target the latest major iOS release only. Use SwiftUI.
   Do not add a server. The app talks only to publisher feeds, publisher audio hosts, and the Apple directory APIs.
-  Keep feed data (Show, Episode) separate from user data (Subscription, Episode state, Queue entry, Event, Bookmark, Settings). Only user data will sync. Download files stay on the device.
+  Keep feed data (Show, Episode) separate from user data (Subscription, Episode state, Event, Bookmark, Settings). Only user data will sync. Download files stay on the device.
   User data refers to shows and episodes by their stable feed keys, not by local database IDs.
   Design user data so that CloudKit sync can be added in M8 without a data migration.
   Do not add fields or types for features that are not in the current change.

@@ -2,7 +2,7 @@
 
 ## Why
 
-Casetto has no code yet. The triage bet (M2 onward) needs a player that can subscribe to shows, play episodes reliably, and keep a Queue you trust. This change is roadmap milestone **M1: Player core**. It also lays down the data model every later milestone builds on: feed data apart from user data, stable feed keys, and exactly one place per episode.
+Casterr has no code yet. The triage bet (M2 onward) needs a player that can subscribe to shows, play episodes reliably, and keep a Queue you trust. This change is roadmap milestone **M1: Player core**. It also lays down the data model every later milestone builds on: feed data apart from user data, stable feed keys, and exactly one place per episode.
 
 ## What Changes
 

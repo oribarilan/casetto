@@ -1,4 +1,4 @@
-# Casetto: Product Concept
+# Casterr: Product Concept
 
 **Platform:** iOS, native SwiftUI, latest major iOS only
 **Model:** Free, open source (MPL-2.0), local-first, no accounts, no server
@@ -7,11 +7,11 @@
 
 > **A podcast inbox that triages itself.**
 >
-> Open the app and something good is ready to play. Casetto sorts new episodes for you, explains every move it makes, and lets you undo any of them.
+> Open the app and something good is ready to play. Casterr sorts new episodes for you, explains every move it makes, and lets you undo any of them.
 
 ## Who it's for and how we know it works
 
-Casetto is first the app I use every day. The first people outside that are mainstream listeners coming from Apple Podcasts or Spotify. They rarely triage by hand, so the triage has to happen for them and stay out of the way.
+Casterr is first the app I use every day. The first people outside that are mainstream listeners coming from Apple Podcasts or Spotify. They rarely triage by hand, so the triage has to happen for them and stay out of the way.
 
 The MVP works when I delete my current podcast app and don't go back. After that, 5 to 10 outside listeners try it on TestFlight.
 
@@ -38,7 +38,7 @@ New subscriptions start at Inbox. In onboarding you star the shows you never mis
 
 **Inbox episodes expire.** After 7 days, an untouched episode moves to the show's archive. You can change the 7 days globally or per show, and you can undo it.
 
-**The app suggests rules, you accept them.** Casetto watches what you do with each show. It looks at what you play, finish, dismiss, or let expire, how soon you play things, how long episodes run, and what their titles say. When a pattern shows up, a one-line card appears in the Inbox:
+**The app suggests rules, you accept them.** Casterr watches what you do with each show. It looks at what you play, finish, dismiss, or let expire, how soon you play things, how long episodes run, and what their titles say. When a pattern shows up, a one-line card appears in the Inbox:
 
 - "You played the last 4 History Show episodes within a day. Auto-queue new ones?"
 - "Tech Weekly: last 3 expired unplayed. Skip, unsubscribe, or keep?"
@@ -83,8 +83,7 @@ Data splits into what comes **from the feed**, a cache that can be wiped and re-
 | Show | A podcast feed. Identified by its normalized feed URL at subscribe time. That key never changes, even when the feed moves. | No |
 | Episode | One feed item. Identified by its GUID, otherwise by its audio URL. | No |
 | Subscription | You following a Show: level, expiry override, play next, filters, speed override, and the show's last 10 outcomes for learning | Yes |
-| Episode state | Exactly one place (Inbox, Queue, Archive with a reason, or none) plus listening progress | Yes |
-| Queue entry | An episode's position in the Queue | Yes |
+| Episode state | Exactly one place (Inbox, Queue, Archive with a reason, or none), its Queue position when queued, and listening progress | Yes |
 | Event | A move with its reason and who made it (you, a level, a filter, expiry). Kept 30 days. | Yes |
 | Proposal | A pending rule card, computed from outcomes. Only your dismissals are stored. | Dismissals |
 | Bookmark | Episode, timestamp, optional note, plus a snapshot of titles and audio URL | Yes |
@@ -111,7 +110,7 @@ Each milestone is one OpenSpec change.
 7. **OPML export.**
 8. **CloudKit sync.**
 
-Then Casetto becomes my daily driver, and TestFlight follows.
+Then Casterr becomes my daily driver, and TestFlight follows.
 
 **After the MVP:** listening sessions ("I have 25 minutes"), skip silences, voice boost, topic-aware learning with Apple's on-device model, chapters and transcripts, CarPlay, Apple Watch.
 

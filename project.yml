@@ -1,0 +1,44 @@
+name: Casterr
+options:
+  bundleIdPrefix: com.oribarilan
+  deploymentTarget:
+    iOS: "27.0"
+packages:
+  CasterrCore:
+    path: CasterrCore
+targets:
+  Casterr:
+    type: application
+    platform: iOS
+    sources: [Casterr]
+    dependencies:
+      - package: CasterrCore
+    settings:
+      base:
+        SWIFT_VERSION: "6"
+        GENERATE_INFOPLIST_FILE: YES
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1"
+    info:
+      path: Casterr/Info.plist
+      properties:
+        UIBackgroundModes: [audio]
+        UILaunchScreen: {}
+  CasterrUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [CasterrUITests]
+    dependencies:
+      - target: Casterr
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6"
+schemes:
+  Casterr:
+    build:
+      targets:
+        Casterr: all
+    test:
+      targets: [CasterrUITests]

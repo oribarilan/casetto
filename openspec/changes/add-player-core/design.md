@@ -22,9 +22,9 @@ The repo has no code. The local toolchain is Xcode 27.2, Swift 6.4.2, and the iO
 
 ## Decisions
 
-### D1. Project layout: XcodeGen app plus a local `CasettoCore` package
+### D1. Project layout: XcodeGen app plus a local `CasterrCore` package
 
-`project.yml` defines the app target. The generated `.xcodeproj` is gitignored. A local Swift package, `CasettoCore`, holds the domain types, feed and OPML parsing, and the stores. The app target holds the SwiftUI views and playback (AVFoundation and MediaPlayer).
+`project.yml` defines the app target. The generated `.xcodeproj` is gitignored. A local Swift package, `CasterrCore`, holds the domain types, feed and OPML parsing, and the stores. The app target holds the SwiftUI views and playback (AVFoundation and MediaPlayer).
 
 - Why: `project.yml` is short text that people and agents can edit, review, and diff. A `.pbxproj` is none of those. With the package split, `swift test` runs the domain tests on macOS in seconds.
 - Alternatives:
@@ -37,9 +37,9 @@ The repo has no code. The local toolchain is Xcode 27.2, Swift 6.4.2, and the iO
 The app opens one `ModelContainer` with two `ModelConfiguration`s, each with its own store file:
 
 - **Feed cache** (`ShowRecord`, `EpisodeRecord`) stays on the device. It may use unique attributes and relationships, and the app can delete it and re-fetch. It never syncs.
-- **User data** (`Subscription`, `EpisodeState`, `QueueEntry`, `Settings`) follows the CloudKit model rules now: no unique attributes, every property optional or defaulted, and no relationships. Records point to shows and episodes by key strings. M8 turns on CloudKit for this configuration only.
+- **User data** (`Subscription`, `EpisodeState`, `Settings`) follows the CloudKit model rules now: no unique attributes, every property optional or defaulted, and no relationships. Records point to shows and episodes by key strings. M8 turns on CloudKit for this configuration only.
 
-Both stores sit behind store protocols in `CasettoCore`. Views and playback never touch `ModelContext` directly.
+One `Library` actor in `CasterrCore` owns both stores and returns value types only. Views and playback never touch `ModelContext` directly. A protocol gets added only when a second implementation exists.
 
 - Why: a separate configuration is how SwiftData syncs part of a schema. Keeping relationships out of user data removes the hardest CloudKit rule, and the split already exists in the concept.
 - Alternatives:
@@ -66,7 +66,7 @@ Both stores sit behind store protocols in `CasettoCore`. Views and playback neve
 
 ### D5. Queue order as integer positions
 
-Each `QueueEntry` holds an `episodeKey` and a `position: Int`, from 1 to N. Every change (add, move, remove, play) rewrites the positions of the whole Queue. Now Playing is position 1.
+The Queue is the `EpisodeState` records whose place is `queue`, sorted by `queuePosition: Int`, from 1 to N. There is no separate Queue record, so place and position can't disagree. Every change (add, move, remove, play) rewrites the positions of the whole Queue. Now Playing is position 1.
 
 - Why: it's the simplest correct option. A Queue holds about 20 items, so rewriting them all costs nothing.
 - Alternative: fractional sort keys, where a reorder writes one record and syncing devices conflict less. We rejected it as too complex for M1. If sync conflicts show up in practice, M8 can revisit it.
@@ -102,7 +102,7 @@ The app uses a single `AVPlayer`, not an `AVQueuePlayer`. The domain owns order 
 
 ### D9. Settings resolution
 
-`Settings` is a single user-data record with the fixed id `global`. It holds only `speed`, which defaults to 1.0 and ranges from 1.0 to 2.0. `Subscription.speedOverride` is an optional `Double`, where nil means "follow global". The effective speed is a pure function in `CasettoCore`: the override if present, otherwise the global value.
+`Settings` is a single user-data record with the fixed id `global`. It holds only `speed`, which defaults to 1.0 and ranges from 1.0 to 2.0. `Subscription.speedOverride` is an optional `Double`, where nil means "follow global". The effective speed is a pure function in `CasterrCore`: the override if present, otherwise the global value.
 
 ### D10. UI state
 
@@ -116,10 +116,18 @@ It has two sheets: add-by-URL and the OPML import report. Navigation is a `Navig
 
 ### D11. Tests
 
-- Swift Testing in `CasettoCore` covers keys and normalization, places, Queue ordering, the played rule, settings resolution, and feed and OPML parsing against saved fixture files.
+- Swift Testing in `CasterrCore` covers keys and normalization, places, Queue ordering, the played rule, settings resolution, and feed and OPML parsing against saved fixture files.
 - The stores are tested with in-memory SwiftData configurations.
 - The app target gets a thin XCTest smoke test on the simulator.
 - Playback is checked by hand against a short checklist, because AVFoundation behavior under interruptions isn't worth mocking.
+
+### D12. Speed controls (decided with mockups, task 6.5)
+
+The speed button in Now Playing opens a sheet with a 1.0x to 2.0x slider and a "This show / All shows" switch. "This show" sets the show's override. "All shows" sets the global speed and clears this show's override, so the change is heard right away. The show page lists an active override with a Reset button.
+
+### D13. Interruptions on iOS 27
+
+iOS 27 deprecates the interruption notification's type and options. The app pauses on `AVAudioSession.didBecomeInactiveNotification` when the deactivation source is the system, and resumes on `resumptionRecommendationNotification` when the recommendation is `shouldResume`. Headphone disconnects still use the route change notification (`oldDeviceUnavailable`).
 
 ## Risks / Trade-offs
 
@@ -137,5 +145,4 @@ None. This is the first release. The user-data schema is built so that M8 can tu
 
 ## Open Questions
 
-- Where to set the per-show speed override: in Now Playing, on the show page, or both. It gets decided with mockups before the Now Playing UI task. The spec's behavior is the same either way.
 - Assumption to confirm: "mark unplayed" resets progress and clears the place.

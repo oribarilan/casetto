@@ -97,4 +97,4 @@ The system SHALL identify an episode within its show by the feed item's GUID, an
 
 #### Scenario: Feed data wiped
 - **WHEN** the cached feed data is deleted and every feed is fetched again
-- **THEN** every subscription, Queue entry, and progress value still refers to the correct episode
+- **THEN** every subscription, Queue position, and progress value still refers to the correct episode

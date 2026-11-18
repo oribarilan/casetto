@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="1.0">
+  <body>
+    <outline type="rss" text="Good" xmlUrl="https://example.com/good.xml"/>
+    <outline type="rss" text="No URL"/>
+    <outline type="rss" text="Bad URL" xmlUrl="ftp://example.com/bad.xml"/>
+  </body>
+</opml>

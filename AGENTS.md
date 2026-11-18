@@ -1,6 +1,6 @@
-# Casetto
+# Casterr
 
-Casetto is a native iOS podcast player. The product decisions are in `podcast_app_concept.md`. Read that file before you plan or change behavior.
+Casterr is a native iOS podcast player. The product decisions are in `podcast_app_concept.md`. Read that file before you plan or change behavior.
 
 Simplicity is the top rule. Choose the simplest design that meets the current milestone. If a decision can be made simpler, tell the user and propose the simpler option, even when the user already approved the complex one.
 
