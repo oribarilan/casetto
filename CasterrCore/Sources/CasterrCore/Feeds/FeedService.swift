@@ -38,7 +38,7 @@ public struct FeedService: Sendable {
         self.fetcher = fetcher
     }
 
-    /// Fetches and parses the feed before subscribing. Puts no episode in the Queue.
+    /// Fetches and parses the feed before subscribing, then places the newest episode by the show's level.
     public func subscribe(to url: URL) async throws -> SubscribeOutcome {
         guard let key = ShowKey(feedURL: url) else { throw SubscribeError.invalidURL }
         if try await library.isSubscribed(key) { return .alreadySubscribed(key) }
@@ -46,6 +46,7 @@ public struct FeedService: Sendable {
         let feed = try await fetchAndParse(url)
         try await library.saveFeed(feed, for: key)
         try await library.addSubscription(key, feedURL: url)
+        try await library.triage(key)
         return .subscribed(key)
     }
 
@@ -73,15 +74,17 @@ public struct FeedService: Sendable {
         return report
     }
 
-    /// Refreshes every subscribed feed. A failing feed records its error and doesn't stop the others.
+    /// Refreshes every subscribed feed and triages its new episodes, then expires the Inbox.
+    /// A failing feed records its error and doesn't stop the others.
     public func refreshAll() async throws {
         let subscriptions = try await library.subscriptions()
         _ = await forEach(subscriptions) { subscription in
             await refresh(subscription)
         }
+        try await library.expireInbox()
     }
 
-    /// Queued episodes stay in the Queue; the feed is no longer refreshed.
+    /// Queued episodes stay in the Queue and Inbox episodes move to the archive. The feed is no longer refreshed.
     public func unsubscribe(_ key: ShowKey) async throws {
         try await library.removeSubscription(key)
     }
@@ -93,6 +96,7 @@ public struct FeedService: Sendable {
             if let moved = feed.newFeedURL, moved != subscription.feedURL, ShowKey(feedURL: moved) != nil {
                 try await library.updateFeedURL(subscription.showKey, to: moved)
             }
+            try await library.triage(subscription.showKey)
         } catch {
             try? await library.recordRefreshFailure(subscription.showKey, error: Self.describe(error))
         }

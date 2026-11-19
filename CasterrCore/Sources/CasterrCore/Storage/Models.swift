@@ -45,6 +45,11 @@ import SwiftData
     var feedURL: URL?
     var speedOverride: Double?
     var subscribedAt: Date = Date.distantPast
+    var level: String = TriageLevel.inbox.rawValue
+    /// Days, with 0 for never. Nil follows the global setting.
+    var expiryDaysOverride: Int?
+    /// Episodes published after this date, and never placed, are new. Nil until the first triage.
+    var triageAfter: Date?
 
     init(showKey: String, feedURL: URL) {
         self.showKey = showKey
@@ -59,6 +64,8 @@ import SwiftData
     var archiveReason: String?
     var queuePosition: Int?
     var progressSeconds: Double = 0
+    var moveReason: String?
+    var movedAt: Date?
 
     init(episodeKey: String) {
         self.episodeKey = episodeKey
@@ -67,6 +74,8 @@ import SwiftData
 
 @Model final class UserSettings {
     var speed: Double = 1.0
+    /// Days, with 0 for never.
+    var expiryDays: Int = 7
 
     init() {}
 }

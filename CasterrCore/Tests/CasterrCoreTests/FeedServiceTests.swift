@@ -3,8 +3,8 @@ import Testing
 @testable import CasterrCore
 
 /// Routes by URL, with no shared state:
-/// `…/offline.xml` fails offline, `…/missing.xml` is a 404, `/not-podcast.xml` and `/new-feed-url.xml`
-/// serve those fixtures, and anything else serves `podcast.xml`.
+/// `…/offline.xml` fails offline, `…/missing.xml` is a 404, `/not-podcast.xml`, `/new-feed-url.xml`
+/// and `/new-episode.xml` serve those fixtures, and anything else serves `podcast.xml`.
 private final class FeedStub: URLProtocol {
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -18,7 +18,7 @@ private final class FeedStub: URLProtocol {
             return
         case "missing.xml":
             respond(status: 404, body: Data())
-        case "not-podcast.xml", "new-feed-url.xml":
+        case "not-podcast.xml", "new-feed-url.xml", "new-episode.xml":
             respond(status: 200, body: try! fixture(url.lastPathComponent))
         default:
             respond(status: 200, body: try! fixture("podcast.xml"))
@@ -182,5 +182,42 @@ struct UnsubscribeTests {
         #expect(try await library.subscriptions().isEmpty)
         #expect(try await library.queue() == [queued])
         #expect(try await library.show(key)?.lastRefreshSuccess == refreshedAt)
+    }
+}
+
+struct TriageFlowTests {
+    private let show = url("https://example.com/show.xml")
+    private var key: ShowKey { ShowKey(feedURL: show)! }
+
+    private func episode(_ guid: String) -> EpisodeKey {
+        EpisodeKey(show: key, guid: guid, audioURL: url("https://example.com/unused.mp3"))
+    }
+
+    @Test func subscribePutsTheNewestEpisodeInTheInbox() async throws {
+        let (service, library) = try makeService()
+        _ = try await service.subscribe(to: show)
+        #expect(try await library.inbox() == [episode("tape-hiss-3")])
+        #expect(try await library.queue().isEmpty)
+    }
+
+    @Test(arguments: [
+        (TriageLevel.inbox, Place.inbox), (.autoQueue, .queue), (.playNext, .queue), (.skip, .archive(.skipped)),
+    ])
+    func refreshPlacesTheNewEpisodeByLevel(level: TriageLevel, place: Place) async throws {
+        let (service, library) = try makeService()
+        _ = try await service.subscribe(to: show)
+        try await library.setLevel(key, to: level)
+        try await library.updateFeedURL(key, to: url("https://example.com/new-episode.xml"))
+        try await service.refreshAll()
+        #expect(try await library.place(of: episode("tape-hiss-4")) == place)
+        #expect(try await library.place(of: episode("tape-hiss-2")) == nil)
+    }
+
+    @Test func unsubscribeArchivesInboxEpisodes() async throws {
+        let (service, library) = try makeService()
+        _ = try await service.subscribe(to: show)
+        try await service.unsubscribe(key)
+        #expect(try await library.inbox().isEmpty)
+        #expect(try await library.place(of: episode("tape-hiss-3")) == .archive(.unsubscribed))
     }
 }

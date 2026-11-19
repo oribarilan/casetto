@@ -34,7 +34,7 @@ The MVP works when I delete my current podcast app and don't go back. After that
 | Inbox | Wait in the Inbox, then expire |
 | Skip | Go straight to the archive |
 
-New subscriptions start at Inbox. In onboarding you star the shows you never miss, and those start at Auto-queue. A show can also be set to "play next". Its new episodes then go to the top of the Queue, stacked in release order above anything you queued yourself.
+New subscriptions start at Inbox. In onboarding you star the shows you never miss, and those start at Auto-queue. A show can also be set to the Play next level. Its new episodes then go right after Now Playing, stacked in release order above anything you queued yourself.
 
 **Inbox episodes expire.** After 7 days, an untouched episode moves to the show's archive. You can change the 7 days globally or per show, and you can undo it.
 
@@ -46,13 +46,13 @@ New subscriptions start at Inbox. In onboarding you star the shows you never mis
 
 One tap accepts. "Not now" hides the card for 30 days. "Never for this show" hides it for good. Nothing changes without your tap, except expiry, which is a rule you set. Learning uses behavior only, no language model. Judging an episode by its topic ("I skip this show's sports episodes") comes later.
 
-**Filters are deliberately small.** A show can skip episodes longer than N minutes, or episodes whose title contains certain words. There is no general rule builder.
+**Filters are deliberately small.** A show can skip episodes longer than N minutes, or episodes whose title contains certain words. There is no general rule builder. Filters arrive in M4, created by the rule cards that propose them.
 
-**Undo.** Every move is logged with its reason for 30 days. An automatic move shows "Undo" on the episode until it moves again. Your own moves get an immediate undo toast.
+**Undo.** Each episode remembers its latest move: why it happened, who made it, and where the episode was before. An automatic move shows its reason and an "Undo" on the episode until the episode moves again, for up to 30 days. Your own moves are one swipe to reverse, so they get no undo button.
 
 ## Player
 
-- Streaming plus downloads. Queued episodes download on Wi-Fi and are deleted after you play them.
+- Streaming plus downloads. The top 3 Queue episodes download on Wi-Fi, also in the background, and the number is a setting. A file is deleted when its episode leaves that range, for example after you play it.
 - Background audio, lock screen and Control Center controls, sleep timer.
 - Playback speed from 1x to 2x with natural-sounding pitch. It has a global default, and each show can override it.
 - Skip forward is 30 seconds and skip back is 15, the same on every show. They are not configurable for now.
@@ -82,12 +82,11 @@ Data splits into what comes **from the feed**, a cache that can be wiped and re-
 |---|---|---|
 | Show | A podcast feed. Identified by its normalized feed URL at subscribe time. That key never changes, even when the feed moves. | No |
 | Episode | One feed item. Identified by its GUID, otherwise by its audio URL. | No |
-| Subscription | You following a Show: level, expiry override, play next, filters, speed override, and the show's last 10 outcomes for learning | Yes |
-| Episode state | Exactly one place (Inbox, Queue, Archive with a reason, or none), its Queue position when queued, and listening progress | Yes |
-| Event | A move with its reason and who made it (you, a level, a filter, expiry). Kept 30 days. | Yes |
+| Subscription | You following a Show: level (including Play next), expiry override, filters, speed override, and the show's last 10 outcomes for learning | Yes |
+| Episode state | Exactly one place (Inbox, Queue, Archive with a reason, or none), its Queue position when queued, listening progress, and its latest move (reason, who made it, when, and the previous place) for explanations and undo | Yes |
 | Proposal | A pending rule card, computed from outcomes. Only your dismissals are stored. | Dismissals |
 | Bookmark | Episode, timestamp, optional note, plus a snapshot of titles and audio URL | Yes |
-| Settings | Global defaults: expiry, speed, download behavior | Yes |
+| Settings | Global defaults: expiry, speed, how many Queue episodes to keep downloaded | Yes |
 | Download | The audio file on this device | No |
 
 **Invariants**
@@ -102,9 +101,9 @@ Data splits into what comes **from the feed**, a cache that can be wiped and re-
 Each milestone is one OpenSpec change.
 
 1. **Player core:** subscribe by RSS URL or OPML, stream, background audio, lock screen, speed, skip, sleep timer, progress, manual Queue.
-2. **Inbox and triage:** levels, expiry, play next, filters, the event log, and undo.
+2. **Inbox and triage:** levels, expiry, play next, the Inbox screen, and undo of automatic moves.
 3. **Downloads and refresh:** auto-download the Queue on Wi-Fi, best-effort background refresh.
-4. **Rule cards:** learned proposals in the Inbox.
+4. **Rule cards:** learned proposals in the Inbox, and the filters they create.
 5. **Onboarding:** Apple charts by genre, iTunes search, starring favorites.
 6. **Capture:** bookmarks, notes, search, Markdown export.
 7. **OPML export.**

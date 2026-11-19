@@ -2,7 +2,8 @@ import Testing
 @testable import CasterrCore
 
 struct PlaceTests {
-    @Test(arguments: [Place.queue, .archive(.played)])
+    @Test(arguments: [Place.inbox, .queue, .archive(.played), .archive(.dismissed), .archive(.expired),
+                      .archive(.skipped), .archive(.unsubscribed)])
     func roundTripsThroughStoredForm(place: Place) throws {
         let stored = place.stored
         #expect(try Place(storedPlace: stored.place, archiveReason: stored.archiveReason) == place)
@@ -32,10 +33,13 @@ struct PlaceTests {
 
     @Test func rejectsUnknownValues() {
         #expect(throws: Place.StoredFormError.self) {
-            try Place(storedPlace: "inbox", archiveReason: nil)
+            try Place(storedPlace: "later", archiveReason: nil)
         }
         #expect(throws: Place.StoredFormError.self) {
-            try Place(storedPlace: "archive", archiveReason: "dismissed")
+            try Place(storedPlace: "archive", archiveReason: "lost")
+        }
+        #expect(throws: Place.StoredFormError.self) {
+            try Place(storedPlace: "inbox", archiveReason: "played")
         }
     }
 }

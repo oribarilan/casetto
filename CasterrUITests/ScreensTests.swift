@@ -1,6 +1,6 @@
 import XCTest
 
-/// Walks the M1 screens against their spec scenarios and saves a screenshot of each.
+/// Walks the screens against their spec scenarios and saves a screenshot of each.
 /// Needs network: it subscribes to a real public feed.
 final class ScreensTests: XCTestCase {
     private let feed = "https://feeds.npr.org/510289/podcast.xml"
@@ -74,6 +74,67 @@ final class ScreensTests: XCTestCase {
         snapshot("6 Now Playing")
         app.buttons["speed"].tap()
         snapshot("7 Speed")
+    }
+
+    /// Inbox triage. `-fastClock` makes one second pass as one day.
+    @MainActor
+    func testInbox() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-fastClock"]
+        app.launch()
+
+        // Subscribing puts the newest episode in the Inbox.
+        XCTAssertTrue(app.buttons["Your Shows"].waitForExistence(timeout: 5))
+        app.buttons["Your Shows"].tap()
+        subscribe(to: feed)
+        XCTAssertTrue(app.buttons["Planet Money, NPR"].waitForExistence(timeout: 30))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        let newRow = app.buttons["New (1)"]
+        XCTAssertTrue(newRow.waitForExistence(timeout: 5))
+        snapshot("8 New Row")
+        newRow.tap()
+        XCTAssertTrue(app.buttons.matching(identifier: "inboxItem").firstMatch.waitForExistence(timeout: 5))
+        app.navigationBars.buttons["Expiry"].tap()
+        XCTAssertTrue(app.buttons["7 days"].waitForExistence(timeout: 5))
+        snapshot("9 Inbox Expiry")
+        app.buttons["7 days"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        // After more than 7 days, a refresh expires it.
+        sleep(8)
+        let list = app.collectionViews.firstMatch
+        list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
+            .press(forDuration: 0, thenDragTo: list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)))
+        XCTAssertTrue(newRow.waitForNonExistence(timeout: 30))
+
+        // The show page explains the move and offers Undo.
+        app.buttons["Your Shows"].tap()
+        app.buttons["Planet Money, NPR"].tap()
+        XCTAssertTrue(app.staticTexts["Expired after 7 days"].waitForExistence(timeout: 5))
+        snapshot("10 Expired")
+        app.buttons["Undo"].tap()
+        XCTAssertTrue(app.staticTexts["In Inbox"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Undo"].exists)
+
+        // Triage controls: expiry applies to Inbox shows only.
+        let expiryPicker = app.descendants(matching: .any)["expiryPicker"]
+        XCTAssertTrue(expiryPicker.exists)
+        app.descendants(matching: .any)["levelPicker"].tap()
+        app.buttons["Play Next"].tap()
+        XCTAssertTrue(expiryPicker.waitForNonExistence(timeout: 5))
+        snapshot("11 Show Triage")
+
+        // Dismiss from the Inbox.
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(newRow.waitForExistence(timeout: 5))
+        newRow.tap()
+        let item = app.buttons.matching(identifier: "inboxItem").firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
+        item.swipeLeft()
+        app.buttons["Dismiss"].tap()
+        XCTAssertTrue(app.staticTexts["Inbox is empty"].waitForExistence(timeout: 5))
     }
 
     @MainActor

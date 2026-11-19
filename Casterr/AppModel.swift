@@ -18,6 +18,11 @@ final class AppModel {
         library = try Library.open(inMemory: inMemory)
         feeds = FeedService(library: library)
         player = Player(library: library, engine: AVPlayerEngine())
+        if ProcessInfo.processInfo.arguments.contains("-fastClock") {
+            // UI tests: one second passes as one day, so Inbox expiry can be tested.
+            let start = Date.now
+            Task { [library] in await library.useClock { start + Date.now.timeIntervalSince(start) * 86_400 } }
+        }
         startNowPlaying()
         observeAudioSession()
     }
@@ -41,6 +46,23 @@ final class AppModel {
         } catch {
             return error.localizedDescription
         }
+    }
+
+    /// Episodes for the keys, in order. Keys without feed data are left out.
+    func episodes(_ keys: [EpisodeKey]) async -> [EpisodeInfo] {
+        var episodes: [EpisodeInfo] = []
+        for key in keys {
+            if let episode = try? await library.episode(key) { episodes.append(episode) }
+        }
+        return episodes
+    }
+
+    func moves(of keys: [EpisodeKey]) async -> [EpisodeKey: LastMove] {
+        var moves: [EpisodeKey: LastMove] = [:]
+        for key in keys {
+            moves[key] = try? await library.lastMove(of: key)
+        }
+        return moves
     }
 
     func appWentToBackground() async {

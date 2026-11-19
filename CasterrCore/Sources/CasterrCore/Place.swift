@@ -1,10 +1,15 @@
 /// Where an episode lives. An episode with no place is `Place?.none`.
 public enum Place: Hashable, Sendable {
+    case inbox
     case queue
     case archive(ArchiveReason)
 
     public enum ArchiveReason: String, Sendable {
         case played
+        case dismissed
+        case expired
+        case skipped
+        case unsubscribed
     }
 
     public struct StoredFormError: Error, Equatable {
@@ -15,6 +20,7 @@ public enum Place: Hashable, Sendable {
     /// The flat form that storage keeps, since synced records can't hold enums with payloads.
     public var stored: (place: String, archiveReason: String?) {
         switch self {
+        case .inbox: ("inbox", nil)
         case .queue: ("queue", nil)
         case .archive(let reason): ("archive", reason.rawValue)
         }
@@ -25,6 +31,8 @@ public enum Place: Hashable, Sendable {
         switch (storedPlace, archiveReason) {
         case (nil, nil):
             return nil
+        case ("inbox", nil):
+            self = .inbox
         case ("queue", nil):
             self = .queue
         case ("archive", let reason?):

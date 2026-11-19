@@ -6,18 +6,20 @@ struct QueueView: View {
     @Environment(AppModel.self) private var model
     @Environment(Player.self) private var player
     @State private var items: [EpisodeInfo] = []
+    @State private var moves: [EpisodeKey: LastMove] = [:]
+    @State private var inboxCount = 0
     @State private var loaded = false
 
     var body: some View {
         List {
-            ForEach(Array(items.enumerated()), id: \.element.key) { index, episode in
-                Button {
-                    Task { await model.change { try await player.play(episode.key) } }
-                } label: {
-                    EpisodeRow(episode: episode, caption: index == 0 ? "Now Playing" : nil)
+            if inboxCount > 0 {
+                NavigationLink(value: Route.inbox) {
+                    Label("New (\(inboxCount))", systemImage: "tray")
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("queueItem")
+            }
+            ForEach(Array(items.enumerated()), id: \.element.key) { index, episode in
+                EpisodeRow(episode: episode, identifier: "queueItem",
+                           caption: index == 0 ? "Now Playing" : nil, move: moves[episode.key])
             }
             .onMove { from, to in
                 guard let source = from.first else { return }
@@ -55,35 +57,10 @@ struct QueueView: View {
     }
 
     private func load() async {
-        let library = model.library
-        let keys = (try? await library.queue()) ?? []
-        var episodes: [EpisodeInfo] = []
-        for key in keys {
-            if let episode = try? await library.episode(key) { episodes.append(episode) }
-        }
-        items = episodes
+        let keys = (try? await model.library.queue()) ?? []
+        items = await model.episodes(keys)
+        moves = await model.moves(of: keys)
+        inboxCount = (try? await model.library.inboxCount()) ?? 0
         loaded = true
-    }
-}
-
-struct EpisodeRow: View {
-    let episode: EpisodeInfo
-    var caption: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if let caption {
-                Text(caption).font(.caption.bold()).foregroundStyle(.tint)
-            }
-            Text(episode.title).lineLimit(2)
-            HStack {
-                if let date = episode.publishDate { Text(date, format: .dateTime.day().month().year()) }
-                if let duration = episode.duration { Text(duration.clock) }
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
     }
 }

@@ -11,6 +11,7 @@ struct RootView: View {
                 .navigationDestination(for: Route.self) { route in
                     switch route {
                     case .shows: ShowsView()
+                    case .inbox: InboxView()
                     case .show(let key): ShowView(showKey: key)
                     }
                 }
@@ -52,6 +53,7 @@ private struct MiniPlayer: View {
 
 enum Route: Hashable {
     case shows
+    case inbox
     case show(ShowKey)
 }
 

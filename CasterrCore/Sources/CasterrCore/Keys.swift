@@ -42,3 +42,9 @@ public struct EpisodeKey: Hashable, Sendable {
         self.rawValue = "\(show.rawValue)|\(itemID)"
     }
 }
+
+extension EpisodeKey {
+    public func belongs(to show: ShowKey) -> Bool {
+        rawValue.hasPrefix(show.rawValue + "|")
+    }
+}
