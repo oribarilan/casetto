@@ -28,7 +28,7 @@ Build the app from the command line:
 xcodebuild -project Casterr.xcodeproj -scheme Casterr -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build
 ```
 
-Run the UI tests on the simulator. They need a network connection, because they subscribe to a real public feed and stream an episode. The Inbox test launches with `-fastClock`, where one second counts as one day, so it can test expiry:
+Run the UI tests on the simulator. They need a network connection, because they subscribe to a real public feed and stream an episode. The Inbox test launches with `-fastClock`, where one second counts as one day, so it can test expiry. The simulator downloads episodes but has no background refresh, so check that on a phone:
 
 ```sh
 xcodebuild -project Casterr.xcodeproj -scheme Casterr -destination 'platform=iOS Simulator,name=iPhone 18 Pro' test

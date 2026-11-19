@@ -23,7 +23,8 @@ targets:
     info:
       path: Casterr/Info.plist
       properties:
-        UIBackgroundModes: [audio]
+        UIBackgroundModes: [audio, fetch]
+        BGTaskSchedulerPermittedIdentifiers: [casterr.refresh]
         UILaunchScreen: {}
   CasterrUITests:
     type: bundle.ui-testing

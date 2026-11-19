@@ -353,6 +353,15 @@ public actor Library {
         try modelContext.save()
     }
 
+    public func downloadCount() throws -> Int {
+        try settings().downloadCount
+    }
+
+    public func setDownloadCount(_ count: Int) throws {
+        try settings().downloadCount = max(count, 0)
+        try modelContext.save()
+    }
+
     private func settings() throws -> UserSettings {
         if let existing = try modelContext.fetch(FetchDescriptor<UserSettings>()).first {
             return existing

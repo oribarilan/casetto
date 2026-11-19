@@ -63,6 +63,14 @@ final class ScreensTests: XCTestCase {
         app.buttons["Delete"].tap()
         XCTAssertEqual(queue.count, 1)
 
+        // Downloads: the top of the Queue downloads on Wi-Fi, and Off deletes it.
+        let downloaded = app.images["Downloaded"]
+        XCTAssertTrue(downloaded.waitForExistence(timeout: 120))
+        snapshot("5b Downloaded")
+        app.navigationBars.buttons["Downloads"].tap()
+        app.buttons["Off"].tap()
+        XCTAssertTrue(downloaded.waitForNonExistence(timeout: 10))
+
         // Now Playing: play, sleep timer.
         queue.firstMatch.tap()
         let miniPlayer = app.buttons["miniPlayer"]

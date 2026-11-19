@@ -27,12 +27,15 @@ private struct Harness {
     let player: Player
     let episodes: [EpisodeInfo]
 
-    init(sleep: @escaping @Sendable (Duration) async throws -> Void = { _ in }) async throws {
+    init(
+        sleep: @escaping @Sendable (Duration) async throws -> Void = { _ in },
+        localFile: @escaping (EpisodeKey, URL) -> URL? = { _, _ in nil }
+    ) async throws {
         library = try Library.open(inMemory: true)
         try await library.addSubscription(show, feedURL: URL(string: "https://example.com/feed")!)
         try await library.saveFeed(try FeedParser.parse(fixture("podcast.xml")), for: show)
         episodes = try await library.episodes(of: show)
-        player = Player(library: library, engine: engine, sleep: sleep)
+        player = Player(library: library, engine: engine, sleep: sleep, localFile: localFile)
     }
 
     /// Waits for work the player starts on its own (engine callbacks spawn tasks).
@@ -55,6 +58,15 @@ struct PlayerTests {
         #expect(h.engine.loaded?.url == h.episodes[1].audioURL)
         #expect(h.engine.loaded?.position == 1390)
         #expect(h.player.isPlaying)
+    }
+
+    @Test func downloadedEpisodePlaysFromItsFile() async throws {
+        let file = URL(filePath: "/tmp/downloaded.mp3")
+        let h = try await Harness(localFile: { key, _ in key.rawValue.hasSuffix("tape-hiss-3") ? file : nil })
+        try await h.player.play(h.episodes[0].key)
+        #expect(h.engine.loaded?.url == file)
+        try await h.player.play(h.episodes[1].key)
+        #expect(h.engine.loaded?.url == h.episodes[1].audioURL)
     }
 
     @Test func playsAtTheEffectiveSpeed() async throws {

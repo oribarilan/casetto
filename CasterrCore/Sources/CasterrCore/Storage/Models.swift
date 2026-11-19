@@ -76,6 +76,8 @@ import SwiftData
     var speed: Double = 1.0
     /// Days, with 0 for never.
     var expiryDays: Int = 7
+    /// How many Queue episodes to keep downloaded, with 0 for Off.
+    var downloadCount: Int = 3
 
     init() {}
 }

@@ -9,6 +9,7 @@ struct EpisodeRow: View {
     let identifier: String
     var caption: String?
     var move: LastMove?
+    var downloaded = false
 
     var body: some View {
         HStack {
@@ -38,6 +39,9 @@ struct EpisodeRow: View {
             HStack {
                 if let date = episode.publishDate { Text(date, format: .dateTime.day().month().year()) }
                 if let duration = episode.duration { Text(duration.clock) }
+                if downloaded {
+                    Image(systemName: "arrow.down.circle.fill").accessibilityLabel("Downloaded")
+                }
             }
             .font(.caption)
             .foregroundStyle(.secondary)

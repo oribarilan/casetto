@@ -8,6 +8,7 @@ struct QueueView: View {
     @State private var items: [EpisodeInfo] = []
     @State private var moves: [EpisodeKey: LastMove] = [:]
     @State private var inboxCount = 0
+    @State private var downloadCount = 3
     @State private var loaded = false
 
     var body: some View {
@@ -19,7 +20,8 @@ struct QueueView: View {
             }
             ForEach(Array(items.enumerated()), id: \.element.key) { index, episode in
                 EpisodeRow(episode: episode, identifier: "queueItem",
-                           caption: index == 0 ? "Now Playing" : nil, move: moves[episode.key])
+                           caption: index == 0 ? "Now Playing" : nil, move: moves[episode.key],
+                           downloaded: model.isDownloaded(episode))
             }
             .onMove { from, to in
                 guard let source = from.first else { return }
@@ -49,6 +51,17 @@ struct QueueView: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) { EditButton() }
             ToolbarItem(placement: .topBarTrailing) {
+                Menu("Downloads", systemImage: "arrow.down.circle") {
+                    Picker("Keep downloaded", selection: Binding(get: { downloadCount }, set: { count in
+                        Task { await model.change { try await model.library.setDownloadCount(count) } }
+                    })) {
+                        ForEach(DownloadCount.choices, id: \.self) { count in
+                            Text(count == 0 ? "Off" : count == 1 ? "Top episode" : "Top \(count) episodes").tag(count)
+                        }
+                    }
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink(value: Route.shows) { Label("Shows", systemImage: "square.stack") }
             }
         }
@@ -61,6 +74,7 @@ struct QueueView: View {
         items = await model.episodes(keys)
         moves = await model.moves(of: keys)
         inboxCount = (try? await model.library.inboxCount()) ?? 0
+        downloadCount = (try? await model.library.downloadCount()) ?? 3
         loaded = true
     }
 }

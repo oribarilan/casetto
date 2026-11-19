@@ -18,7 +18,7 @@ The MVP works when I delete my current podcast app and don't go back. After that
 ## Design rules
 
 1. **Sensible defaults.** Every capability works without configuration.
-2. **Customize in context.** Change behavior where it matters (on a show, in Now Playing), not in a sprawling settings screen.
+2. **Customize in context.** Change behavior where it matters (on a show, in Now Playing), not in a sprawling settings screen. Per-show speed is set in Now Playing, scoped to "This show" or "All shows".
 3. **Explainable, reversible automation.** Every automatic move has a visible reason and an undo.
 4. **Capture never interrupts listening.** Saving a moment is one tap. Notes are optional.
 
@@ -31,10 +31,11 @@ The MVP works when I delete my current podcast app and don't go back. After that
 | Level | New episodes |
 |---|---|
 | Auto-queue | Go to the bottom of the Queue |
+| Play next | Go right after Now Playing, stacked in release order |
 | Inbox | Wait in the Inbox, then expire |
 | Skip | Go straight to the archive |
 
-New subscriptions start at Inbox. In onboarding you star the shows you never miss, and those start at Auto-queue. A show can also be set to the Play next level. Its new episodes then go right after Now Playing, stacked in release order above anything you queued yourself.
+New subscriptions start at Inbox. In onboarding you star the shows you never miss, and those start at Auto-queue. Play next episodes stack above anything you queued yourself.
 
 **Inbox episodes expire.** After 7 days, an untouched episode moves to the show's archive. You can change the 7 days globally or per show, and you can undo it.
 
@@ -48,7 +49,7 @@ One tap accepts. "Not now" hides the card for 30 days. "Never for this show" hid
 
 **Filters are deliberately small.** A show can skip episodes longer than N minutes, or episodes whose title contains certain words. There is no general rule builder. Filters arrive in M4, created by the rule cards that propose them.
 
-**Undo.** Each episode remembers its latest move: why it happened, who made it, and where the episode was before. An automatic move shows its reason and an "Undo" on the episode until the episode moves again, for up to 30 days. Your own moves are one swipe to reverse, so they get no undo button.
+**Undo.** Each episode remembers its latest move: why it happened and when. An automatic move shows its reason and an "Undo" on the episode until the episode moves again, for up to 30 days. Your own moves are one swipe to reverse, so they get no undo button.
 
 ## Player
 
@@ -83,7 +84,7 @@ Data splits into what comes **from the feed**, a cache that can be wiped and re-
 | Show | A podcast feed. Identified by its normalized feed URL at subscribe time. That key never changes, even when the feed moves. | No |
 | Episode | One feed item. Identified by its GUID, otherwise by its audio URL. | No |
 | Subscription | You following a Show: level (including Play next), expiry override, filters, speed override, and the show's last 10 outcomes for learning | Yes |
-| Episode state | Exactly one place (Inbox, Queue, Archive with a reason, or none), its Queue position when queued, listening progress, and its latest move (reason, who made it, when, and the previous place) for explanations and undo | Yes |
+| Episode state | Exactly one place (Inbox, Queue, Archive with a reason, or none), its Queue position when queued, listening progress, and its latest move (reason and time) for explanations and undo | Yes |
 | Proposal | A pending rule card, computed from outcomes. Only your dismissals are stored. | Dismissals |
 | Bookmark | Episode, timestamp, optional note, plus a snapshot of titles and audio URL | Yes |
 | Settings | Global defaults: expiry, speed, how many Queue episodes to keep downloaded | Yes |
@@ -115,7 +116,6 @@ Then Casterr becomes my daily driver, and TestFlight follows.
 
 ## Open questions
 
-- Where do you set a per-show player override: in Now Playing, on the show page, or both? We'll compare mockups during M1.
 - The exact thresholds for each rule card get decided in M4.
 - Genre charts for onboarding (M5): Apple's documented charts feed has no genre filter. The older iTunes charts URL that does filter by genre still works, but it's undocumented and could break. The iTunes Search API is limited to about 20 calls a minute, so search needs debouncing and caching.
 - The name still needs a trademark check and an App Store name check before launch.

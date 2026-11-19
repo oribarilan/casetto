@@ -39,17 +39,20 @@ public final class Player {
     private let library: Library
     private let engine: any AudioEngine
     private let sleep: @Sendable (Duration) async throws -> Void
+    private let localFile: (EpisodeKey, URL) -> URL?
     private var lastSavedPosition: TimeInterval = 0
     private var sleepTask: Task<Void, Never>?
 
     public init(
         library: Library,
         engine: any AudioEngine,
-        sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+        sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+        localFile: @escaping (EpisodeKey, URL) -> URL? = { _, _ in nil }
     ) {
         self.library = library
         self.engine = engine
         self.sleep = sleep
+        self.localFile = localFile
         engine.onTime = { [weak self] position, duration in self?.timeChanged(position, duration) }
         engine.onEnd = { [weak self] in Task { await self?.episodeEnded() } }
         engine.onFailure = { [weak self] error in self?.failed(error) }
@@ -133,7 +136,7 @@ public final class Player {
         lastSavedPosition = position
         duration = info.duration
         speed = try await library.effectiveSpeed(for: info.showKey)
-        engine.load(info.audioURL, at: position)
+        engine.load(localFile(info.key, info.audioURL) ?? info.audioURL, at: position)
         engine.play(rate: speed.value)
         isPlaying = true
     }
