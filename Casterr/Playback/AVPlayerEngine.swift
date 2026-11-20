@@ -1,5 +1,6 @@
 import AVFoundation
 import CasterrCore
+import os
 
 /// Streams one episode at a time with AVPlayer. The Queue lives in `Library`, not here.
 @MainActor
@@ -13,6 +14,8 @@ final class AVPlayerEngine: AudioEngine {
     private var statusObservation: NSKeyValueObservation?
     private var notificationTasks: [Task<Void, Never>] = []
     private var playRequest = 0
+    private var tap: LoudnessTap?
+    private let log = Logger(subsystem: "com.oribarilan.Casterr", category: "backABeat")
 
     init() {
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
@@ -45,10 +48,28 @@ final class AVPlayerEngine: AudioEngine {
     func pause() {
         playRequest += 1
         player.pause()
+        // The periodic time can be a second old; Back a Beat needs the exact pause point.
+        reportTime(player.currentTime())
     }
 
     func seek(to position: TimeInterval) {
         player.seek(to: CMTime(seconds: position, preferredTimescale: 600))
+    }
+
+    func loudness(from start: TimeInterval, to end: TimeInterval) -> [Loudness] {
+        let readings = tap?.loudness(from: start, to: end) ?? []
+        log.debug("Back a Beat heard \(readings.count) readings from \(start) to \(end)")
+        return readings
+    }
+
+    private func attachTap(to item: AVPlayerItem) {
+        guard item === player.currentItem, item.audioMix == nil else { return }
+        let tap = LoudnessTap()
+        self.tap = tap
+        Task {
+            guard let track = try? await item.asset.loadTracks(withMediaType: .audio).first else { return }
+            item.audioMix = tap.audioMix(for: track)
+        }
     }
 
     private func reportTime(_ time: CMTime) {
@@ -60,6 +81,10 @@ final class AVPlayerEngine: AudioEngine {
     private func observe(_ item: AVPlayerItem) {
         notificationTasks.forEach { $0.cancel() }
         statusObservation = item.observe(\.status) { [weak self] item, _ in
+            if item.status == .readyToPlay {
+                Task { @MainActor in self?.attachTap(to: item) }
+                return
+            }
             guard item.status == .failed else { return }
             let error = item.error ?? URLError(.unknown)
             Task { @MainActor in self?.onFailure?(error) }

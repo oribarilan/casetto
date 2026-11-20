@@ -8,7 +8,7 @@ Use the words in the "Words" section of `podcast_app_concept.md` for all text in
 
 Do not use emoji anywhere in the app. Use SF Symbols for icons. If no SF Symbol fits, draw the icon in SwiftUI.
 
-For onboarding, suggest just-in-time tips. Use the `CassyTip` component (`Casterr/Screens/CassyTip.swift`). Show a tip on the control that the listener needs, at the moment that they first need it. Each tip shows one time. Do not suggest intro banners, tutorials, or tips about things that are not on the screen yet.
+For onboarding, suggest just-in-time tips. Use the `CassyTip` component (`Casterr/Screens/CassyTip.swift`). Show a tip on the control that the listener needs, at the moment that they first need it. Each tip shows one time. The welcome screen on first launch (`Casterr/Screens/WelcomeView.swift`) is the only intro screen. Do not suggest other intro screens, banners, tutorials, or tips about things that are not on the screen yet.
 
 When you show the user design alternatives as images, put each option's key (a number or a letter, and a short name) on the image itself, so that the user can refer to it. Use the same keys in your message. Show only the alternatives for the open question.
 

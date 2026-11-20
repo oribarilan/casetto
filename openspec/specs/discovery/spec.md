@@ -6,11 +6,11 @@ Helps a new listener find and follow shows without knowing any feed address.
 ## Requirements
 
 ### Requirement: Top shows
-The system SHALL list Apple's top podcasts for the listener's country, in chart order, from Apple's documented chart, under the heading "Popular now". Shows without a feed address MUST be left out. A directory request MUST give up after 10 seconds, and a failed chart request MUST be retried once. If the chart still fails, the system SHALL say so with Cassy and offer Try Again.
+The system SHALL list Apple's top podcasts for the listener's country, in chart order, from Apple's documented chart. The heading SHALL be "Popular now · " followed by the name of the phone's region, or "Popular now" when the phone has no region. Shows without a feed address MUST be left out. A directory request MUST give up after 10 seconds, and a failed chart request MUST be retried once. If the chart still fails, the system SHALL say so with Cassy and offer Try Again.
 
 #### Scenario: Browse top shows
-- **WHEN** the listener opens the top shows
-- **THEN** the list shows each show's title, author, and artwork in chart order under "Popular now"
+- **WHEN** the phone's region is the United States and the listener opens the top shows
+- **THEN** the list shows each show's title, author, and artwork in chart order under "Popular now · United States"
 
 #### Scenario: Directory unreachable
 - **WHEN** the chart fails twice in a row
@@ -39,11 +39,12 @@ Each directory show SHALL offer Subscribe, which starts the show at the Inbox le
 - **THEN** its level is Inbox and its newest episode is in the Inbox
 
 ### Requirement: Onboarding
-On first launch the system SHALL show a skippable Find Shows screen with a large title, top shows, and search. Whenever the listener follows no shows, the Shows tab SHALL show the same view. Only one Cassy SHALL be on screen at a time: while the list loads she is big and loading, and once it has loaded she is in a card above the list that explains it and how to follow. After the first star the card SHALL cheer.
+On first launch the system SHALL show one welcome screen, then a skippable Find Shows screen with a large title, top shows, and search. The welcome screen MUST be the only intro screen; everything else is taught with just-in-time tips. Whenever the listener follows no shows, the Shows tab SHALL show Find Shows without the welcome screen. Only one Cassy SHALL be on screen at a time. After the first star her card SHALL cheer.
 
 #### Scenario: First launch
 - **WHEN** the app launches for the first time
-- **THEN** the onboarding screen shows, and Done or Skip closes it
+- **THEN** the welcome screen shows Cassy, "Hi, I'm Cassy!", one sentence on what Casterr does, three numbered steps ("Follow shows", "Queue the episodes you want", "Press play", each with one line: new episodes land in the Inbox, the rest leave on their own after 14 days, the Queue plays top to bottom), and one button, "Let's add some shows"
+- **AND** that button opens Find Shows, and Done or Skip there closes onboarding
 
 #### Scenario: Loading
 - **WHEN** the top shows are loading
@@ -51,7 +52,7 @@ On first launch the system SHALL show a skippable Find Shows screen with a large
 
 #### Scenario: Loaded
 - **WHEN** the top shows have loaded
-- **THEN** a card says "These are popular right now." with "Tap + to follow any of them, or search for a show you love."
+- **THEN** a card says "Let's add some shows!" with "Tap + to follow one, or search for a show you love."
 
 #### Scenario: First star
 - **WHEN** the listener stars a show in onboarding
@@ -59,7 +60,7 @@ On first launch the system SHALL show a skippable Find Shows screen with a large
 
 #### Scenario: Unsubscribed from everything
 - **WHEN** the listener follows no shows and opens the Shows tab
-- **THEN** it shows the top shows and search
+- **THEN** it shows the top shows and search, without the welcome screen
 
 ### Requirement: Just-in-time tips
 The system SHALL teach a control with a one-time tip at the moment the listener first needs it, instead of up-front tutorials. A tip SHALL be a sticker bubble from Cassy that points at the control, with a subtle grey ✕. It MUST close on its ✕ or any other tap, and MUST show at most once per install.

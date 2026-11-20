@@ -11,11 +11,15 @@ private final class FakeEngine: AudioEngine {
     private(set) var loaded: (url: URL, position: TimeInterval)?
     private(set) var rate: Double?
     private(set) var seekedTo: TimeInterval?
+    var heard: [Loudness] = []
 
     func load(_ url: URL, at position: TimeInterval) { loaded = (url, position) }
     func play(rate: Double) { self.rate = rate }
     func pause() { rate = nil }
     func seek(to position: TimeInterval) { seekedTo = position }
+    func loudness(from start: TimeInterval, to end: TimeInterval) -> [Loudness] {
+        heard.filter { $0.time >= start && $0.time < end }
+    }
 }
 
 private let show = ShowKey(feedURL: URL(string: "https://example.com/feed")!)!
@@ -236,5 +240,78 @@ struct SleepTimerTests {
 
         try await h.player.resume()
         #expect(h.engine.loaded?.url == h.episodes[1].audioURL)
+    }
+}
+
+@MainActor
+struct BackABeatPlayerTests {
+    /// Plays episode 0 to 23:10 with a quiet gap at about 23:07, then pauses.
+    private func pausedAfterAGap() async throws -> Harness {
+        let h = try await Harness()
+        try await h.player.play(h.episodes[0].key)
+        h.engine.heard = speech(from: 1382, to: 1390, quiet: [1386.9...1387.09])
+        h.engine.onTime?(1390, 3000)
+        try await h.player.pause()
+        return h
+    }
+
+    @Test func resumeStartsAtTheGap() async throws {
+        let h = try await pausedAfterAGap()
+        try await h.player.resume()
+        #expect(abs((h.engine.seekedTo ?? 0) - 1387) < 0.011)
+        #expect(h.player.isPlaying)
+    }
+
+    @Test func resumeWithoutAGapStaysPut() async throws {
+        let h = try await Harness()
+        try await h.player.play(h.episodes[0].key)
+        h.engine.heard = speech(from: 1382, to: 1390)
+        h.engine.onTime?(1390, 3000)
+        try await h.player.pause()
+        try await h.player.resume()
+        #expect(h.engine.seekedTo == nil)
+    }
+
+    @Test func seekWhilePausedTurnsItOff() async throws {
+        let h = try await pausedAfterAGap()
+        h.player.seek(to: 1800)
+        try await h.player.resume()
+        #expect(h.engine.seekedTo == 1800)
+    }
+
+    @Test func skipWhilePausedTurnsItOff() async throws {
+        let h = try await pausedAfterAGap()
+        h.player.skipBack()
+        try await h.player.resume()
+        #expect(h.engine.seekedTo == 1375)
+    }
+
+    @Test func itAppliesOnlyToTheNextResume() async throws {
+        let h = try await pausedAfterAGap()
+        try await h.player.resume()
+        h.engine.heard = speech(from: 1387, to: 1395, quiet: [1391.4...1391.6])
+        h.engine.onTime?(1395, 3000)
+        try await h.player.resume()
+        #expect(abs((h.engine.seekedTo ?? 0) - 1387) < 0.011)
+    }
+
+    @Test func anotherEpisodeStartsAtItsSavedPosition() async throws {
+        let h = try await pausedAfterAGap()
+        try await h.library.setProgress(h.episodes[1].key, to: 600)
+        try await h.player.play(h.episodes[1].key)
+        #expect(h.engine.loaded?.position == 600)
+        #expect(h.engine.seekedTo == nil)
+    }
+
+    @Test func sleepTimerPauseGetsIt() async throws {
+        let h = try await Harness(sleep: { _ in })
+        try await h.player.play(h.episodes[0].key)
+        h.engine.heard = speech(from: 1382, to: 1390, quiet: [1386.9...1387.09])
+        h.engine.onTime?(1390, 3000)
+        h.player.setSleepTimer(.duration(.seconds(60)))
+        await h.settle()
+        #expect(!h.player.isPlaying)
+        try await h.player.resume()
+        #expect(abs((h.engine.seekedTo ?? 0) - 1387) < 0.011)
     }
 }

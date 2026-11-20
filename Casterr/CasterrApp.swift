@@ -3,11 +3,8 @@ import SwiftUI
 @main
 struct CasterrApp: App {
     @Environment(\.scenePhase) private var scenePhase
-    @State private var model: AppModel = {
-        // UI tests launch with an empty in-memory library.
-        let inMemory = ProcessInfo.processInfo.arguments.contains("-uiTesting")
-        return try! AppModel(inMemory: inMemory)
-    }()
+    // Shared, so the CarPlay scene uses the same library and player.
+    @State private var model = AppModel.shared
 
     init() {
         Theme.apply()

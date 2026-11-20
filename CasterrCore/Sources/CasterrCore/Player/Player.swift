@@ -13,6 +13,8 @@ public protocol AudioEngine: AnyObject {
     func play(rate: Double)
     func pause()
     func seek(to position: TimeInterval)
+    /// What the engine heard between two media times, oldest first. Empty when it has nothing.
+    func loudness(from start: TimeInterval, to end: TimeInterval) -> [Loudness]
 }
 
 public enum SleepTimer: Equatable, Sendable {
@@ -47,6 +49,8 @@ public final class Player {
     private let localFile: (EpisodeKey, URL) -> URL?
     private var lastSavedPosition: TimeInterval = 0
     private var sleepTask: Task<Void, Never>?
+    /// Set by a pause; a seek or another episode clears it, which turns off Back a Beat.
+    private var pausedInPlace = false
 
     public init(
         library: Library,
@@ -75,6 +79,7 @@ public final class Player {
     /// Resumes, or starts Queue item 1 when nothing is loaded.
     public func resume() async throws {
         if episode != nil {
+            if pausedInPlace { backABeat() }
             engine.play(rate: speed.value)
             isPlaying = true
         } else if let first = try await library.queue().first {
@@ -85,6 +90,7 @@ public final class Player {
     public func pause() async throws {
         engine.pause()
         isPlaying = false
+        pausedInPlace = episode != nil
         try await saveProgress()
     }
 
@@ -98,7 +104,15 @@ public final class Player {
     public func seek(to target: TimeInterval) {
         let upper = duration ?? .greatestFiniteMagnitude
         position = min(max(target, 0), upper)
+        pausedInPlace = false
         engine.seek(to: position)
+    }
+
+    private func backABeat() {
+        let readings = engine.loudness(from: position - BackABeat.farthest, to: position - BackABeat.nearest)
+        let point = BackABeat.resumePoint(pausedAt: position, readings: readings)
+        if point != position { seek(to: point) }
+        pausedInPlace = false
     }
 
     public func setSpeed(_ newSpeed: PlaybackSpeed) {
@@ -140,6 +154,7 @@ public final class Player {
         episode = info
         show = try await library.show(info.showKey)
         errorMessage = nil
+        pausedInPlace = false
         position = try await library.progress(of: key)
         lastSavedPosition = position
         duration = info.duration

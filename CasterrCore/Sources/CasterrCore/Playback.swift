@@ -12,6 +12,11 @@ public struct PlaybackSpeed: Hashable, Sendable {
         self.value = tenths / 10
     }
 
+    /// One step faster, for the car's speed button: 0.1x more, and 2.0x wraps to 1.0x.
+    public var next: PlaybackSpeed {
+        value >= 2.0 ? .normal : PlaybackSpeed(value + 0.1)
+    }
+
     /// A show's override if it has one, otherwise the global speed.
     public static func effective(global: PlaybackSpeed, override: PlaybackSpeed?) -> PlaybackSpeed {
         override ?? global

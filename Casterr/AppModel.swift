@@ -34,6 +34,8 @@ final class AppModel {
     @ObservationIgnored private var nowPlaying: MediaSession<NowPlayingBridge>?
     @ObservationIgnored private var eventTasks: [Task<Void, Never>] = []
     @ObservationIgnored private var syncTask: Task<Void, Never>?
+    /// The one model for the phone and the car screen. UI tests launch with an empty in-memory library.
+    static let shared = try! AppModel(inMemory: ProcessInfo.processInfo.arguments.contains("-uiTesting"))
     static let refreshTaskID = "casterr.refresh"
     private static let log = Logger(subsystem: "com.oribarilan.Casterr", category: "refresh")
 

@@ -16,6 +16,12 @@ struct PlaybackSpeedTests {
         #expect(PlaybackSpeed(1.35).value == 1.4)
     }
 
+    @Test func nextAddsATenthAndWraps() {
+        #expect(PlaybackSpeed(1.3).next == PlaybackSpeed(1.4))
+        #expect(PlaybackSpeed(1.9).next == PlaybackSpeed(2.0))
+        #expect(PlaybackSpeed(2.0).next == .normal)
+    }
+
     @Test func showWithoutOverrideFollowsGlobal() {
         #expect(PlaybackSpeed.effective(global: PlaybackSpeed(1.3), override: nil) == PlaybackSpeed(1.3))
     }

@@ -245,9 +245,15 @@ final class ScreensTests: XCTestCase {
         app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "NO"]
         app.launch()
 
+        // One welcome screen, then Find Shows.
+        let start = app.buttons["Let's add some shows"]
+        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Hi, I'm Cassy!"].exists)
+        snapshot("12 Welcome")
+        start.tap()
         XCTAssertTrue(app.navigationBars["Find Shows"].waitForExistence(timeout: 5))
         XCTAssertTrue(waitForTopShows())
-        XCTAssertTrue(app.staticTexts["These are popular right now."].exists)
+        XCTAssertTrue(app.staticTexts["Let's add some shows!"].exists)
         XCTAssertTrue(app.buttons["Skip"].exists)
         snapshot("13 Onboarding")
         let search = app.searchFields.firstMatch
@@ -339,6 +345,9 @@ final class ScreensTests: XCTestCase {
         app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "NO", "-hasSeenTip.star", "NO"]
         app.launch()
 
+        let start = app.buttons["Let's add some shows"]
+        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        start.tap()
         XCTAssertTrue(waitForTopShows())
         let follow = app.buttons.matching(identifier: "subscribeButton").firstMatch
         XCTAssertTrue(follow.waitForExistence(timeout: 5))
@@ -356,7 +365,8 @@ final class ScreensTests: XCTestCase {
     @MainActor
     private func waitForTopShows() -> Bool {
         for _ in 0..<4 {
-            if app.staticTexts["Popular now"].waitForExistence(timeout: 25) { return true }
+            let heading = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Popular now'")).firstMatch
+            if heading.waitForExistence(timeout: 25) { return true }
             let retry = app.buttons["Try Again"]
             guard retry.exists else { return false }
             retry.tap()

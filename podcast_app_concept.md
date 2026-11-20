@@ -26,7 +26,7 @@ The MVP works when I delete my current podcast app and don't go back. After that
 
 Casterr is warm and a little funny. The accent is tangerine orange, titles use heavy rounded type (SF Pro Rounded), and show art appears in every list, on a Shows grid, on the show page, and in the mini player. Now Playing is tinted by the show's artwork. The copy is warm and witty in one voice, with no setting: an empty Queue says "Silence. Lovely, but let's fix that."
 
-The mascot is **Cassy**, a cassette tape whose two reels are her eyes. She is drawn as a sticker: a cream body, a dark outline, and a hard orange shadow, which keeps her visible on orange, dark, and tinted backgrounds. Her reels spin while audio plays, she dozes on an empty Queue, cheers when the Inbox is cleared, and gets dizzy (spiral eyes) when a feed fails. She is never angry. Onboarding teaches with just-in-time tips: a sticker bubble from Cassy that points at a control the first time you need it, shows once, and closes with its ✕ or any tap. The design mockups are in the [Casterr Glow-Up](https://claude.ai/code/artifact/061fffba-976f-4602-964d-47ebcb6d1d04) page.
+The mascot is **Cassy**, a cassette tape whose two reels are her eyes. She is drawn as a sticker: a cream body, a dark outline, and a hard orange shadow, which keeps her visible on orange, dark, and tinted backgrounds. Her reels spin while audio plays, she dozes on an empty Queue, cheers when the Inbox is cleared, and gets dizzy (spiral eyes) when a feed fails. She is never angry. On first launch, one welcome screen has Cassy explain three steps: follow shows, queue the episodes you want from the Inbox, and press play. After that, onboarding teaches with just-in-time tips: a sticker bubble from Cassy that points at a control the first time you need it, shows once, and closes with its ✕ or any tap. The design mockups are in the [Casterr Glow-Up](https://claude.ai/code/artifact/061fffba-976f-4602-964d-47ebcb6d1d04) page.
 
 ## How it works
 
@@ -73,6 +73,7 @@ One word per idea, in everything people read in the app:
 - Background audio, lock screen and Control Center controls, sleep timer.
 - Playback speed from 1x to 2x with natural-sounding pitch. It has a global default, and each show can override it.
 - Skip forward is 30 seconds and skip back is 15, the same on every show. They are not configurable for now.
+- **Back a Beat:** when you play again after a pause, Casterr resumes at the latest quiet gap between 5 and 2 seconds before where you paused, so you hear the end of the thought. With no gap it resumes where you paused. It works for streamed and downloaded episodes and has no setting.
 - An episode counts as played when fewer than 60 seconds remain, or when you mark it played.
 
 ## Capture
@@ -82,7 +83,7 @@ One tap in Now Playing or on the mini player bookmarks the current episode and t
 ## Onboarding and subscribing
 
 - The app has three tabs: Queue, Shows, and Bookmarks. The Inbox stays one tap from the Queue.
-- Suggestions come from Apple's documented top podcasts chart for the phone's region, with no genres and no personal picks, under the heading "Popular now". Onboarding shows them with search on first launch, and you can skip it. The same view fills the Shows tab whenever you follow nothing.
+- Suggestions come from Apple's documented top podcasts chart for the phone's region, with no genres and no personal picks, under the heading "Popular now" with the region's name. Onboarding shows them with search on first launch, after the welcome screen, and you can skip it. The same view fills the Shows tab whenever you follow nothing.
 - Search uses the iTunes Search API, which needs no key. It sits behind a provider interface so another directory can be added later.
 - You can also import an OPML file or paste an RSS URL, and export your subscriptions as OPML. As far as I know, Apple Podcasts and Spotify don't export OPML, so mainstream switchers rely on search and suggestions.
 - Subscribing puts the newest episode through the show's level. Older episodes stay on the show page until you pick them.

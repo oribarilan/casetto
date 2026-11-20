@@ -20,12 +20,21 @@ targets:
         MARKETING_VERSION: "0.1"
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
+        # Apple must approve CarPlay before device builds may carry it; the simulator doesn't check.
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": Casterr/CarPlay-Simulator.entitlements
     info:
       path: Casterr/Info.plist
       properties:
         UIBackgroundModes: [audio, fetch, remote-notification]
         BGTaskSchedulerPermittedIdentifiers: [casterr.refresh]
         UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations:
+            CPTemplateApplicationSceneSessionRoleApplication:
+              - UISceneConfigurationName: CarPlay
+                UISceneClassName: CPTemplateApplicationScene
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).CarPlaySceneDelegate
   CasterrUITests:
     type: bundle.ui-testing
     platform: iOS

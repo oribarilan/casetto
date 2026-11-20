@@ -66,7 +66,7 @@ struct DiscoverView: View {
                             }
                         }
                     }
-                    Section(query.isEmpty ? "Popular now" : followed.isEmpty ? "Results" : "More shows") {
+                    Section(query.isEmpty ? popularHeading : followed.isEmpty ? "Results" : "More shows") {
                         if let message {
                             Text(message).foregroundStyle(.secondary)
                         }
@@ -82,17 +82,24 @@ struct DiscoverView: View {
         .task(id: model.revision) { await loadLevels() }
     }
 
-    /// Cassy's card: what the list is and how to follow, or a cheer once a show is starred.
+    /// "Popular now · United States", from the phone's region, the same one the chart uses.
+    private var popularHeading: String {
+        guard let region = Locale.current.region,
+              let name = Locale.current.localizedString(forRegionCode: region.identifier) else { return "Popular now" }
+        return "Popular now · \(name)"
+    }
+
+    /// Cassy's card: an invitation to add shows, or a cheer once a show is starred.
     private var cassyCard: some View {
         HStack(spacing: 12) {
             CassyView(job: starred ? .success : .idle, size: 56)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(starred ? "Nice pick!" : "These are popular right now.")
+                Text(starred ? "Nice pick!" : "Let's add some shows!")
                     .font(.subheadline.weight(.heavy))
                 Text(starred
                      ? (inOnboarding ? "I'll queue its new episodes. Keep going, or tap Done." : "I'll queue its new episodes.")
-                     : "Tap + to follow any of them, or search for a show you love.")
+                     : "Tap + to follow one, or search for a show you love.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -201,8 +208,17 @@ struct OnboardingView: View {
     let close: () -> Void
     @State private var query = ""
     @State private var following = false
+    @State private var welcomed = false
 
     var body: some View {
+        if welcomed {
+            findShows
+        } else {
+            WelcomeView { withAnimation { welcomed = true } }
+        }
+    }
+
+    private var findShows: some View {
         NavigationStack {
             DiscoverView(query: query, inOnboarding: true)
                 .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search podcasts")
