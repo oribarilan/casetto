@@ -26,6 +26,8 @@ The MVP works when I delete my current podcast app and don't go back. After that
 
 Casterr is warm and a little funny. The accent is tangerine orange, titles use heavy rounded type (SF Pro Rounded), and show art appears in every list, on a Shows grid, on the show page, and in the mini player. Now Playing is tinted by the show's artwork. The copy is warm and witty in one voice, with no setting: an empty Queue says "Silence. Lovely, but let's fix that."
 
+The app icon is Cassy, tilted like a sticker, on a tangerine gradient. In dark mode she turns a light orange on a dark ground. It's an Icon Composer file, `Casterr/AppIcon.icon`, so iOS draws the tinted and clear versions from its layers.
+
 The mascot is **Cassy**, a cassette tape whose two reels are her eyes. She is drawn as a sticker: a cream body, a dark outline, and a hard orange shadow, which keeps her visible on orange, dark, and tinted backgrounds. Her reels spin while audio plays, she dozes on an empty Queue, cheers when the Inbox is cleared, and gets dizzy (spiral eyes) when a feed fails. She is never angry. On first launch, one welcome screen has Cassy explain three steps: follow shows, queue the episodes you want from the Inbox, and press play. After that, onboarding teaches with just-in-time tips: a sticker bubble from Cassy that points at a control the first time you need it, shows once, and closes with its ✕ or any tap. The design mockups are in the [Casterr Glow-Up](https://claude.ai/code/artifact/061fffba-976f-4602-964d-47ebcb6d1d04) page.
 
 ## How it works
