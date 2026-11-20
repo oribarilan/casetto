@@ -58,7 +58,7 @@ The system SHALL let the listener set playback speed from 1x to 2x in steps of 0
 - **THEN** the episode plays 1.5 times faster and voices keep their natural pitch
 
 ### Requirement: Speed default and per-show override
-Speed SHALL have a global default of 1.0x. The system SHALL let the listener override speed for each show. A show without an override MUST follow the global default, including after the global default changes.
+Speed SHALL have a global default of 1.0x, which the listener sets in Settings. The system SHALL let the listener override speed for each show from Now Playing. A show without an override MUST follow the global default, including after the global default changes. Now Playing MUST NOT change the global default.
 
 #### Scenario: Show without an override
 - **WHEN** the global speed is 1.3x and a show has no override
@@ -76,6 +76,14 @@ Speed SHALL have a global default of 1.0x. The system SHALL let the listener ove
 - **WHEN** the listener resets a show's speed override
 - **THEN** that show follows the global speed again
 
+#### Scenario: Own speed from Now Playing
+- **WHEN** the listener opens speed in Now Playing, turns off "Use my default", and drags the slider to 1.3x
+- **THEN** the episode plays at 1.3x right away, with no Done button, and other shows keep the default
+
+#### Scenario: Follow the default again
+- **WHEN** the listener turns "Use my default" back on
+- **THEN** the show's override is reset, the slider hides, and the episode plays at the default speed
+
 ### Requirement: Skip intervals
 The system SHALL provide skip forward by 30 seconds and skip back by 15 seconds. The intervals are the same in the app, on the lock screen, and from headphones, and they are not configurable.
 
@@ -88,7 +96,7 @@ The system SHALL provide skip forward by 30 seconds and skip back by 15 seconds.
 - **THEN** playback moves to the end of the episode
 
 ### Requirement: Sleep timer
-The system SHALL let the listener set a sleep timer for a fixed duration or for the end of the current episode. When the timer ends, playback MUST pause.
+The system SHALL let the listener set a sleep timer for a fixed duration or for the end of the current episode. When the timer ends, playback MUST pause. While a timer runs, the sleep timer button in Now Playing SHALL show the time left, or "End" for the end of the episode.
 
 #### Scenario: Timer for a duration
 - **WHEN** the listener sets a 15-minute sleep timer
@@ -101,6 +109,10 @@ The system SHALL let the listener set a sleep timer for a fixed duration or for 
 #### Scenario: Cancel
 - **WHEN** the listener cancels an active sleep timer
 - **THEN** playback continues without pausing
+
+#### Scenario: Time left
+- **WHEN** a 30-minute timer has run for 6 minutes
+- **THEN** the sleep timer button shows 24:00 and counts down
 
 ### Requirement: Saved progress
 The system SHALL save each episode's playback position so that playback resumes where the listener stopped. A crash or force quit MUST lose no more than a few seconds of progress.
@@ -116,3 +128,10 @@ The system SHALL save each episode's playback position so that playback resumes 
 #### Scenario: Switch episodes
 - **WHEN** the listener plays a different episode while one is partly played
 - **THEN** the first episode keeps its position for later
+
+### Requirement: Show name opens the show page
+Tapping the show name in Now Playing SHALL close Now Playing and open that show's page in the Shows tab.
+
+#### Scenario: Open the show
+- **WHEN** the listener taps "Pocket Economics" in Now Playing
+- **THEN** Now Playing closes and the Shows tab shows the Pocket Economics page

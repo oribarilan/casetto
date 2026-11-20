@@ -1,6 +1,6 @@
 import Foundation
 
-/// One episode's bookmarks as a Markdown file, for Obsidian, Notes, or any notes app.
+/// Bookmarks as a Markdown file, for Obsidian, Notes, or any notes app.
 public enum BookmarkMarkdown {
     /// `bookmarks` are one episode's; they're listed in position order.
     public static func render(_ bookmarks: [BookmarkInfo]) -> String {
@@ -13,6 +13,16 @@ public enum BookmarkMarkdown {
             lines.append(bookmark.note.isEmpty ? "- \(time)" : "- \(time) \(bookmark.note)")
         }
         return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// Several episodes in one file, in the given order. `episodes` holds one array per episode.
+    public static func render(episodes: [[BookmarkInfo]]) -> String {
+        episodes.map(render).joined(separator: "\n")
+    }
+
+    /// One episode's file name, or "Bookmarks.md" for several.
+    public static func fileName(episodes: [[BookmarkInfo]]) -> String {
+        episodes.count == 1 ? fileName(episodes[0]) : "Bookmarks.md"
     }
 
     /// "Show - Episode.md", without characters that file systems reject.

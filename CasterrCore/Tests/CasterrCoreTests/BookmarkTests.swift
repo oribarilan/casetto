@@ -68,6 +68,15 @@ struct BookmarkMarkdownTests {
         """)
     }
 
+    @Test func rendersSeveralEpisodesInOneFile() {
+        let first = [bookmark(754, note: "great point")]
+        let second = [bookmark(5, show: "Deep Field", episode: "Ocean Floor")]
+        #expect(BookmarkMarkdown.render(episodes: [first, second])
+                == BookmarkMarkdown.render(first) + "\n" + BookmarkMarkdown.render(second))
+        #expect(BookmarkMarkdown.fileName(episodes: [first, second]) == "Bookmarks.md")
+        #expect(BookmarkMarkdown.fileName(episodes: [second]) == "Deep Field - Ocean Floor.md")
+    }
+
     @Test func fileNameDropsUnsafeCharacters() {
         #expect(BookmarkMarkdown.fileName([bookmark(0, show: "AC/DC: Live", episode: "Who? \"Me\"")])
                 == "AC-DC- Live - Who- -Me-.md")

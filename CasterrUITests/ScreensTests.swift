@@ -303,17 +303,32 @@ final class ScreensTests: XCTestCase {
         note.typeText("great point")
         app.buttons["Save"].tap()
 
-        // The Bookmarks tab lists it, search finds it, and it exports.
+        // The Bookmarks tab lists it with a play button, and it exports alone or with all.
         app.tabBars.buttons["Bookmarks"].tap()
-        XCTAssertTrue(app.staticTexts["great point"].waitForExistence(timeout: 5))
+        let noteField = app.descendants(matching: .any)["bookmarkNoteField"]
+        XCTAssertTrue(noteField.waitForExistence(timeout: 5))
+        XCTAssertEqual(noteField.value as? String, "great point")
+        let play = app.buttons["bookmarkPlay"]
+        XCTAssertTrue(play.exists && play.label.hasPrefix("Play from"), play.debugDescription)
         XCTAssertTrue(app.buttons["Export"].exists)
+        XCTAssertTrue(app.buttons["Export All"].exists)
         snapshot("16 Bookmarks")
+
+        // Edit the note in place.
+        noteField.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        noteField.typeText(" again")
+        noteField.typeText("\n")
+        let edited = NSPredicate(format: "value == 'great point again'")
+        let result = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: edited, object: noteField)], timeout: 5)
+        XCTAssertEqual(result, .completed, "note is \(noteField.value ?? "nil")")
+
+        // Search covers notes.
         let search = app.searchFields.firstMatch
         search.tap()
         search.typeText("GREAT")
-        XCTAssertTrue(app.staticTexts["great point"].waitForExistence(timeout: 5))
+        XCTAssertTrue(noteField.waitForExistence(timeout: 5))
         search.typeText("zzz")
-        XCTAssertTrue(app.staticTexts["great point"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(noteField.waitForNonExistence(timeout: 5))
     }
 
     /// The first follow with + shows a one-time tip on that show's star.
@@ -341,7 +356,7 @@ final class ScreensTests: XCTestCase {
     @MainActor
     private func waitForTopShows() -> Bool {
         for _ in 0..<4 {
-            if app.staticTexts["Top Shows"].waitForExistence(timeout: 25) { return true }
+            if app.staticTexts["Popular now"].waitForExistence(timeout: 25) { return true }
             let retry = app.buttons["Try Again"]
             guard retry.exists else { return false }
             retry.tap()

@@ -77,12 +77,12 @@ One word per idea, in everything people read in the app:
 
 ## Capture
 
-One tap in Now Playing or on the mini player bookmarks the current episode and timestamp without pausing. A toast confirms it and offers Add Note. Notes are optional and editable later. The Bookmarks tab searches notes, episode titles, and show titles. Each episode's bookmarks share as one Markdown file through the share sheet, ready for Obsidian, Notes, or any notes app. A bookmark keeps the show title, episode title, and audio URL, so it survives the episode disappearing from the feed.
+One tap in Now Playing or on the mini player bookmarks the current episode and timestamp without pausing. A toast confirms it and offers Add Note. Notes are optional and editable later, in place in the Bookmarks tab. The Bookmarks tab searches notes, episode titles, and show titles. Each episode's bookmarks share as one Markdown file through the share sheet, ready for Obsidian, Notes, or any notes app. Export All shares every listed bookmark as one file. A bookmark keeps the show title, episode title, and audio URL, so it survives the episode disappearing from the feed.
 
 ## Onboarding and subscribing
 
 - The app has three tabs: Queue, Shows, and Bookmarks. The Inbox stays one tap from the Queue.
-- Suggestions come from Apple's documented top podcasts chart for your country, with no genres. Onboarding shows them with search on first launch, and you can skip it. The same view fills the Shows tab whenever you follow nothing.
+- Suggestions come from Apple's documented top podcasts chart for the phone's region, with no genres and no personal picks, under the heading "Popular now". Onboarding shows them with search on first launch, and you can skip it. The same view fills the Shows tab whenever you follow nothing.
 - Search uses the iTunes Search API, which needs no key. It sits behind a provider interface so another directory can be added later.
 - You can also import an OPML file or paste an RSS URL, and export your subscriptions as OPML. As far as I know, Apple Podcasts and Spotify don't export OPML, so mainstream switchers rely on search and suggestions.
 - Subscribing puts the newest episode through the show's level. Older episodes stay on the show page until you pick them.
@@ -134,7 +134,6 @@ Then Casterr becomes my daily driver, and TestFlight follows.
 ## Open questions
 
 - The iTunes Search API is limited to about 20 calls a minute, so M5 search needs debouncing.
-- Suggestions: the heading says "Top Shows" over the same chart for everyone. Decide the heading, and whether to build personal suggestions from the shows you follow. Interview after the redesign.
 - The name still needs a trademark check and an App Store name check before launch.
 
 ## References

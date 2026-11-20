@@ -22,3 +22,8 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 
 - [ ] Dizzy Cassy on a failing feed, and the end-of-Queue offer after the last episode finishes (not reachable in the UI tests).
 - [ ] The exported OPML file arrives in Files or another app through the share sheet.
+
+## Now Playing and Bookmarks
+
+- [ ] A 15-minute sleep timer counts down on the moon button with the phone locked and unlocked, and playback pauses when it reaches 0:00.
+- [ ] Export All and an episode's export arrive in Files or a notes app as Markdown files through the share sheet.

@@ -61,23 +61,25 @@ private struct BookmarkToast: View {
 }
 
 /// Bookmarks grouped by episode, most recent first, each group in position order.
+/// The time plays the bookmark; tapping the note edits it in place.
 struct BookmarksView: View {
     @Environment(AppModel.self) private var model
-    @Environment(Player.self) private var player
     @State private var query = ""
     @State private var groups: [[BookmarkInfo]] = []
-    @State private var known: Set<EpisodeKey> = []
+    /// Episodes still in the feed cache, with their show art. A missing episode can't play.
+    @State private var known: [EpisodeKey: ShowArt] = [:]
     @State private var loaded = false
-    @State private var editing: BookmarkInfo?
-    @State private var note = ""
+    @FocusState private var editing: UUID?
 
     var body: some View {
         List {
             ForEach(groups, id: \.first!.episodeKey) { group in
+                let canPlay = known[group[0].episodeKey] != nil
                 Section {
-                    ForEach(group, id: \.id) { row($0) }
-                } header: {
                     header(group)
+                    ForEach(group, id: \.id) { BookmarkRow(bookmark: $0, canPlay: canPlay, editing: $editing) }
+                } footer: {
+                    if !canPlay { Text("No longer in the feed, so it can't play.") }
                 }
             }
         }
@@ -91,68 +93,42 @@ struct BookmarksView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemGroupedBackground))
         .searchable(text: $query, prompt: "Search bookmarks")
         .navigationTitle("Bookmarks")
-        .alert("Note", isPresented: Binding(get: { editing != nil }, set: { if !$0 { editing = nil } })) {
-            TextField("Note", text: $note)
-            Button("Save") {
-                if let id = editing?.id {
-                    let text = note
-                    Task { await model.change { try await model.library.setNote(text, for: id) } }
+        .toolbar {
+            if !groups.isEmpty {
+                ToolbarItem(placement: .topBarTrailing) {
+                    ShareLink(item: MarkdownExport(episodes: groups),
+                              preview: SharePreview(BookmarkMarkdown.fileName(episodes: groups))) {
+                        Label("Export All", systemImage: "square.and.arrow.up")
+                    }
                 }
             }
-            Button("Cancel", role: .cancel) {}
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { editing = nil }
+            }
         }
         .task(id: "\(model.revision)|\(query)") { await load() }
     }
 
     private func header(_ group: [BookmarkInfo]) -> some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text(group[0].episodeTitle).lineLimit(2)
-                Text(group[0].showTitle).font(.caption)
+        let art = known[group[0].episodeKey]
+        return HStack(spacing: 12) {
+            ArtworkView(url: art?.artworkURL, title: group[0].showTitle, size: 44)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(group[0].episodeTitle).font(.headline.weight(.semibold)).lineLimit(2)
+                Text(group[0].showTitle).font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer()
-            ShareLink(item: MarkdownExport(bookmarks: group), preview: SharePreview(BookmarkMarkdown.fileName(group))) {
+            ShareLink(item: MarkdownExport(episodes: [group]),
+                      preview: SharePreview(BookmarkMarkdown.fileName(group))) {
                 Label("Export", systemImage: "square.and.arrow.up")
             }
             .labelStyle(.iconOnly)
-        }
-    }
-
-    private func row(_ bookmark: BookmarkInfo) -> some View {
-        Button {
-            Task {
-                await model.change { try await player.play(bookmark.episodeKey) }
-                player.seek(to: bookmark.position)
-            }
-        } label: {
-            HStack(alignment: .firstTextBaseline) {
-                Text(bookmark.position.clock).monospacedDigit().bold()
-                if bookmark.note.isEmpty {
-                    Text("No note").foregroundStyle(.secondary)
-                } else {
-                    Text(bookmark.note)
-                }
-                Spacer()
-                if !known.contains(bookmark.episodeKey) {
-                    Text("Not in the feed").font(.caption).foregroundStyle(.secondary)
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .disabled(!known.contains(bookmark.episodeKey))
-        .accessibilityIdentifier("bookmark")
-        .swipeActions(edge: .leading) {
-            Button("Edit Note", systemImage: "pencil") {
-                note = bookmark.note
-                editing = bookmark
-            }
-        }
-        .swipeActions(edge: .trailing) {
-            Button("Delete", systemImage: "trash", role: .destructive) {
-                Task { await model.change { try await model.library.deleteBookmark(bookmark.id) } }
-            }
+            .buttonStyle(.borderless)
         }
     }
 
@@ -165,21 +141,89 @@ struct BookmarksView: View {
             byEpisode[bookmark.episodeKey, default: []].append(bookmark)
         }
         groups = order.map { byEpisode[$0]!.sorted { $0.position < $1.position } }
-        var found: Set<EpisodeKey> = []
-        for key in order where (try? await model.library.episode(key)) != nil { found.insert(key) }
+        let art = (try? await model.library.showArt()) ?? [:]
+        var found: [EpisodeKey: ShowArt] = [:]
+        for key in order {
+            if let episode = try? await model.library.episode(key) {
+                found[key] = art[episode.showKey] ?? ShowArt(title: "", artworkURL: nil)
+            }
+        }
         known = found
         loaded = true
     }
 }
 
-/// One episode's bookmarks as a Markdown file, written when shared.
+/// The time plays the bookmark; the note is a text field that saves when editing ends.
+private struct BookmarkRow: View {
+    @Environment(AppModel.self) private var model
+    @Environment(Player.self) private var player
+    let bookmark: BookmarkInfo
+    let canPlay: Bool
+    var editing: FocusState<UUID?>.Binding
+    @State private var note = ""
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Button(action: play) {
+                HStack(spacing: 5) {
+                    if canPlay { Image(systemName: "play.fill").font(.caption2) }
+                    Text(bookmark.position.clock).monospacedDigit().bold()
+                }
+                .padding(.horizontal, 11)
+                .padding(.vertical, 6)
+                .foregroundStyle(canPlay ? Color.tangerineText : .secondary)
+                .background(canPlay ? Color.tangerine.opacity(0.12) : Color(.tertiarySystemFill), in: .capsule)
+            }
+            .buttonStyle(.borderless)
+            .disabled(!canPlay)
+            .accessibilityLabel("Play from \(bookmark.position.clock)")
+            .accessibilityIdentifier("bookmarkPlay")
+            TextField("Note", text: $note, prompt: Text("Add a note").foregroundStyle(Color.tangerineText.opacity(0.75)),
+                      axis: .vertical)
+                .focused(editing, equals: bookmark.id)
+                .submitLabel(.done)
+                .accessibilityIdentifier("bookmarkNoteField")
+                .onChange(of: note) {
+                    // Return ends editing instead of starting a new line.
+                    if note.contains("\n") {
+                        note = note.replacingOccurrences(of: "\n", with: "")
+                        editing.wrappedValue = nil
+                    }
+                }
+        }
+        .task(id: bookmark.note) { note = bookmark.note }
+        .onChange(of: editing.wrappedValue == bookmark.id) { _, isEditing in
+            if !isEditing { save() }
+        }
+        .swipeActions(edge: .trailing) {
+            Button("Delete", systemImage: "trash", role: .destructive) {
+                Task { await model.change { try await model.library.deleteBookmark(bookmark.id) } }
+            }
+        }
+    }
+
+    private func play() {
+        Task {
+            await model.change { try await player.play(bookmark.episodeKey) }
+            player.seek(to: bookmark.position)
+        }
+    }
+
+    private func save() {
+        let text = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard text != bookmark.note else { return }
+        Task { await model.change { try await model.library.setNote(text, for: bookmark.id) } }
+    }
+}
+
+/// Bookmarks as a Markdown file, written when shared: one episode, or all listed ones.
 private struct MarkdownExport: Transferable {
-    let bookmarks: [BookmarkInfo]
+    let episodes: [[BookmarkInfo]]
 
     static var transferRepresentation: some TransferRepresentation {
         DataRepresentation(exportedContentType: .init(filenameExtension: "md") ?? .plainText) { export in
-            Data(BookmarkMarkdown.render(export.bookmarks).utf8)
+            Data(BookmarkMarkdown.render(episodes: export.episodes).utf8)
         }
-        .suggestedFileName { BookmarkMarkdown.fileName($0.bookmarks) }
+        .suggestedFileName { BookmarkMarkdown.fileName(episodes: $0.episodes) }
     }
 }

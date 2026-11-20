@@ -66,7 +66,7 @@ struct DiscoverView: View {
                             }
                         }
                     }
-                    Section(query.isEmpty ? "Top Shows" : followed.isEmpty ? "Results" : "More shows") {
+                    Section(query.isEmpty ? "Popular now" : followed.isEmpty ? "Results" : "More shows") {
                         if let message {
                             Text(message).foregroundStyle(.secondary)
                         }
