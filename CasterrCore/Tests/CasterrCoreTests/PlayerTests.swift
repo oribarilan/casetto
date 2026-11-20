@@ -109,6 +109,42 @@ struct PlayerTests {
         #expect(h.engine.loaded?.url == h.episodes[1].audioURL)
     }
 
+    @Test func startingPlaybackRecordsTheFirstStartOnce() async throws {
+        let h = try await Harness()
+        try await h.library.addToQueue(h.episodes[0].key)
+        try await h.library.addToQueue(h.episodes[1].key)
+        #expect(try await h.library.firstPlayedAt(of: h.episodes[0].key) == nil)
+
+        try await h.player.resume()
+        let first = try #require(try await h.library.firstPlayedAt(of: h.episodes[0].key))
+        h.engine.onEnd?()
+        await h.settle()
+        #expect(try await h.library.firstPlayedAt(of: h.episodes[1].key) != nil)
+
+        try await h.player.play(h.episodes[0].key)
+        #expect(try await h.library.firstPlayedAt(of: h.episodes[0].key) == first)
+    }
+
+    @Test func lastEpisodeEndingMarksTheQueueRunOut() async throws {
+        let h = try await Harness()
+        try await h.library.addToQueue(h.episodes[0].key)
+        try await h.player.resume()
+        #expect(h.player.queueRanOutAt == nil)
+        h.engine.onEnd?()
+        await h.settle()
+        #expect(h.player.queueRanOutAt != nil)
+    }
+
+    @Test func endOfEpisodeTimerDoesNotMarkTheQueueRunOut() async throws {
+        let h = try await Harness()
+        try await h.library.addToQueue(h.episodes[0].key)
+        try await h.player.resume()
+        h.player.setSleepTimer(.endOfEpisode)
+        h.engine.onEnd?()
+        await h.settle()
+        #expect(h.player.queueRanOutAt == nil)
+    }
+
     @Test func skipForwardAndBack() async throws {
         let h = try await Harness()
         try await h.player.play(h.episodes[0].key)
@@ -139,7 +175,7 @@ struct PlayerTests {
         let h = try await Harness()
         try await h.player.play(h.episodes[0].key)
         h.engine.onFailure?(URLError(.badServerResponse))
-        #expect(h.player.errorMessage == "This episode couldn't be played.")
+        #expect(h.player.errorMessage == "This episode wouldn't play. Its audio may have moved.")
         #expect(!h.player.isPlaying)
         #expect(try await h.library.queue() == [h.episodes[0].key])
     }
@@ -148,7 +184,7 @@ struct PlayerTests {
         let h = try await Harness()
         try await h.player.play(h.episodes[0].key)
         h.engine.onFailure?(URLError(.notConnectedToInternet))
-        #expect(h.player.errorMessage == "You're offline. This episode can't be streamed.")
+        #expect(h.player.errorMessage == "You're offline, and this one isn't downloaded yet.")
     }
 }
 
@@ -170,6 +206,17 @@ struct SleepTimerTests {
         h.player.setSleepTimer(nil)
         await h.settle()
         #expect(h.player.isPlaying)
+        #expect(h.player.sleepTimerEndsAt == nil)
+    }
+
+    @Test func durationTimerKnowsWhenItEnds() async throws {
+        let h = try await Harness(sleep: { try await Task.sleep(for: .seconds($0.components.seconds)) })
+        try await h.player.play(h.episodes[0].key)
+        h.player.setSleepTimer(.duration(.seconds(30 * 60)))
+        let left = try #require(h.player.sleepTimerEndsAt).timeIntervalSinceNow
+        #expect(abs(left - 30 * 60) < 5)
+        h.player.setSleepTimer(.endOfEpisode)
+        #expect(h.player.sleepTimerEndsAt == nil)
     }
 
     @Test func endOfEpisodePausesWithoutStartingTheNext() async throws {

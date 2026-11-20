@@ -12,8 +12,25 @@ final class AppModel {
     let feeds: FeedService
     let player: Player
     let downloader: Downloader
+    let directory = AppleDirectory()
+    var tab: AppTab = .queue
+    /// Each tab's navigation lives here, so it survives the tab content being rebuilt
+    /// (iOS rebuilds it when the bottom bar appears) and a toast can open the Inbox.
+    var queuePath: [Route] = []
+    var showsPath: [Route] = []
+    var bookmarksPath: [Route] = []
+    /// Cassy's current toast.
+    var cassyToast: CassyMessage?
+    /// True while feeds refresh, so the Queue can show Cassy loading.
+    private(set) var refreshing = false
+    /// The bookmark the toast confirms.
+    var lastBookmark: RecentBookmark?
     /// Bumped after every change to stored data, so views know to reload.
-    private(set) var revision = 0
+    private(set) var revision = 0 {
+        didSet { Task { await loadUpNext() } }
+    }
+    /// The first Queue episode, for the bar shown while nothing is playing.
+    private(set) var upNext: UpNext?
     @ObservationIgnored private var nowPlaying: MediaSession<NowPlayingBridge>?
     @ObservationIgnored private var eventTasks: [Task<Void, Never>] = []
     @ObservationIgnored private var syncTask: Task<Void, Never>?
@@ -33,6 +50,10 @@ final class AppModel {
             let start = Date.now
             Task { [library] in await library.useClock { start + Date.now.timeIntervalSince(start) * 86_400 } }
         }
+        if ProcessInfo.processInfo.arguments.contains("-ruleThresholdOne") {
+            // UI tests: one expiry is enough for the Ignored card.
+            Task { [library] in await library.useRuleThresholds(.init(autoQueue: 1, ignored: 1)) }
+        }
         startNowPlaying()
         observeAudioSession()
         observeDownloadsAndPlayer()
@@ -42,9 +63,19 @@ final class AppModel {
         await refresh()
     }
 
-    func refresh() async {
-        try? await feeds.refreshAll()
+    /// Refreshes, then, when `announce` is on and something moved, Cassy sums it up. Tapping her opens the Inbox.
+    func refresh(announce: Bool = true) async {
+        refreshing = true
+        defer { refreshing = false }
+        let summary = try? await feeds.refreshAll()
+        try? await library.mergeDuplicates()
         revision += 1
+        if announce, let line = summary?.sentence {
+            cassyToast = CassyMessage(job: .success, text: line) { [weak self] in
+                self?.tab = .queue
+                self?.queuePath = [.inbox]
+            }
+        }
         await syncDownloads()
     }
 
@@ -52,7 +83,7 @@ final class AppModel {
     func backgroundRefresh() async {
         Self.log.info("Background refresh started")
         await scheduleBackgroundRefresh()
-        await refresh()
+        await refresh(announce: false)
     }
 
     /// Asks iOS for a background refresh in an hour or later. iOS decides when.
@@ -88,6 +119,26 @@ final class AppModel {
             if let episode = try? await library.episode(key) { downloader.start(key, from: episode.audioURL) }
         }
         if !plan.delete.isEmpty { revision += 1 }
+    }
+
+    /// Saves the current moment. Playback is untouched.
+    func bookmark() async {
+        guard let episode = player.episode,
+              let id = try? await library.addBookmark(episode, showTitle: player.show?.title ?? "", at: player.position)
+        else { return }
+        lastBookmark = RecentBookmark(id: id, position: player.position)
+        revision += 1
+    }
+
+    /// Reads the first Queue episode and how far into it the listener is.
+    func loadUpNext() async {
+        guard let key = try? await library.queue().first, let episode = try? await library.episode(key) else {
+            upNext = nil
+            return
+        }
+        let show = try? await library.show(episode.showKey)
+        let progress = (try? await library.progress(of: key)) ?? 0
+        upNext = UpNext(episode: episode, showTitle: show?.title ?? "", artworkURL: show?.artworkURL, progress: progress)
     }
 
     func isDownloaded(_ episode: EpisodeInfo) -> Bool {
@@ -129,7 +180,7 @@ final class AppModel {
         try? await player.saveProgress()
     }
 
-    /// Reloads views when a download lands, and syncs when the Player's episode changes,
+    /// Reloads views when a download lands, syncs when the Player's episode changes, offers more when the Queue runs out,
     /// because a finished episode leaves the Queue and its file goes.
     private func observeDownloadsAndPlayer() {
         let player = player
@@ -142,6 +193,20 @@ final class AppModel {
             Task { [weak self] in
                 for await _ in Observations({ player.episode?.key }) {
                     await self?.syncDownloads()
+                    await self?.loadUpNext()
+                }
+            },
+            // Playback failed or the episode can't stream offline: Cassy says so in her toast.
+            Task { [weak self] in
+                for await message in Observations({ player.errorMessage }) {
+                    if let message { self?.cassyToast = CassyMessage(job: .error, text: message) }
+                }
+            },
+            // The Queue ran out: Cassy offers to look for more.
+            Task { [weak self] in
+                for await ranOut in Observations({ player.queueRanOutAt }) where ranOut != nil {
+                    self?.cassyToast = CassyMessage(job: .asleep, text: "That's the lot. Want me to check for new episodes?",
+                                                    actionTitle: "Check Now") { [weak self] in await self?.refresh() }
                 }
             },
         ]
@@ -179,5 +244,25 @@ final class AppModel {
                 }
             },
         ]
+    }
+}
+
+struct RecentBookmark: Equatable {
+    let id: UUID
+    let position: TimeInterval
+}
+
+/// The first Queue episode while nothing is playing: new, or partly played.
+struct UpNext: Equatable {
+    let episode: EpisodeInfo
+    let showTitle: String
+    let artworkURL: URL?
+    let progress: TimeInterval
+
+    /// "Up next · from your Queue" for a new episode, "Continue · 25 min left" for a started one.
+    var caption: String {
+        guard progress > 0 else { return "Up next · from your Queue" }
+        guard let duration = episode.duration, duration > progress else { return "Continue" }
+        return "Continue · \(max(1, Int((duration - progress) / 60))) min left"
     }
 }

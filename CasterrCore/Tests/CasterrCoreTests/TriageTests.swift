@@ -26,7 +26,7 @@ struct MoveReasonTests {
         #expect(MoveReason.autoQueued.label == "Auto-queued")
         #expect(MoveReason.playNext.label == "Play next")
         #expect(MoveReason.skipped.label == "Skipped by show setting")
-        #expect(MoveReason.expired(days: 7).label == "Expired after 7 days")
+        #expect(MoveReason.expired(days: 7).label == "Removed after 7 days")
         for reason in [MoveReason.autoQueued, .playNext, .skipped, .expired(days: 3)] {
             #expect(reason.isUndoable)
         }

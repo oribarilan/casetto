@@ -17,7 +17,7 @@
 ## 3. Verify
 
 - [x] 3.1 Update the README, and verify that all UI tests and `swift test` pass
-- [ ] 3.2 Device check (needs the listener's phone): a download completes after leaving the app, a downloaded episode plays in airplane mode, a played or removed episode loses its file (the icon moves to the next episode), a cellular-only phone starts no download, and a background refresh triggered from the debugger logs "Background refresh started" and queues and downloads a new Auto-queue episode
+- [ ] 3.2 Device check (needs the listener's phone): a download completes after leaving the app, a downloaded episode plays in airplane mode, a played or removed episode loses its file (the icon moves to the next episode), a cellular-only phone starts no download, and a background refresh triggered from the debugger logs "Background refresh started" and queues and downloads a new Auto-queue episode → Tracked in `openspec/device-checks.md`.
 
 ## Workflow follow-up
 

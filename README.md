@@ -33,3 +33,13 @@ Run the UI tests on the simulator. They need a network connection, because they 
 ```sh
 xcodebuild -project Casterr.xcodeproj -scheme Casterr -destination 'platform=iOS Simulator,name=iPhone 18 Pro' test
 ```
+
+## iCloud sync
+
+Without setup, Casterr keeps everything on the device. To sync subscriptions, the Queue, settings, and bookmarks through your private iCloud database, you need a paid Apple Developer account:
+
+1. In `project.yml`, add your team under the `Casterr` target's `settings.base`: `DEVELOPMENT_TEAM: <your team ID>`.
+2. In `Casterr/Casterr.entitlements`, replace `iCloud.REPLACE-WITH-YOUR-CONTAINER` with your container, for example `iCloud.com.yourname.Casterr`. Container IDs can't be deleted once created.
+3. Under the same `settings.base`, add `CODE_SIGN_ENTITLEMENTS: Casterr/Casterr.entitlements`.
+4. Run `xcodegen generate` and build to a phone signed in to iCloud. Xcode creates the container on the first signed build.
+5. Check the records in the [CloudKit dashboard](https://icloud.developer.apple.com/dashboard), in the container's private database. Before a TestFlight build, deploy the schema from the Development to the Production environment there.

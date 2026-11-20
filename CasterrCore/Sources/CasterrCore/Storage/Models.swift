@@ -50,6 +50,9 @@ import SwiftData
     var expiryDaysOverride: Int?
     /// Episodes published after this date, and never placed, are new. Nil until the first triage.
     var triageAfter: Date?
+    /// When each card may show again. Nil means it may show now; `distantFuture` means never.
+    var autoQueueCardHiddenUntil: Date?
+    var ignoredCardHiddenUntil: Date?
 
     init(showKey: String, feedURL: URL) {
         self.showKey = showKey
@@ -66,6 +69,8 @@ import SwiftData
     var progressSeconds: Double = 0
     var moveReason: String?
     var movedAt: Date?
+    /// When playback first started. Set once; the Auto-queue card reads it.
+    var firstPlayedAt: Date?
 
     init(episodeKey: String) {
         self.episodeKey = episodeKey
@@ -75,14 +80,38 @@ import SwiftData
 @Model final class UserSettings {
     var speed: Double = 1.0
     /// Days, with 0 for never.
-    var expiryDays: Int = 7
+    var expiryDays: Int = 14
     /// How many Queue episodes to keep downloaded, with 0 for Off.
     var downloadCount: Int = 3
+    /// When the listener last changed a setting. Defaults that were never changed keep `distantPast`.
+    var updatedAt: Date = Date.distantPast
 
     init() {}
 }
 
+/// A saved moment. It keeps a snapshot of the titles and audio address, so it survives the feed cache.
+@Model final class Bookmark {
+    var id: UUID = UUID()
+    var episodeKey: String = ""
+    var position: Double = 0
+    /// Empty means no note.
+    var note: String = ""
+    var createdAt: Date = Date.distantPast
+    var showTitle: String = ""
+    var episodeTitle: String = ""
+    var audioURL: URL?
+
+    init(episodeKey: String, position: Double, showTitle: String, episodeTitle: String, audioURL: URL, createdAt: Date) {
+        self.episodeKey = episodeKey
+        self.position = position
+        self.showTitle = showTitle
+        self.episodeTitle = episodeTitle
+        self.audioURL = audioURL
+        self.createdAt = createdAt
+    }
+}
+
 enum Schemas {
     static let feedCache = Schema([ShowRecord.self, EpisodeRecord.self])
-    static let userData = Schema([Subscription.self, EpisodeState.self, UserSettings.self])
+    static let userData = Schema([Subscription.self, EpisodeState.self, UserSettings.self, Bookmark.self])
 }

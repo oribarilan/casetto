@@ -37,7 +37,7 @@ public enum MoveReason: Hashable, Sendable {
         case .autoQueued: "Auto-queued"
         case .playNext: "Play next"
         case .skipped: "Skipped by show setting"
-        case .expired(let days): "Expired after \(days) days"
+        case .expired(let days): "Removed after \(days) days"
         }
     }
 
@@ -80,7 +80,10 @@ public enum InboxExpiry: Hashable, Sendable {
     case days(Int)
     case never
 
-    public static let choices: [InboxExpiry] = [.days(3), .days(7), .days(14), .days(30), .never]
+    public static let choices: [InboxExpiry] = [.days(1), .days(3), .days(7), .days(14), .days(30), .never]
+
+    /// The global period on a fresh install.
+    public static let standard = InboxExpiry.days(14)
 
     /// Storage keeps days as an integer, with 0 for never.
     init(storedDays: Int) {

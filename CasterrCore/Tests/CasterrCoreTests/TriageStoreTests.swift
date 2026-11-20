@@ -33,6 +33,8 @@ private func subscribed(
 ) async throws -> Library {
     let library = try Library.open(inMemory: true)
     await library.useClock { clock.now }
+    // These tests are about the mechanics, so they pin a 7-day period rather than the default.
+    try await library.setGlobalExpiry(.days(7))
     for show in shows {
         try await library.saveFeed(feed(1...count), for: show)
         try await library.addSubscription(show, feedURL: URL(string: show.rawValue)!)
@@ -179,14 +181,19 @@ struct InboxStoreTests {
 }
 
 struct ExpiryStoreTests {
+    @Test func defaultPeriodIs14Days() async throws {
+        let library = try Library.open(inMemory: true)
+        #expect(try await library.globalExpiry() == .days(14))
+        #expect(InboxExpiry.choices == [.days(1), .days(3), .days(7), .days(14), .days(30), .never])
+    }
+
     @Test func episodeExpiresAfterTheGlobalPeriod() async throws {
         let clock = TestClock()
         let library = try await subscribed(clock: clock)
-        #expect(try await library.globalExpiry() == .days(7))
         clock.advance(days: 8)
         try await library.expireInbox()
         #expect(try await library.place(of: episode(3)) == .archive(.expired))
-        #expect(try await library.lastMove(of: episode(3))?.reason.label == "Expired after 7 days")
+        #expect(try await library.lastMove(of: episode(3))?.reason.label == "Removed after 7 days")
     }
 
     @Test func showOverrideWins() async throws {
@@ -199,6 +206,17 @@ struct ExpiryStoreTests {
         clock.advance(days: 6)
         try await library.expireInbox()
         #expect(try await library.lastMove(of: episode(3))?.reason == .expired(days: 14))
+    }
+
+    @Test func daysLeftCountDownAndSkipNever() async throws {
+        let clock = TestClock()
+        let library = try await subscribed(to: [showA, showB], clock: clock)
+        try await library.setExpiryOverride(showB, to: .never)
+        #expect(try await library.inboxDaysLeft() == [episode(3): 7])
+        clock.advance(days: 4.5)
+        #expect(try await library.inboxDaysLeft() == [episode(3): 3])
+        clock.advance(days: 2.2)
+        #expect(try await library.inboxDaysLeft() == [episode(3): 1])
     }
 
     @Test func neverKeepsInboxEpisodes() async throws {

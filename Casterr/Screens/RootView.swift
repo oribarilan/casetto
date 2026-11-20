@@ -2,26 +2,75 @@ import CasterrCore
 import SwiftUI
 
 struct RootView: View {
+    @Environment(AppModel.self) private var model
     @Environment(Player.self) private var player
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     @State private var showingNowPlaying = false
+    /// A show tapped in Now Playing, opened once the sheet has closed.
+    @State private var showToOpen: ShowKey?
+    @State private var showingOnboarding = false
 
     var body: some View {
-        NavigationStack {
-            QueueView()
-                .navigationDestination(for: Route.self) { route in
-                    switch route {
-                    case .shows: ShowsView()
-                    case .inbox: InboxView()
-                    case .show(let key): ShowView(showKey: key)
-                    }
-                }
-        }
-        .safeAreaInset(edge: .bottom) {
-            if player.episode != nil {
-                MiniPlayer { showingNowPlaying = true }
+        @Bindable var model = model
+        TabView(selection: $model.tab) {
+            Tab("Queue", systemImage: "list.bullet", value: AppTab.queue) {
+                NavigationStack(path: $model.queuePath) { QueueView().routes() }
+            }
+            Tab("Shows", systemImage: "square.stack", value: AppTab.shows) {
+                NavigationStack(path: $model.showsPath) { ShowsView().routes() }
+            }
+            Tab("Bookmarks", systemImage: "bookmark", value: AppTab.bookmarks) {
+                NavigationStack(path: $model.bookmarksPath) { BookmarksView().routes() }
             }
         }
-        .sheet(isPresented: $showingNowPlaying) { NowPlayingView() }
+        .bookmarkToast()
+        .cassyToast()
+        .tabViewBottomAccessory(isEnabled: player.episode != nil || model.upNext != nil) {
+            if player.episode != nil {
+                MiniPlayer { showingNowPlaying = true }
+            } else if let upNext = model.upNext {
+                UpNextBar(upNext: upNext)
+            }
+        }
+        .sheet(isPresented: $showingNowPlaying, onDismiss: openTappedShow) {
+            NowPlayingView { show in
+                showToOpen = show
+                showingNowPlaying = false
+            }
+        }
+        .fullScreenCover(isPresented: $showingOnboarding) {
+            OnboardingView { hasSeenOnboarding = true; showingOnboarding = false }
+        }
+        .task {
+            if !hasSeenOnboarding, (try? await model.library.subscriptions().isEmpty) == true {
+                showingOnboarding = true
+            }
+        }
+    }
+
+    private func openTappedShow() {
+        guard let show = showToOpen else { return }
+        showToOpen = nil
+        model.tab = .shows
+        model.showsPath = [.show(show)]
+    }
+}
+
+enum AppTab: Hashable {
+    case queue
+    case shows
+    case bookmarks
+}
+
+extension View {
+    func routes() -> some View {
+        navigationDestination(for: Route.self) { route in
+            switch route {
+            case .inbox: InboxView()
+            case .show(let key): ShowView(showKey: key)
+            case .settings(let focus): SettingsView(focus: focus)
+            }
+        }
     }
 }
 
@@ -31,6 +80,7 @@ private struct MiniPlayer: View {
 
     var body: some View {
         HStack {
+            ArtworkView(url: player.show?.artworkURL, title: player.show?.title ?? "", size: 34)
             Button(action: open) {
                 VStack(alignment: .leading) {
                     Text(player.episode?.title ?? "").lineLimit(1)
@@ -40,21 +90,54 @@ private struct MiniPlayer: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("miniPlayer")
+            BookmarkButton()
             Button(player.isPlaying ? "Pause" : "Play", systemImage: player.isPlaying ? "pause.fill" : "play.fill") {
                 Task { try? await player.togglePlayPause() }
             }
             .labelStyle(.iconOnly)
             .font(.title2)
         }
-        .padding()
-        .background(.bar)
+        .padding(.horizontal)
+    }
+}
+
+/// The bar while nothing plays: what the Queue would start, and a play button. It says "Up next"
+/// for a new episode and "Continue" for a started one, so starting is never mistaken for resuming.
+private struct UpNextBar: View {
+    @Environment(AppModel.self) private var model
+    @Environment(Player.self) private var player
+    let upNext: UpNext
+
+    var body: some View {
+        HStack {
+            ArtworkView(url: upNext.artworkURL, title: upNext.showTitle, size: 34)
+            Button {
+                model.tab = .queue
+                model.queuePath = []
+            } label: {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(upNext.caption).font(.caption.weight(.bold)).foregroundStyle(.tint)
+                    Text(upNext.episode.title).lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("upNextBar")
+            Button("Play", systemImage: "play.fill") {
+                Task { try? await player.resume() }
+            }
+            .labelStyle(.iconOnly)
+            .font(.title2)
+            .accessibilityIdentifier("upNextPlay")
+        }
+        .padding(.horizontal)
     }
 }
 
 enum Route: Hashable {
-    case shows
     case inbox
     case show(ShowKey)
+    case settings(SettingsSection?)
 }
 
 extension TimeInterval {

@@ -38,14 +38,15 @@ public struct FeedService: Sendable {
         self.fetcher = fetcher
     }
 
-    /// Fetches and parses the feed before subscribing, then places the newest episode by the show's level.
-    public func subscribe(to url: URL) async throws -> SubscribeOutcome {
+    /// Fetches and parses the feed before subscribing at `level`, then places the newest episode by that level.
+    public func subscribe(to url: URL, level: TriageLevel = .inbox) async throws -> SubscribeOutcome {
         guard let key = ShowKey(feedURL: url) else { throw SubscribeError.invalidURL }
         if try await library.isSubscribed(key) { return .alreadySubscribed(key) }
 
         let feed = try await fetchAndParse(url)
         try await library.saveFeed(feed, for: key)
         try await library.addSubscription(key, feedURL: url)
+        if level != .inbox { try await library.setLevel(key, to: level) }
         try await library.triage(key)
         return .subscribed(key)
     }
@@ -75,13 +76,16 @@ public struct FeedService: Sendable {
     }
 
     /// Refreshes every subscribed feed and triages its new episodes, then expires the Inbox.
-    /// A failing feed records its error and doesn't stop the others.
-    public func refreshAll() async throws {
+    /// A failing feed records its error and doesn't stop the others. Returns what moved.
+    @discardableResult
+    public func refreshAll() async throws -> RefreshSummary {
         let subscriptions = try await library.subscriptions()
-        _ = await forEach(subscriptions) { subscription in
+        let results = await forEach(subscriptions) { subscription in
             await refresh(subscription)
         }
-        try await library.expireInbox()
+        var summary = results.reduce(RefreshSummary(), +)
+        summary.expired = try await library.expireInbox()
+        return summary
     }
 
     /// Queued episodes stay in the Queue and Inbox episodes move to the archive. The feed is no longer refreshed.
@@ -89,16 +93,17 @@ public struct FeedService: Sendable {
         try await library.removeSubscription(key)
     }
 
-    private func refresh(_ subscription: SubscriptionInfo) async {
+    private func refresh(_ subscription: SubscriptionInfo) async -> RefreshSummary {
         do {
             let feed = try await fetchAndParse(subscription.feedURL)
             try await library.saveFeed(feed, for: subscription.showKey)
             if let moved = feed.newFeedURL, moved != subscription.feedURL, ShowKey(feedURL: moved) != nil {
                 try await library.updateFeedURL(subscription.showKey, to: moved)
             }
-            try await library.triage(subscription.showKey)
+            return try await library.triage(subscription.showKey)
         } catch {
             try? await library.recordRefreshFailure(subscription.showKey, error: Self.describe(error))
+            return RefreshSummary()
         }
     }
 

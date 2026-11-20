@@ -7,18 +7,18 @@ final class SmokeTests: XCTestCase {
     @MainActor
     func testSubscribePlayAndQueue() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTesting"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
         app.launch()
 
-        app.navigationBars["Queue"].buttons["Shows"].tap()
+        app.tabBars.buttons["Shows"].tap()
         app.navigationBars["Shows"].buttons["Add"].tap()
         app.buttons["Add by Feed Address"].tap()
         let address = app.textFields["feedAddress"]
         address.tap()
         address.typeText(feed)
-        app.buttons["Subscribe"].tap()
+        app.navigationBars["Add Show"].buttons["Subscribe"].tap()
 
-        let show = app.cells.firstMatch
+        let show = app.buttons["Planet Money, NPR"]
         XCTAssertTrue(show.waitForExistence(timeout: 30), "show didn't appear after subscribing")
         show.tap()
 
@@ -37,11 +37,15 @@ final class SmokeTests: XCTestCase {
         expectation(for: advanced, evaluatedWith: elapsed)
         waitForExpectations(timeout: 30)
 
-        // 2x for all shows, then check it still plays.
+        // 2x for this show applies right away, then check it still plays.
         app.buttons["speed"].tap()
-        app.sliders["speedSlider"].adjust(toNormalizedSliderPosition: 1.0)
-        app.buttons["All shows"].tap()
-        app.buttons["Done"].tap()
+        let useDefault = app.switches.firstMatch
+        XCTAssertTrue(useDefault.waitForExistence(timeout: 5))
+        useDefault.switches.firstMatch.tap()
+        let slider = app.sliders["speedSlider"]
+        XCTAssertTrue(slider.waitForExistence(timeout: 5), "turning off the default didn't show the slider")
+        slider.adjust(toNormalizedSliderPosition: 1.0)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).tap()
         let speed = app.buttons["speed"]
         let atDoubleSpeed = speed.wait(for: \.label, toEqual: "2.0×", timeout: 10)
         XCTAssertTrue(atDoubleSpeed, "speed button says \(speed.label)")
@@ -49,10 +53,9 @@ final class SmokeTests: XCTestCase {
         expectation(for: NSPredicate(format: "label != %@", atTwo), evaluatedWith: elapsed)
         waitForExpectations(timeout: 15)
 
-        // The played episode is Now Playing at the top of the Queue.
+        // The played episode is playing at the top of the Queue.
         app.swipeDown(velocity: .fast)
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.staticTexts["Now Playing"].waitForExistence(timeout: 10))
+        app.tabBars.buttons["Queue"].tap()
+        XCTAssertTrue(app.staticTexts["Playing"].waitForExistence(timeout: 10))
     }
 }

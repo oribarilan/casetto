@@ -18,9 +18,15 @@ The MVP works when I delete my current podcast app and don't go back. After that
 ## Design rules
 
 1. **Sensible defaults.** Every capability works without configuration.
-2. **Customize in context.** Change behavior where it matters (on a show, in Now Playing), not in a sprawling settings screen. Per-show speed is set in Now Playing, scoped to "This show" or "All shows".
+2. **Customize in context.** Change behavior where it matters (on a show, in Now Playing), not in a sprawling settings screen. A small Settings screen holds only the global defaults (Inbox expiry, downloads, default speed), and the places that use them link straight to their section. Per-show speed is set in Now Playing, scoped to "This show" or "All shows".
 3. **Explainable, reversible automation.** Every automatic move has a visible reason and an undo.
 4. **Capture never interrupts listening.** Saving a moment is one tap. Notes are optional.
+
+## Look and feel
+
+Casterr is warm and a little funny. The accent is tangerine orange, titles use heavy rounded type (SF Pro Rounded), and show art appears in every list, on a Shows grid, on the show page, and in the mini player. Now Playing is tinted by the show's artwork. The copy is warm and witty in one voice, with no setting: an empty Queue says "Silence. Lovely, but let's fix that."
+
+The mascot is **Cassy**, a cassette tape whose two reels are her eyes. She is drawn as a sticker: a cream body, a dark outline, and a hard orange shadow, which keeps her visible on orange, dark, and tinted backgrounds. Her reels spin while audio plays, she dozes on an empty Queue, cheers when the Inbox is cleared, and gets dizzy (spiral eyes) when a feed fails. She is never angry. Onboarding teaches with just-in-time tips: a sticker bubble from Cassy that points at a control the first time you need it, shows once, and closes with its ✕ or any tap. The design mockups are in the [Casterr Glow-Up](https://claude.ai/code/artifact/061fffba-976f-4602-964d-47ebcb6d1d04) page.
 
 ## How it works
 
@@ -33,23 +39,33 @@ The MVP works when I delete my current podcast app and don't go back. After that
 | Auto-queue | Go to the bottom of the Queue |
 | Play next | Go right after Now Playing, stacked in release order |
 | Inbox | Wait in the Inbox, then expire |
-| Skip | Go straight to the archive |
+| Skip | Never go to your Inbox or Queue; they stay on the show page |
 
 New subscriptions start at Inbox. In onboarding you star the shows you never miss, and those start at Auto-queue. Play next episodes stack above anything you queued yourself.
 
-**Inbox episodes expire.** After 7 days, an untouched episode moves to the show's archive. You can change the 7 days globally or per show, and you can undo it.
+**Inbox episodes expire.** After 14 days, an untouched episode moves to the show's archive. The choices are 1, 3, 7, 14, or 30 days, or never. You set your default from the Inbox; a show follows it unless you turn off "Use my default" in that show's settings and pick its own value. You can undo an expiry.
 
-**The app suggests rules, you accept them.** Casterr watches what you do with each show. It looks at what you play, finish, dismiss, or let expire, how soon you play things, how long episodes run, and what their titles say. When a pattern shows up, a one-line card appears in the Inbox:
+**The app suggests rules, you accept them.** Casterr watches what you do with each show: what you play, how soon, and what you let expire. When a pattern shows up, a one-line card appears at the top of the Inbox and counts in the "New (N)" row:
 
-- "You played the last 4 History Show episodes within a day. Auto-queue new ones?"
+- "You played the last 4 History Show episodes within a day of release. Auto-queue new ones?"
 - "Tech Weekly: last 3 expired unplayed. Skip, unsubscribe, or keep?"
-- "You dismiss every episode of this show over 90 minutes. Skip those?"
 
-One tap accepts. "Not now" hides the card for 30 days. "Never for this show" hides it for good. Nothing changes without your tap, except expiry, which is a rule you set. Learning uses behavior only, no language model. Judging an episode by its topic ("I skip this show's sports episodes") comes later.
-
-**Filters are deliberately small.** A show can skip episodes longer than N minutes, or episodes whose title contains certain words. There is no general rule builder. Filters arrive in M4, created by the rule cards that propose them.
+These two cards are all of M4. The thresholds are constants, tuned from real use. One tap accepts. "Not now" hides the card for 30 days. "Never for this show" hides it for good. Nothing changes without your tap, except expiry, which is a rule you set. Learning uses behavior only, no language model. There are no filters: cards only change a show's level or unsubscribe. Judging an episode by its length, title, or topic comes later.
 
 **Undo.** Each episode remembers its latest move: why it happened and when. An automatic move shows its reason and an "Undo" on the episode until the episode moves again, for up to 30 days. Your own moves are one swipe to reverse, so they get no undo button.
+
+## Words
+
+One word per idea, in everything people read in the app:
+
+| Word | Means | Not |
+|---|---|---|
+| **Remove** | An episode leaves your Inbox or Queue, because you swiped it or because it waited too long. It stays on its show page. | dismiss, clear, archive, tidy, delete |
+| **Skip** | A show's new episodes never enter your Inbox or Queue. | archive |
+| **Dismiss** | Close one of Cassy's cards or tips. Never used for episodes. | remove |
+| **Delete** | Bookmarks only, because they really are deleted. | remove |
+
+"Archive" is a term inside the code and specs only.
 
 ## Player
 
@@ -61,19 +77,20 @@ One tap accepts. "Not now" hides the card for 30 days. "Never for this show" hid
 
 ## Capture
 
-One tap bookmarks the current episode and timestamp without pausing. A note is optional. Bookmarks are searchable and export as Markdown, one file per episode, ready for Obsidian, Notes, or any notes app. A bookmark keeps the show title, episode title, and audio URL, so it survives the episode disappearing from the feed.
+One tap in Now Playing or on the mini player bookmarks the current episode and timestamp without pausing. A toast confirms it and offers Add Note. Notes are optional and editable later. The Bookmarks tab searches notes, episode titles, and show titles. Each episode's bookmarks share as one Markdown file through the share sheet, ready for Obsidian, Notes, or any notes app. A bookmark keeps the show title, episode title, and audio URL, so it survives the episode disappearing from the feed.
 
 ## Onboarding and subscribing
 
-- Suggestions come from Apple's top charts, by genre.
+- The app has three tabs: Queue, Shows, and Bookmarks. The Inbox stays one tap from the Queue.
+- Suggestions come from Apple's documented top podcasts chart for your country, with no genres. Onboarding shows them with search on first launch, and you can skip it. The same view fills the Shows tab whenever you follow nothing.
 - Search uses the iTunes Search API, which needs no key. It sits behind a provider interface so another directory can be added later.
-- You can also import an OPML file or paste an RSS URL. As far as I know, Apple Podcasts and Spotify don't export OPML, so mainstream switchers rely on search and suggestions.
+- You can also import an OPML file or paste an RSS URL, and export your subscriptions as OPML. As far as I know, Apple Podcasts and Spotify don't export OPML, so mainstream switchers rely on search and suggestions.
 - Subscribing puts the newest episode through the show's level. Older episodes stay on the show page until you pick them.
 - Unsubscribing clears the show's Inbox episodes. Anything you queued stays, and so do bookmarks and history.
 
 ## Ownership and privacy
 
-No accounts, ads, tracking, or paywalls. Audio comes straight from publishers' feeds. There is no server, so feeds refresh in the background on a best-effort basis and every time you open the app. iCloud sync through CloudKit comes in M8.
+No accounts, ads, tracking, or paywalls. Audio comes straight from publishers' feeds. There is no server, so feeds refresh in the background on a best-effort basis and every time you open the app. iCloud sync through CloudKit comes in M8. When two devices change the same episode, the latest move wins, and that includes the Queue order. Changes from another device show when you open the app or pull to refresh.
 
 ## Primitives
 
@@ -83,7 +100,7 @@ Data splits into what comes **from the feed**, a cache that can be wiped and re-
 |---|---|---|
 | Show | A podcast feed. Identified by its normalized feed URL at subscribe time. That key never changes, even when the feed moves. | No |
 | Episode | One feed item. Identified by its GUID, otherwise by its audio URL. | No |
-| Subscription | You following a Show: level (including Play next), expiry override, filters, speed override, and the show's last 10 outcomes for learning | Yes |
+| Subscription | You following a Show: level (including Play next), expiry override, speed override, and the show's recent outcomes for learning | Yes |
 | Episode state | Exactly one place (Inbox, Queue, Archive with a reason, or none), its Queue position when queued, listening progress, and its latest move (reason and time) for explanations and undo | Yes |
 | Proposal | A pending rule card, computed from outcomes. Only your dismissals are stored. | Dismissals |
 | Bookmark | Episode, timestamp, optional note, plus a snapshot of titles and audio URL | Yes |
@@ -104,11 +121,11 @@ Each milestone is one OpenSpec change.
 1. **Player core:** subscribe by RSS URL or OPML, stream, background audio, lock screen, speed, skip, sleep timer, progress, manual Queue.
 2. **Inbox and triage:** levels, expiry, play next, the Inbox screen, and undo of automatic moves.
 3. **Downloads and refresh:** auto-download the Queue on Wi-Fi, best-effort background refresh.
-4. **Rule cards:** learned proposals in the Inbox, and the filters they create.
-5. **Onboarding:** Apple charts by genre, iTunes search, starring favorites.
+4. **Rule cards:** two learned proposals in the Inbox: auto-queue a show you always play, and skip or unsubscribe a show you ignore.
+5. **Onboarding:** tabs, top chart suggestions, iTunes search, starring favorites, and OPML export.
 6. **Capture:** bookmarks, notes, search, Markdown export.
-7. **OPML export.**
-8. **CloudKit sync.**
+7. **OPML export:** folded into M5.
+8. **CloudKit sync:** the listener sets up the team and container. Done means one phone plus records visible in the CloudKit dashboard.
 
 Then Casterr becomes my daily driver, and TestFlight follows.
 
@@ -116,8 +133,8 @@ Then Casterr becomes my daily driver, and TestFlight follows.
 
 ## Open questions
 
-- The exact thresholds for each rule card get decided in M4.
-- Genre charts for onboarding (M5): Apple's documented charts feed has no genre filter. The older iTunes charts URL that does filter by genre still works, but it's undocumented and could break. The iTunes Search API is limited to about 20 calls a minute, so search needs debouncing and caching.
+- The iTunes Search API is limited to about 20 calls a minute, so M5 search needs debouncing.
+- Suggestions: the heading says "Top Shows" over the same chart for everyone. Decide the heading, and whether to build personal suggestions from the shows you follow. Interview after the redesign.
 - The name still needs a trademark check and an App Store name check before launch.
 
 ## References

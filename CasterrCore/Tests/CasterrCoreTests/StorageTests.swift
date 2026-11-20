@@ -137,9 +137,12 @@ struct SettingsStoreTests {
         try await library.addSubscription(show, feedURL: feedURL)
         try await library.setGlobalSpeed(PlaybackSpeed(1.5))
         #expect(try await library.effectiveSpeed(for: show) == PlaybackSpeed(1.5))
+        #expect(try await library.speedOverride(show) == nil)
         try await library.setSpeedOverride(show, to: .normal)
+        #expect(try await library.speedOverride(show) == .normal)
         #expect(try await library.effectiveSpeed(for: show) == .normal)
         try await library.setSpeedOverride(show, to: nil)
+        #expect(try await library.speedOverride(show) == nil)
         #expect(try await library.effectiveSpeed(for: show) == PlaybackSpeed(1.5))
     }
 }

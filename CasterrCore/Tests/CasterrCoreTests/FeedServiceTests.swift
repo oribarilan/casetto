@@ -213,6 +213,23 @@ struct TriageFlowTests {
         #expect(try await library.place(of: episode("tape-hiss-2")) == nil)
     }
 
+    @Test func subscribingAtAutoQueuePutsTheNewestEpisodeInTheQueue() async throws {
+        let (service, library) = try makeService()
+        _ = try await service.subscribe(to: show, level: .autoQueue)
+        #expect(try await library.queue() == [episode("tape-hiss-3")])
+        #expect(try await library.inbox().isEmpty)
+        #expect(try await library.subscriptions().first?.level == .autoQueue)
+    }
+
+    @Test func refreshReportsWhatMoved() async throws {
+        let (service, library) = try makeService()
+        _ = try await service.subscribe(to: show)
+        try await library.setLevel(key, to: .autoQueue)
+        try await library.updateFeedURL(key, to: url("https://example.com/new-episode.xml"))
+        #expect(try await service.refreshAll() == RefreshSummary(queued: 1))
+        #expect(try await service.refreshAll() == RefreshSummary())
+    }
+
     @Test func unsubscribeArchivesInboxEpisodes() async throws {
         let (service, library) = try makeService()
         _ = try await service.subscribe(to: show)

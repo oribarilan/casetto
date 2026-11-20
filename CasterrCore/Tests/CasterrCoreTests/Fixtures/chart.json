@@ -1,0 +1,32 @@
+{
+ "feed": {
+  "title": "Top Shows",
+  "country": "us",
+  "results": [
+   {
+    "artistName": "The New York Times",
+    "id": "1200361736",
+    "name": "The Daily",
+    "kind": "podcasts",
+    "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ab/64/66/ab6466a9-9a7d-e20e-7a3d-bc5be37d29ce/mza_15084852813176276273.jpg/100x100bb.png",
+    "url": "https://podcasts.apple.com/us/podcast/the-daily/id1200361736"
+   },
+   {
+    "artistName": "NBC News",
+    "id": "1464919521",
+    "name": "Dateline NBC",
+    "kind": "podcasts",
+    "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/8c/00/7a/8c007a42-e550-0214-d4cb-b59cd7edf194/mza_5305664083935674472.jpeg/100x100bb.png",
+    "url": "https://podcasts.apple.com/us/podcast/dateline-nbc/id1464919521"
+   },
+   {
+    "artistName": "NPR",
+    "id": "1222114325",
+    "name": "Up First from NPR",
+    "kind": "podcasts",
+    "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/0e/35/25/0e352569-e694-81d9-ea55-5f935981c15a/mza_1788275989855583986.png/100x100bb.png",
+    "url": "https://podcasts.apple.com/us/podcast/up-first-from-npr/id1222114325"
+   }
+  ]
+ }
+}

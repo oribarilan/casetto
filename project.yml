@@ -23,7 +23,7 @@ targets:
     info:
       path: Casterr/Info.plist
       properties:
-        UIBackgroundModes: [audio, fetch]
+        UIBackgroundModes: [audio, fetch, remote-notification]
         BGTaskSchedulerPermittedIdentifiers: [casterr.refresh]
         UILaunchScreen: {}
   CasterrUITests:

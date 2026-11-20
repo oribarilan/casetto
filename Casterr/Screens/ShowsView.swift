@@ -2,37 +2,49 @@ import CasterrCore
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The shows you follow, plus adding by URL and importing OPML.
+/// The shows you follow, search, adding by URL, and OPML import and export.
+/// When you follow nothing, it shows the top shows instead.
 struct ShowsView: View {
     @Environment(AppModel.self) private var model
     @State private var shows: [Row] = []
+    @State private var loaded = false
+    @State private var query = ""
     @State private var addingFeed = false
     @State private var importingOPML = false
     @State private var importReport: OPMLImportReport?
     @State private var importError: String?
 
     var body: some View {
-        List(shows, id: \.key) { show in
-            NavigationLink(value: Route.show(show.key)) {
-                VStack(alignment: .leading) {
-                    Text(show.title)
-                    if let author = show.author {
-                        Text(author).font(.caption).foregroundStyle(.secondary)
+        Group {
+            if !query.isEmpty || (loaded && shows.isEmpty) {
+                // While searching, your matching shows come first, then more from the directory.
+                DiscoverView(query: query, followed: query.isEmpty ? [] : shows.filter {
+                    ShowSearch.matches(query, title: $0.title, author: $0.author)
+                }.map { FollowedShow(key: $0.key, title: $0.title, author: $0.author, artworkURL: $0.artworkURL) })
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: 3), spacing: 16) {
+                        ForEach(shows, id: \.key) { show in
+                            NavigationLink(value: Route.show(show.key)) { ShowTile(show: show) }
+                                .buttonStyle(.plain)
+                        }
                     }
+                    .padding(.horizontal)
                 }
+                .background(Color(.systemGroupedBackground))
             }
         }
-        .overlay {
-            if shows.isEmpty {
-                ContentUnavailableView("No shows yet", systemImage: "square.stack",
-                                       description: Text("Add a show by its feed address, or import an OPML file."))
-            }
-        }
+        .searchable(text: $query, prompt: "Search shows")
         .navigationTitle("Shows")
         .toolbar {
             Menu("Add", systemImage: "plus") {
                 Button("Add by Feed Address", systemImage: "link") { addingFeed = true }
                 Button("Import OPML File", systemImage: "square.and.arrow.down") { importingOPML = true }
+                Divider()
+                ShareLink(item: OPMLExport(library: model.library),
+                          preview: SharePreview("Casterr Subscriptions")) {
+                    Label("Export OPML File", systemImage: "square.and.arrow.up")
+                }
             }
         }
         .refreshable { await model.refresh() }
@@ -55,9 +67,12 @@ struct ShowsView: View {
             let show = try? await library.show(subscription.showKey)
             loaded.append(Row(key: subscription.showKey,
                               title: show?.title ?? subscription.feedURL.absoluteString,
-                              author: show?.author))
+                              author: show?.author, artworkURL: show?.artworkURL,
+                              starred: subscription.level == .autoQueue || subscription.level == .playNext,
+                              failing: show?.lastRefreshError != nil))
         }
         shows = loaded.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        self.loaded = true
     }
 
     private func importOPML(_ result: Result<URL, any Error>) async {
@@ -76,10 +91,68 @@ struct ShowsView: View {
     }
 }
 
+/// The subscriptions as an OPML file, written when shared.
+private struct OPMLExport: Transferable {
+    let library: Library
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .xml) { export in
+            var feeds: [(title: String, url: URL)] = []
+            for subscription in try await export.library.subscriptions() {
+                let title = try await export.library.show(subscription.showKey)?.title
+                feeds.append((title ?? subscription.feedURL.absoluteString, subscription.feedURL))
+            }
+            return OPMLWriter.write(feeds)
+        }
+        .suggestedFileName("Casterr Subscriptions.opml")
+    }
+}
+
 private struct Row {
     let key: ShowKey
     let title: String
     let author: String?
+    let artworkURL: URL?
+    /// Auto-queue or Play Next.
+    let starred: Bool
+    let failing: Bool
+}
+
+/// A show in the grid: artwork, title, and badges for starred shows and failing feeds.
+private struct ShowTile: View {
+    let show: Row
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            GeometryReader { geometry in
+                ArtworkView(url: show.artworkURL, title: show.title, size: geometry.size.width)
+                    .overlay(alignment: .topTrailing) {
+                        HStack(spacing: 4) {
+                            if show.failing { badge("exclamationmark", .yellow, .black) }
+                            if show.starred { badge("star.fill", .tangerine, .white) }
+                        }
+                        .padding(5)
+                    }
+            }
+            .aspectRatio(1, contentMode: .fit)
+            Text(show.title)
+                .font(.caption.weight(.semibold))
+                .lineLimit(2)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel([show.title, show.author].compactMap(\.self).joined(separator: ", "))
+        .accessibilityValue([show.starred ? "Starred" : nil, show.failing ? "Feed not answering" : nil].compactMap(\.self).joined(separator: ", "))
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private func badge(_ symbol: String, _ fill: Color, _ ink: Color) -> some View {
+        Image(systemName: symbol)
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(ink)
+            .frame(width: 22, height: 22)
+            .background(fill, in: .circle)
+            .shadow(radius: 2)
+    }
 }
 
 extension OPMLImportReport: @retroactive Identifiable {

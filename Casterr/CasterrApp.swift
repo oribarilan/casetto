@@ -9,9 +9,16 @@ struct CasterrApp: App {
         return try! AppModel(inMemory: inMemory)
     }()
 
+    init() {
+        Theme.apply()
+    }
+
     var body: some Scene {
         WindowGroup {
+            // Set at the root so sheets and full-screen covers get the tint and rounded type too.
             RootView()
+                .tint(.tangerine)
+                .fontDesign(.rounded)
                 .environment(model)
                 .environment(model.player)
         }

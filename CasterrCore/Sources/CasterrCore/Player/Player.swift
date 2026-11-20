@@ -34,7 +34,12 @@ public final class Player {
     public private(set) var duration: TimeInterval?
     public private(set) var speed: PlaybackSpeed = .normal
     public private(set) var sleepTimer: SleepTimer?
+    /// When a duration timer pauses playback. Nil with no timer or the end-of-episode timer.
+    public private(set) var sleepTimerEndsAt: Date?
     public private(set) var errorMessage: String?
+    /// When the last Queue episode played to its end with nothing after it. Not set when the
+    /// end-of-episode sleep timer stopped playback.
+    public private(set) var queueRanOutAt: Date?
 
     private let library: Library
     private let engine: any AudioEngine
@@ -118,7 +123,9 @@ public final class Player {
         sleepTask?.cancel()
         sleepTask = nil
         sleepTimer = timer
+        sleepTimerEndsAt = nil
         guard case .duration(let length) = timer else { return }
+        sleepTimerEndsAt = .now + TimeInterval(length.components.seconds)
         sleepTask = Task { [sleep] in
             do { try await sleep(length) } catch { return }
             try? await self.sleepTimerFired()
@@ -129,6 +136,7 @@ public final class Player {
 
     private func start(_ key: EpisodeKey) async throws {
         guard let info = try await library.episode(key) else { return }
+        try await library.recordPlayStart(key)
         episode = info
         show = try await library.show(info.showKey)
         errorMessage = nil
@@ -163,11 +171,14 @@ public final class Player {
         }
         if let next = try? await library.queue().first {
             try? await start(next)
+        } else {
+            queueRanOutAt = .now
         }
     }
 
     private func sleepTimerFired() async throws {
         sleepTimer = nil
+        sleepTimerEndsAt = nil
         sleepTask = nil
         try await pause()
     }
@@ -176,7 +187,7 @@ public final class Player {
         isPlaying = false
         let offline = (error as? URLError)?.code == .notConnectedToInternet
         errorMessage = offline
-            ? "You're offline. This episode can't be streamed."
-            : "This episode couldn't be played."
+            ? "You're offline, and this one isn't downloaded yet."
+            : "This episode wouldn't play. Its audio may have moved."
     }
 }

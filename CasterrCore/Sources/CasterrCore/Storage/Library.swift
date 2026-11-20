@@ -17,7 +17,40 @@ public struct ShowInfo: Equatable, Sendable {
     public var artworkURL: URL?
     public var summary: String?
     public var lastRefreshSuccess: Date?
+
+    /// The feed's description without HTML tags or entities, with runs of whitespace collapsed.
+    public var plainSummary: String? {
+        guard let summary else { return nil }
+        var text = summary.replacing(/<[^>]+>/, with: " ")
+        for (entity, character) in ["&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": "\"", "&#39;": "'", "&apos;": "'", "&nbsp;": " "] {
+            text = text.replacing(entity, with: character)
+        }
+        text = text.replacing(/\s+/, with: " ").trimmingCharacters(in: .whitespaces)
+        return text.isEmpty ? nil : text
+    }
     public var lastRefreshError: String?
+}
+
+public struct ShowArt: Equatable, Sendable {
+    public var title: String
+    public var artworkURL: URL?
+
+    public init(title: String, artworkURL: URL?) {
+        self.title = title
+        self.artworkURL = artworkURL
+    }
+}
+
+public struct BookmarkInfo: Equatable, Sendable {
+    public var id: UUID
+    public var episodeKey: EpisodeKey
+    public var position: TimeInterval
+    /// Empty means no note.
+    public var note: String
+    public var createdAt: Date
+    public var showTitle: String
+    public var episodeTitle: String
+    public var audioURL: URL?
 }
 
 public struct EpisodeInfo: Equatable, Sendable {
@@ -34,22 +67,45 @@ public struct EpisodeInfo: Equatable, Sendable {
 @ModelActor
 public actor Library {
     private var clock: @Sendable () -> Date = { Date.now }
+    private var ruleThresholds = RuleCard.Thresholds()
 
     /// Replaces the clock that move times and expiry use. For tests.
     public func useClock(_ clock: @escaping @Sendable () -> Date) {
         self.clock = clock
     }
 
-    /// Opens the feed cache and user data as two stores in one container.
+    func now() -> Date { clock() }
+
+    /// Replaces the rule card thresholds. For tests.
+    public func useRuleThresholds(_ thresholds: RuleCard.Thresholds) {
+        ruleThresholds = thresholds
+    }
+
+    /// Opens the feed cache and user data as two stores in one container. The feed cache never syncs.
+    /// User data syncs through iCloud when the app has an iCloud container, and stays local otherwise.
     public static func open(inMemory: Bool = false) throws -> Library {
-        let container = try ModelContainer(
-            for: Schema([ShowRecord.self, EpisodeRecord.self, Subscription.self, EpisodeState.self, UserSettings.self]),
-            configurations: [
-                ModelConfiguration("FeedCache", schema: Schemas.feedCache, isStoredInMemoryOnly: inMemory),
-                ModelConfiguration("UserData", schema: Schemas.userData, isStoredInMemoryOnly: inMemory),
-            ]
-        )
-        return Library(modelContainer: container)
+        try open(configurations: [
+            ModelConfiguration("FeedCache", schema: Schemas.feedCache, isStoredInMemoryOnly: inMemory, cloudKitDatabase: .none),
+            ModelConfiguration("UserData", schema: Schemas.userData, isStoredInMemoryOnly: inMemory,
+                               cloudKitDatabase: inMemory ? .none : .automatic),
+        ])
+    }
+
+    /// Opens local stores in `directory`. Two libraries opened on one folder share their data,
+    /// which is how tests stand in for two devices writing before a sync.
+    static func open(directory: URL) throws -> Library {
+        try open(configurations: [
+            ModelConfiguration("FeedCache", schema: Schemas.feedCache, url: directory.appending(path: "FeedCache.store"),
+                               cloudKitDatabase: .none),
+            ModelConfiguration("UserData", schema: Schemas.userData, url: directory.appending(path: "UserData.store"),
+                               cloudKitDatabase: .none),
+        ])
+    }
+
+    private static func open(configurations: [ModelConfiguration]) throws -> Library {
+        let schema = Schema([ShowRecord.self, EpisodeRecord.self, Subscription.self, EpisodeState.self, UserSettings.self,
+                             Bookmark.self])
+        return Library(modelContainer: try ModelContainer(for: schema, configurations: configurations))
     }
 
     // MARK: Subscriptions
@@ -104,6 +160,11 @@ public actor Library {
         try modelContext.save()
     }
 
+    /// Nil when the show follows the global speed.
+    public func speedOverride(_ showKey: ShowKey) throws -> PlaybackSpeed? {
+        try subscription(showKey)?.speedOverride.map(PlaybackSpeed.init)
+    }
+
     public func setSpeedOverride(_ showKey: ShowKey, to speed: PlaybackSpeed?) throws {
         try subscription(showKey)?.speedOverride = speed?.value
         try modelContext.save()
@@ -130,21 +191,70 @@ public actor Library {
     /// Places the show's new episodes by its level, oldest first. New means published after
     /// the subscription's triage date and never placed. Undated episodes are never new.
     /// The first triage of a subscription from before triage existed places nothing.
-    public func triage(_ showKey: ShowKey) throws {
-        guard let subscription = try subscription(showKey) else { return }
+    @discardableResult
+    public func triage(_ showKey: ShowKey) throws -> RefreshSummary {
+        guard let subscription = try subscription(showKey) else { return RefreshSummary() }
         let records = try episodeRecords(of: showKey)
         guard let after = subscription.triageAfter else {
             subscription.triageAfter = records.compactMap(\.publishDate).max() ?? clock()
             try modelContext.save()
-            return
+            return RefreshSummary()
         }
         let destination = (TriageLevel(rawValue: subscription.level) ?? .inbox).destination
         let fresh = records
             .compactMap { record in record.publishDate.map { (key: EpisodeKey(rawValue: record.key), date: $0) } }
             .filter { $0.date > after }
             .sorted { $0.date < $1.date }
+        var summary = RefreshSummary()
         for episode in fresh where try state(episode.key) == nil {
             try relocate(state(episode.key, creating: true)!, to: destination.place, reason: destination.reason)
+            switch destination.place {
+            case .inbox: summary.arrived += 1
+            case .queue: summary.queued += 1
+            case .archive: summary.skipped += 1
+            }
+        }
+        try modelContext.save()
+        return summary
+    }
+
+    // MARK: Rule cards
+
+    /// Cards for Inbox-level shows whose card isn't hidden, in subscription order.
+    public func ruleCards() throws -> [RuleCard] {
+        let now = clock()
+        let states = Dictionary(
+            try modelContext.fetch(FetchDescriptor<EpisodeState>()).map { ($0.episodeKey, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        var cards: [RuleCard] = []
+        for subscription in try modelContext.fetch(FetchDescriptor<Subscription>(sortBy: [SortDescriptor(\.subscribedAt)]))
+        where subscription.level == TriageLevel.inbox.rawValue {
+            let show = ShowKey(rawValue: subscription.showKey)
+            var episodes: [RuleCard.Episode] = []
+            for record in try episodeRecords(of: show) {
+                guard let published = record.publishDate else { continue }
+                let state = states[record.key]
+                episodes.append(RuleCard.Episode(
+                    published: published, firstPlayedAt: state?.firstPlayedAt,
+                    place: try state.flatMap { try Place(storedPlace: $0.place, archiveReason: $0.archiveReason) }
+                ))
+            }
+            guard let kind = RuleCard.evaluate(episodes: episodes, now: now, thresholds: ruleThresholds) else { continue }
+            let hiddenUntil = kind == .autoQueue ? subscription.autoQueueCardHiddenUntil : subscription.ignoredCardHiddenUntil
+            if hiddenUntil.map({ $0 > now }) ?? false { continue }
+            cards.append(RuleCard(show: show, kind: kind))
+        }
+        return cards
+    }
+
+    /// Not now hides the card for 30 days; never hides it for good.
+    public func hideRuleCard(_ card: RuleCard, forever: Bool) throws {
+        guard let subscription = try subscription(card.show) else { return }
+        let until = forever ? Date.distantFuture : clock().addingTimeInterval(RuleCard.hideForNotNow)
+        switch card.kind {
+        case .autoQueue: subscription.autoQueueCardHiddenUntil = until
+        case .ignored: subscription.ignoredCardHiddenUntil = until
         }
         try modelContext.save()
     }
@@ -170,21 +280,44 @@ public actor Library {
         try modelContext.save()
     }
 
-    /// Moves Inbox episodes that waited their show's period, or the global one, to the archive.
-    public func expireInbox() throws {
+    /// Whole days until each Inbox episode leaves, rounded up. Episodes whose period is never are left out.
+    public func inboxDaysLeft() throws -> [EpisodeKey: Int] {
         let global = InboxExpiry(storedDays: try settings().expiryDays)
         let overrides = try modelContext.fetch(FetchDescriptor<Subscription>()).compactMap { record in
             record.expiryDaysOverride.map { (show: ShowKey(rawValue: record.showKey), expiry: InboxExpiry(storedDays: $0)) }
         }
         let now = clock()
+        var left: [EpisodeKey: Int] = [:]
+        for state in try states(in: .inbox) {
+            let key = EpisodeKey(rawValue: state.episodeKey)
+            let expiry = overrides.first { key.belongs(to: $0.show) }?.expiry ?? global
+            guard case .days(let days) = expiry, let enteredAt = state.movedAt else { continue }
+            let remaining = Double(days) * 86_400 - now.timeIntervalSince(enteredAt)
+            left[key] = max(0, Int((remaining / 86_400).rounded(.up)))
+        }
+        return left
+    }
+
+    /// Moves Inbox episodes that waited their show's period, or the global one, to the archive.
+    /// Returns how many expired.
+    @discardableResult
+    public func expireInbox() throws -> Int {
+        let global = InboxExpiry(storedDays: try settings().expiryDays)
+        let overrides = try modelContext.fetch(FetchDescriptor<Subscription>()).compactMap { record in
+            record.expiryDaysOverride.map { (show: ShowKey(rawValue: record.showKey), expiry: InboxExpiry(storedDays: $0)) }
+        }
+        let now = clock()
+        var expired = 0
         for state in try states(in: .inbox) {
             let key = EpisodeKey(rawValue: state.episodeKey)
             let expiry = overrides.first { key.belongs(to: $0.show) }?.expiry ?? global
             guard case .days(let days) = expiry, let enteredAt = state.movedAt,
                   expiry.hasExpired(enteredAt: enteredAt, now: now) else { continue }
             try relocate(state, to: .archive(.expired), reason: .expired(days: days))
+            expired += 1
         }
         try modelContext.save()
+        return expired
     }
 
     // MARK: Undo
@@ -251,7 +384,7 @@ public actor Library {
     }
 
     private func renumber(_ states: [EpisodeState]) {
-        for (index, state) in states.enumerated() {
+        for (index, state) in states.enumerated() where state.queuePosition != index + 1 {
             state.queuePosition = index + 1
         }
     }
@@ -265,6 +398,18 @@ public actor Library {
 
     public func progress(of key: EpisodeKey) throws -> TimeInterval {
         try state(key)?.progressSeconds ?? 0
+    }
+
+    func firstPlayedAt(of key: EpisodeKey) throws -> Date? {
+        try state(key)?.firstPlayedAt
+    }
+
+    /// Records the first time playback started. Later starts change nothing.
+    public func recordPlayStart(_ key: EpisodeKey) throws {
+        let state = try state(key, creating: true)!
+        guard state.firstPlayedAt == nil else { return }
+        state.firstPlayedAt = clock()
+        try modelContext.save()
     }
 
     public func setProgress(_ key: EpisodeKey, to seconds: TimeInterval) throws {
@@ -333,14 +478,13 @@ public actor Library {
     }
 
     public func setGlobalSpeed(_ speed: PlaybackSpeed) throws {
-        try settings().speed = speed.value
-        try modelContext.save()
+        try changeSettings { $0.speed = speed.value }
     }
 
     public func effectiveSpeed(for showKey: ShowKey) throws -> PlaybackSpeed {
         PlaybackSpeed.effective(
             global: try globalSpeed(),
-            override: try subscription(showKey)?.speedOverride.map(PlaybackSpeed.init)
+            override: try speedOverride(showKey)
         )
     }
 
@@ -349,8 +493,7 @@ public actor Library {
     }
 
     public func setGlobalExpiry(_ expiry: InboxExpiry) throws {
-        try settings().expiryDays = expiry.storedDays
-        try modelContext.save()
+        try changeSettings { $0.expiryDays = expiry.storedDays }
     }
 
     public func downloadCount() throws -> Int {
@@ -358,7 +501,14 @@ public actor Library {
     }
 
     public func setDownloadCount(_ count: Int) throws {
-        try settings().downloadCount = max(count, 0)
+        try changeSettings { $0.downloadCount = max(count, 0) }
+    }
+
+    /// Every settings change stamps `updatedAt`, so a merge keeps the listener's settings over a new device's defaults.
+    private func changeSettings(_ change: (UserSettings) -> Void) throws {
+        let settings = try settings()
+        change(settings)
+        settings.updatedAt = clock()
         try modelContext.save()
     }
 
@@ -369,6 +519,77 @@ public actor Library {
         let settings = UserSettings()
         modelContext.insert(settings)
         return settings
+    }
+
+    // MARK: Sync
+
+    /// Merges records that two devices created for the same thing before they synced.
+    /// Per episode the latest move wins and keeps the earliest first play; per show the earliest
+    /// subscription wins; the most recently changed settings win. The Queue is renumbered 1 to N.
+    public func mergeDuplicates() throws {
+        let allStates = try modelContext.fetch(FetchDescriptor<EpisodeState>())
+        for group in Dictionary(grouping: allStates, by: \.episodeKey).values where group.count > 1 {
+            let keeper = group.max { ($0.movedAt ?? .distantPast) < ($1.movedAt ?? .distantPast) }!
+            keeper.firstPlayedAt = group.compactMap(\.firstPlayedAt).min()
+            for state in group where state !== keeper { modelContext.delete(state) }
+        }
+        let subscriptions = try modelContext.fetch(FetchDescriptor<Subscription>())
+        for group in Dictionary(grouping: subscriptions, by: \.showKey).values where group.count > 1 {
+            let keeper = group.min { $0.subscribedAt < $1.subscribedAt }!
+            for subscription in group where subscription !== keeper { modelContext.delete(subscription) }
+        }
+        let allSettings = try modelContext.fetch(FetchDescriptor<UserSettings>())
+        if let keeper = allSettings.max(by: { $0.updatedAt < $1.updatedAt }) {
+            for settings in allSettings where settings !== keeper { modelContext.delete(settings) }
+        }
+        if modelContext.hasChanges { try modelContext.save() }
+
+        // Ties in position go to the later move.
+        let queued = try states(in: .queue).sorted { a, b in
+            let (pa, pb) = (a.queuePosition ?? .max, b.queuePosition ?? .max)
+            return pa != pb ? pa < pb : (a.movedAt ?? .distantPast) > (b.movedAt ?? .distantPast)
+        }
+        renumber(queued)
+        if modelContext.hasChanges { try modelContext.save() }
+    }
+
+    // MARK: Bookmarks
+
+    @discardableResult
+    public func addBookmark(_ episode: EpisodeInfo, showTitle: String, at position: TimeInterval) throws -> UUID {
+        let bookmark = Bookmark(
+            episodeKey: episode.key.rawValue, position: max(position, 0), showTitle: showTitle,
+            episodeTitle: episode.title, audioURL: episode.audioURL, createdAt: clock()
+        )
+        modelContext.insert(bookmark)
+        try modelContext.save()
+        return bookmark.id
+    }
+
+    public func setNote(_ note: String, for id: UUID) throws {
+        try bookmark(id)?.note = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        try modelContext.save()
+    }
+
+    public func deleteBookmark(_ id: UUID) throws {
+        guard let bookmark = try bookmark(id) else { return }
+        modelContext.delete(bookmark)
+        try modelContext.save()
+    }
+
+    /// Newest first. A non-empty `text` keeps bookmarks whose note, episode title, or show title contains it, ignoring case.
+    public func bookmarks(matching text: String = "") throws -> [BookmarkInfo] {
+        let term = text.trimmingCharacters(in: .whitespaces)
+        return try modelContext.fetch(FetchDescriptor<Bookmark>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)]))
+            .filter { term.isEmpty || [$0.note, $0.episodeTitle, $0.showTitle].contains { $0.localizedStandardContains(term) } }
+            .map { BookmarkInfo(
+                id: $0.id, episodeKey: EpisodeKey(rawValue: $0.episodeKey), position: $0.position, note: $0.note,
+                createdAt: $0.createdAt, showTitle: $0.showTitle, episodeTitle: $0.episodeTitle, audioURL: $0.audioURL
+            ) }
+    }
+
+    private func bookmark(_ id: UUID) throws -> Bookmark? {
+        try modelContext.fetch(FetchDescriptor<Bookmark>(predicate: #Predicate { $0.id == id })).first
     }
 
     // MARK: Feed cache
@@ -412,6 +633,13 @@ public actor Library {
         try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == raw })).first?
             .lastRefreshError = error
         try modelContext.save()
+    }
+
+    /// Every show's title and artwork address, in one fetch, for drawing art in lists.
+    public func showArt() throws -> [ShowKey: ShowArt] {
+        Dictionary(try modelContext.fetch(FetchDescriptor<ShowRecord>()).map {
+            (ShowKey(rawValue: $0.key), ShowArt(title: $0.title, artworkURL: $0.artworkURL))
+        }, uniquingKeysWith: { first, _ in first })
     }
 
     public func show(_ showKey: ShowKey) throws -> ShowInfo? {
