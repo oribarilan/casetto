@@ -337,6 +337,52 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(noteField.waitForNonExistence(timeout: 5))
     }
 
+    /// ATP embeds chapters in its MP3s: the pill appears, the list shows time left, and a chapter jumps.
+    @MainActor
+    func testChapters() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launch()
+
+        app.tabBars.buttons["Shows"].tap()
+        subscribe(to: "https://atp.fm/rss")
+        let show = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Accidental Tech Podcast'")).firstMatch
+        XCTAssertTrue(show.waitForExistence(timeout: 30))
+        show.tap()
+        let episode = app.buttons.matching(identifier: "episode").firstMatch
+        XCTAssertTrue(episode.waitForExistence(timeout: 10))
+        episode.tap()
+        let miniPlayer = app.buttons["miniPlayer"]
+        XCTAssertTrue(miniPlayer.waitForExistence(timeout: 15))
+        miniPlayer.tap()
+
+        let pill = app.buttons["chapterPill"]
+        XCTAssertTrue(pill.waitForExistence(timeout: 30), "no chapter pill")
+        XCTAssertTrue(pill.label.hasPrefix("Chapter 1 of "), pill.label)
+        snapshot("17 Chapter Pill")
+        pill.tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label ENDSWITH 'min left'")).firstMatch.waitForExistence(timeout: 5))
+        snapshot("18 Chapters")
+
+        // Jump to the third chapter: the elapsed time moves to its start.
+        let rows = app.buttons.matching(NSPredicate(format: "label CONTAINS ', starts at '"))
+        let third = rows.element(boundBy: 2)
+        let start = try XCTUnwrap(third.label.components(separatedBy: ", starts at ").last)
+        third.tap()
+        let elapsed = app.staticTexts["elapsed"]
+        XCTAssertTrue(elapsed.waitForExistence(timeout: 5))
+        let atStart = NSPredicate(format: "label == %@ OR label BEGINSWITH %@", start, String(start.dropLast()))
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: atStart, object: elapsed)], timeout: 5), .completed,
+                       "elapsed is \(elapsed.label), chapter starts at \(start)")
+        XCTAssertTrue(pill.label.hasPrefix("Chapter 3 of "), pill.label)
+        sleep(3)
+        snapshot("19 Chapter Pill After Jump")
+        pill.tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label ENDSWITH 'min left'")).firstMatch.waitForExistence(timeout: 5))
+        snapshot("20 Chapters After Jump")
+    }
+
     /// The first follow with + shows a one-time tip on that show's star.
     @MainActor
     func testStarTip() throws {

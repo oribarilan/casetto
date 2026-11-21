@@ -11,7 +11,7 @@ struct NowPlayingView: View {
 
     var body: some View {
         VStack(spacing: 24) {
-            ArtworkView(url: player.show?.artworkURL, title: player.show?.title ?? "", size: 280)
+            artwork
                 .shadow(color: .black.opacity(0.35), radius: 18, y: 12)
 
             VStack(spacing: 4) {
@@ -23,6 +23,8 @@ struct NowPlayingView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("nowPlayingShow")
                     .accessibilityHint("Opens the show page")
+                ChapterPill()
+                    .padding(.top, 6)
             }
 
             scrubber
@@ -62,6 +64,18 @@ struct NowPlayingView: View {
         .sheet(isPresented: $choosingSpeed) { SpeedSheet() }
     }
 
+    /// The playing chapter's picture when the file has one, otherwise the show's art.
+    @ViewBuilder private var artwork: some View {
+        if let data = player.currentChapter?.artwork, let image = UIImage(data: data) {
+            Image(uiImage: image).resizable().scaledToFill()
+                .frame(width: 280, height: 280)
+                .clipShape(.rect(cornerRadius: 280 * 0.23))
+                .accessibilityHidden(true)
+        } else {
+            ArtworkView(url: player.show?.artworkURL, title: player.show?.title ?? "", size: 280)
+        }
+    }
+
     /// The background comes from the artwork's average color, darkened for white text.
     private func loadTint() async {
         guard let url = player.show?.artworkURL,
@@ -89,6 +103,118 @@ struct NowPlayingView: View {
             .font(.caption.monospacedDigit())
             .foregroundStyle(.secondary)
         }
+    }
+}
+
+/// The playing chapter, filling as it plays. Tapping it lists every chapter.
+private struct ChapterPill: View {
+    @Environment(Player.self) private var player
+    @State private var showingList = false
+
+    var body: some View {
+        let progress = player.chapterProgress
+        if let index = progress.current {
+            let chapter = player.chapters[index]
+            Button { showingList = true } label: {
+                HStack(spacing: 4) {
+                    Text(chapter.title).fontWeight(.semibold).lineLimit(1)
+                    Text("· \(index + 1) of \(player.chapters.count)").foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right").font(.caption2.weight(.bold))
+                }
+                .font(.footnote)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background {
+                    ProgressFill(fraction: progress.fractions[index], color: .white.opacity(0.16))
+                        .background(.white.opacity(0.14))
+                        .clipShape(.capsule)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Chapter \(index + 1) of \(player.chapters.count), \(chapter.title)")
+            .accessibilityHint("Shows all chapters")
+            .accessibilityIdentifier("chapterPill")
+            .sheet(isPresented: $showingList) { ChapterList() }
+        }
+    }
+}
+
+/// Every chapter as its own progress bar: played ones full and faint, the playing one partway with its time left.
+private struct ChapterList: View {
+    @Environment(Player.self) private var player
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        let progress = player.chapterProgress
+        NavigationStack {
+            ScrollViewReader { proxy in
+                List(Array(player.chapters.enumerated()), id: \.offset) { index, chapter in
+                    let isPlaying = index == progress.current
+                    let isPlayed = progress.current.map { index < $0 } ?? false
+                    Button {
+                        player.jump(to: chapter)
+                        dismiss()
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "speaker.wave.2.fill")
+                                .foregroundStyle(Color.tangerine)
+                                .opacity(isPlaying ? 1 : 0)
+                            Text(chapter.start.clock).monospacedDigit().foregroundStyle(.secondary)
+                                .frame(width: 64, alignment: .leading)
+                            let alignment: HorizontalAlignment = chapter.title.isRightToLeft ? .trailing : .leading
+                            VStack(alignment: alignment, spacing: 2) {
+                                Text(chapter.title)
+                                    .fontWeight(isPlaying ? .semibold : .regular)
+                                    .foregroundStyle(isPlayed ? .secondary : .primary)
+                                    .multilineTextAlignment(alignment == .trailing ? .trailing : .leading)
+                                if isPlaying, let minutes = progress.minutesLeft {
+                                    Text("\(minutes) min left").font(.caption.weight(.semibold)).foregroundStyle(Color.tangerine)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: Alignment(horizontal: alignment, vertical: .center))
+                        }
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .listRowBackground(ProgressFill(
+                        fraction: progress.fractions[index],
+                        color: isPlaying ? Color.tangerine.opacity(0.25) : .primary.opacity(0.07)
+                    ))
+                    .accessibilityLabel("\(chapter.title), starts at \(chapter.start.clock)")
+                    .accessibilityValue(isPlaying ? "Playing\(progress.minutesLeft.map { ", \($0) min left" } ?? "")" : isPlayed ? "Played" : "")
+                    .id(index)
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                // Keep the chapter before the playing one in view, so the list shows where you came from.
+                .onAppear { if let current = progress.current, current > 1 { proxy.scrollTo(current - 1, anchor: .top) } }
+            }
+            .navigationTitle("Chapters")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationBackground(Color(white: 0.11))
+        .environment(\.colorScheme, .dark)
+    }
+}
+
+/// A fill from the left edge, like the scrubber, whatever the text direction.
+private struct ProgressFill: View {
+    let fraction: Double
+    let color: Color
+
+    var body: some View {
+        Rectangle().fill(color)
+            .scaleEffect(x: fraction, anchor: .leading)
+            .environment(\.layoutDirection, .leftToRight)
+    }
+}
+
+private extension String {
+    /// True when the first letter is Hebrew or Arabic, so the title lines up on the right.
+    var isRightToLeft: Bool {
+        guard let scalar = unicodeScalars.first(where: { CharacterSet.letters.contains($0) }) else { return false }
+        return (0x0590...0x08FF).contains(scalar.value) || (0xFB1D...0xFDFF).contains(scalar.value) || (0xFE70...0xFEFF).contains(scalar.value)
     }
 }
 

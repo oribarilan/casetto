@@ -21,10 +21,7 @@ public struct ShowInfo: Equatable, Sendable {
     /// The feed's description without HTML tags or entities, with runs of whitespace collapsed.
     public var plainSummary: String? {
         guard let summary else { return nil }
-        var text = summary.replacing(/<[^>]+>/, with: " ")
-        for (entity, character) in ["&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": "\"", "&#39;": "'", "&apos;": "'", "&nbsp;": " "] {
-            text = text.replacing(entity, with: character)
-        }
+        var text = HTMLText.decodingEntities(summary.replacing(/<[^>]+>/, with: " "))
         text = text.replacing(/\s+/, with: " ").trimmingCharacters(in: .whitespaces)
         return text.isEmpty ? nil : text
     }

@@ -7,6 +7,7 @@ private final class FakeEngine: AudioEngine {
     var onTime: ((TimeInterval, TimeInterval?) -> Void)?
     var onEnd: (() -> Void)?
     var onFailure: ((any Error) -> Void)?
+    var onChapters: ((URL, [Chapter]) -> Void)?
 
     private(set) var loaded: (url: URL, position: TimeInterval)?
     private(set) var rate: Double?
@@ -78,6 +79,54 @@ struct PlayerTests {
         try await h.library.setGlobalSpeed(PlaybackSpeed(1.5))
         try await h.player.play(h.episodes[0].key)
         #expect(h.engine.rate == 1.5)
+    }
+
+    /// Adds an episode whose show notes list two chapters, and returns it.
+    private func episodeWithNoteChapters(_ h: Harness) async throws -> EpisodeInfo {
+        var feed = try FeedParser.parse(fixture("podcast.xml"))
+        feed.episodes.append(ParsedEpisode(guid: "chapters-1", title: "With chapters", audioURL: URL(string: "https://example.com/ch.mp3")!,
+                                           duration: 3600, description: "<p>0:00 Intro</p><p>10:00 Main topic</p>"))
+        try await h.library.saveFeed(feed, for: show)
+        return try #require(try await h.library.episodes(of: show).first { $0.title == "With chapters" })
+    }
+
+    @Test func showNotesChaptersWhenAnEpisodeStarts() async throws {
+        let h = try await Harness()
+        let episode = try await episodeWithNoteChapters(h)
+        try await h.player.play(episode.key)
+        #expect(h.player.chapters.map(\.title) == ["Intro", "Main topic"])
+        h.engine.onTime?(300, 3600)
+        #expect(h.player.currentChapter?.title == "Intro")
+        h.engine.onTime?(700, 3600)
+        #expect(h.player.currentChapter?.title == "Main topic")
+    }
+
+    @Test func fileChaptersWin() async throws {
+        let h = try await Harness()
+        let episode = try await episodeWithNoteChapters(h)
+        try await h.player.play(episode.key)
+        h.engine.onChapters?(episode.audioURL, [Chapter(start: 0, title: "File A"), Chapter(start: 60, title: "File B")])
+        #expect(h.player.chapters.map(\.title) == ["File A", "File B"])
+    }
+
+    @Test func chaptersFromAPreviousEpisodeAreIgnored() async throws {
+        let h = try await Harness()
+        try await h.player.play(h.episodes[0].key)
+        try await h.player.play(h.episodes[1].key)
+        h.engine.onChapters?(h.episodes[0].audioURL, [Chapter(start: 0, title: "Old A"), Chapter(start: 60, title: "Old B")])
+        #expect(h.player.chapters.isEmpty)
+        #expect(h.player.currentChapter == nil)
+    }
+
+    @Test func jumpKeepsPlayingOrPaused() async throws {
+        let h = try await Harness()
+        let episode = try await episodeWithNoteChapters(h)
+        try await h.player.play(episode.key)
+        h.player.jump(to: h.player.chapters[1])
+        #expect(h.engine.seekedTo == 600 && h.player.isPlaying)
+        try await h.player.pause()
+        h.player.jump(to: h.player.chapters[0])
+        #expect(h.engine.seekedTo == 0 && !h.player.isPlaying)
     }
 
     @Test func pauseSavesProgress() async throws {

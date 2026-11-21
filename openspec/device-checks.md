@@ -35,3 +35,7 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 ## Back a Beat
 
 - [ ] With headphones, pause a talk show mid-sentence about 10 times (Pause button, headphones, lock screen, and once with a phone call) and resume each time. Playback restarts at a pause between phrases, not inside a word, a few seconds back. Do it once on a downloaded episode and once on a streamed one, and once at 1.5x.
+
+## Chapters
+
+- [ ] Play an ATP or Connected episode (chapters in the file), streamed and downloaded: the pill shows the chapter and fills as it plays, the list marks played chapters and shows the time left in the playing one, a tap jumps there, and a chapter with its own picture shows it in place of the show art. Then play a וויקלי סינק episode (chapters from the show notes): the Hebrew titles line up on the right and jumping works.

@@ -8,6 +8,8 @@ public protocol AudioEngine: AnyObject {
     var onTime: ((TimeInterval, TimeInterval?) -> Void)? { get set }
     var onEnd: (() -> Void)? { get set }
     var onFailure: ((any Error) -> Void)? { get set }
+    /// Called with the loaded URL and the chapters embedded in its audio file, when it has any.
+    var onChapters: ((URL, [Chapter]) -> Void)? { get set }
 
     func load(_ url: URL, at position: TimeInterval)
     func play(rate: Double)
@@ -35,6 +37,8 @@ public final class Player {
     public private(set) var position: TimeInterval = 0
     public private(set) var duration: TimeInterval?
     public private(set) var speed: PlaybackSpeed = .normal
+    /// From the audio file, or else from the show notes. Empty when the episode has none.
+    public private(set) var chapters: [Chapter] = []
     public private(set) var sleepTimer: SleepTimer?
     /// When a duration timer pauses playback. Nil with no timer or the end-of-episode timer.
     public private(set) var sleepTimerEndsAt: Date?
@@ -48,6 +52,7 @@ public final class Player {
     private let sleep: @Sendable (Duration) async throws -> Void
     private let localFile: (EpisodeKey, URL) -> URL?
     private var lastSavedPosition: TimeInterval = 0
+    private var loadedURL: URL?
     private var sleepTask: Task<Void, Never>?
     /// Set by a pause; a seek or another episode clears it, which turns off Back a Beat.
     private var pausedInPlace = false
@@ -65,6 +70,10 @@ public final class Player {
         engine.onTime = { [weak self] position, duration in self?.timeChanged(position, duration) }
         engine.onEnd = { [weak self] in Task { await self?.episodeEnded() } }
         engine.onFailure = { [weak self] error in self?.failed(error) }
+        engine.onChapters = { [weak self] url, chapters in
+            guard let self, url == self.loadedURL, !chapters.isEmpty else { return }
+            self.chapters = chapters
+        }
     }
 
     // MARK: Commands
@@ -96,6 +105,19 @@ public final class Player {
 
     public func togglePlayPause() async throws {
         if isPlaying { try await pause() } else { try await resume() }
+    }
+
+    public var chapterProgress: ChapterProgress {
+        ChapterProgress(chapters: chapters, position: position, duration: duration)
+    }
+
+    public var currentChapter: Chapter? {
+        chapterProgress.current.map { chapters[$0] }
+    }
+
+    /// Moves to the chapter's start and keeps playing or paused.
+    public func jump(to chapter: Chapter) {
+        seek(to: chapter.start)
     }
 
     public func skipForward() { seek(to: position + Self.skipForwardSeconds) }
@@ -159,7 +181,10 @@ public final class Player {
         lastSavedPosition = position
         duration = info.duration
         speed = try await library.effectiveSpeed(for: info.showKey)
-        engine.load(localFile(info.key, info.audioURL) ?? info.audioURL, at: position)
+        chapters = ShowNotesChapters.parse(info.summary ?? "", duration: info.duration)
+        let url = localFile(info.key, info.audioURL) ?? info.audioURL
+        loadedURL = url
+        engine.load(url, at: position)
         engine.play(rate: speed.value)
         isPlaying = true
     }

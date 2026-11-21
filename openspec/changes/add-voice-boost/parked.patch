@@ -1,0 +1,837 @@
+diff --git a/Casterr/Playback/AVPlayerEngine.swift b/Casterr/Playback/AVPlayerEngine.swift
+index 987611d..81c8a7a 100644
+--- a/Casterr/Playback/AVPlayerEngine.swift
++++ b/Casterr/Playback/AVPlayerEngine.swift
+@@ -14,8 +14,10 @@ final class AVPlayerEngine: AudioEngine {
+     private var statusObservation: NSKeyValueObservation?
+     private var notificationTasks: [Task<Void, Never>] = []
+     private var playRequest = 0
+-    private var tap: LoudnessTap?
+-    private let log = Logger(subsystem: "com.oribarilan.Casterr", category: "backABeat")
++    private var tap: AudioTap?
++    /// Remembered so each new item's tap starts boosted or not.
++    private var voiceBoost = false
++    private let log = Logger(subsystem: "com.oribarilan.Casterr", category: "audioTap")
+ 
+     init() {
+         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
+@@ -62,9 +64,21 @@ final class AVPlayerEngine: AudioEngine {
+         return readings
+     }
+ 
++    func setVoiceBoost(_ isOn: Bool) {
++        voiceBoost = isOn
++        tap?.setVoiceBoost(isOn)
++        guard isOn else { return }
++        Task { [weak self] in
++            try? await Task.sleep(for: .seconds(3))
++            guard let self, let tap = self.tap else { return }
++            self.log.debug("Voice boost compression \(tap.compressionAmount) dB")
++        }
++    }
++
+     private func attachTap(to item: AVPlayerItem) {
+         guard item === player.currentItem, item.audioMix == nil else { return }
+-        let tap = LoudnessTap()
++        let tap = AudioTap()
++        tap.setVoiceBoost(voiceBoost)
+         self.tap = tap
+         Task {
+             guard let track = try? await item.asset.loadTracks(withMediaType: .audio).first else { return }
+diff --git a/Casterr/Playback/AudioTap.swift b/Casterr/Playback/AudioTap.swift
+new file mode 100644
+index 0000000..a479eda
+--- /dev/null
++++ b/Casterr/Playback/AudioTap.swift
+@@ -0,0 +1,280 @@
++import AudioToolbox
++import AVFoundation
++import CasterrCore
++import MediaToolbox
++import os
++import Synchronization
++
++/// Hears the audio as it plays. It keeps the loudness of the last 8 seconds for Back a Beat and,
++/// while voice boost is on, runs the audio through Apple's dynamics processor after measuring it.
++/// It taps the audio track before the speed change, so its times are media times at any speed.
++/// The tap callbacks run on a real-time audio thread: no allocation, no actors, only the unfair lock and atomics.
++final class AudioTap: Sendable {
++    private static let log = Logger(subsystem: "com.oribarilan.Casterr", category: "audioTap")
++    private let ring = OSAllocatedUnfairLock(initialState: Ring())
++    private let boostOn = Atomic<Bool>(false)
++    /// The dynamics processor's latest compression in dB, as Float bits, for the debug log.
++    private let compression = Atomic<UInt32>(0)
++    private let booster = Booster()
++
++    /// An audio mix that sends `track` through this tap, or nil if the tap can't be made.
++    func audioMix(for track: AVAssetTrack) -> AVAudioMix? {
++        var callbacks = MTAudioProcessingTapCallbacks(
++            version: kMTAudioProcessingTapCallbacksVersion_0,
++            clientInfo: Unmanaged.passRetained(self).toOpaque(),
++            init: { _, clientInfo, storage in storage.pointee = clientInfo },
++            finalize: { tap in Unmanaged<AudioTap>.fromOpaque(MTAudioProcessingTapGetStorage(tap)).release() },
++            prepare: { tap, maxFrames, format in
++                let me = AudioTap.from(tap), format = format.pointee
++                me.ring.withLock { $0.prepare(format) }
++                if !me.booster.prepare(tap, maxFrames: maxFrames, format: format, refCon: Unmanaged.passUnretained(me).toOpaque()) {
++                    AudioTap.log.debug("Voice boost can't process this audio format; it plays unboosted")
++                }
++            },
++            unprepare: { tap in AudioTap.from(tap).booster.unprepare() },
++            process: { tap, frames, _, buffers, framesOut, flagsOut in
++                let me = AudioTap.from(tap)
++                if me.boostOn.load(ordering: .relaxed),
++                   let amount = me.booster.render(frames: frames, into: buffers, framesOut: framesOut, flagsOut: flagsOut) {
++                    me.compression.store(amount.bitPattern, ordering: .relaxed)
++                    return
++                }
++                me.booster.isRunning = false
++                var range = CMTimeRange()
++                guard MTAudioProcessingTapGetSourceAudio(tap, frames, buffers, flagsOut, &range, framesOut) == noErr
++                else { return }
++                me.hear(buffers, frames: Int(framesOut.pointee), at: range.start.seconds)
++            }
++        )
++        var tap: MTAudioProcessingTap?
++        guard MTAudioProcessingTapCreate(nil, &callbacks, kMTAudioProcessingTapCreationFlag_PreEffects, &tap) == noErr,
++              let tap
++        else {
++            Unmanaged.passUnretained(self).release()
++            return nil
++        }
++        let input = AVMutableAudioMixInputParameters(track: track)
++        input.audioTapProcessor = tap
++        let mix = AVMutableAudioMix()
++        mix.inputParameters = [input]
++        return mix
++    }
++
++    func loudness(from start: TimeInterval, to end: TimeInterval) -> [Loudness] {
++        ring.withLock { $0.readings(from: start, to: end) }
++    }
++
++    func setVoiceBoost(_ isOn: Bool) {
++        boostOn.store(isOn, ordering: .relaxed)
++    }
++
++    /// How hard the dynamics processor is working, in dB. Zero when boost is off or hasn't run.
++    var compressionAmount: Float {
++        Float(bitPattern: compression.load(ordering: .relaxed))
++    }
++
++    /// Measures the source audio. Unchecked: the buffer pointer is only used inside the lock, on this thread.
++    fileprivate func hear(_ buffers: UnsafeMutablePointer<AudioBufferList>, frames: Int, at start: TimeInterval) {
++        let list = UnsafeMutableAudioBufferListPointer(buffers)
++        ring.withLockUnchecked { $0.add(list, frames: frames, at: start) }
++    }
++
++    /// The dynamics processor asks for its input here.
++    fileprivate func pullForBooster(frames: UInt32, into buffers: UnsafeMutablePointer<AudioBufferList>) -> OSStatus {
++        booster.pull(self, frames: frames, into: buffers)
++    }
++
++    fileprivate static func from(_ tap: MTAudioProcessingTap) -> AudioTap {
++        Unmanaged<AudioTap>.fromOpaque(MTAudioProcessingTapGetStorage(tap)).takeUnretainedValue()
++    }
++}
++
++/// Voice boost: Apple's dynamics processor with the values the listener approved by ear.
++/// Only the tap's callbacks touch it, and MediaToolbox calls them one at a time, so it needs no lock.
++private final class Booster: @unchecked Sendable {
++    static let settings: [(AudioUnitParameterID, AudioUnitParameterValue)] = [
++        (kDynamicsProcessorParam_Threshold, -38),
++        (kDynamicsProcessorParam_HeadRoom, 3),
++        (kDynamicsProcessorParam_AttackTime, 0.003),
++        (kDynamicsProcessorParam_ReleaseTime, 0.3),
++        (kDynamicsProcessorParam_OverallGain, 24),
++        (kDynamicsProcessorParam_ExpansionRatio, 1),
++    ]
++
++    private var unit: AudioUnit?
++    private var tap: MTAudioProcessingTap?
++    private var sampleTime: Float64 = 0
++    /// False until the unit renders after boost turns on; a fresh start resets the unit's envelope.
++    var isRunning = false
++    /// What the last source pull returned, for the process callback to report.
++    private var pulled: (frames: CMItemCount, flags: MTAudioProcessingTapFlags)?
++
++    /// Sets up the unit for the tap's format. False when the format can't be boosted.
++    func prepare(_ tap: MTAudioProcessingTap, maxFrames: CMItemCount, format: AudioStreamBasicDescription, refCon: UnsafeMutableRawPointer) -> Bool {
++        self.tap = tap
++        guard format.mFormatFlags & kAudioFormatFlagIsFloat != 0, format.mBitsPerChannel == 32 else { return false }
++        var description = AudioComponentDescription(
++            componentType: kAudioUnitType_Effect, componentSubType: kAudioUnitSubType_DynamicsProcessor,
++            componentManufacturer: kAudioUnitManufacturer_Apple, componentFlags: 0, componentFlagsMask: 0)
++        guard let component = AudioComponentFindNext(nil, &description) else { return false }
++        var newUnit: AudioUnit?
++        guard AudioComponentInstanceNew(component, &newUnit) == noErr, let newUnit else { return false }
++        var streamFormat = format
++        var frames = UInt32(maxFrames)
++        var callback = AURenderCallbackStruct(inputProc: pullSource, inputProcRefCon: refCon)
++        let formatSize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
++        let ready = AudioUnitSetProperty(newUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &streamFormat, formatSize) == noErr
++            && AudioUnitSetProperty(newUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, 0, &streamFormat, formatSize) == noErr
++            && AudioUnitSetProperty(newUnit, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &frames, UInt32(MemoryLayout<UInt32>.size)) == noErr
++            && AudioUnitSetProperty(newUnit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &callback, UInt32(MemoryLayout<AURenderCallbackStruct>.size)) == noErr
++            && AudioUnitInitialize(newUnit) == noErr
++        guard ready else {
++            AudioComponentInstanceDispose(newUnit)
++            return false
++        }
++        for (parameter, value) in Self.settings {
++            AudioUnitSetParameter(newUnit, parameter, kAudioUnitScope_Global, 0, value, 0)
++        }
++        unit = newUnit
++        sampleTime = 0
++        isRunning = false
++        return true
++    }
++
++    func unprepare() {
++        if let unit {
++            AudioUnitUninitialize(unit)
++            AudioComponentInstanceDispose(unit)
++        }
++        unit = nil
++        tap = nil
++    }
++
++    /// Renders boosted audio into `buffers`. The unit pulls the source through `pullSource`, which also
++    /// measures it. Returns the compression in dB, or nil when there's no unit, so the caller plays it plain.
++    func render(frames: CMItemCount, into buffers: UnsafeMutablePointer<AudioBufferList>,
++                framesOut: UnsafeMutablePointer<CMItemCount>, flagsOut: UnsafeMutablePointer<MTAudioProcessingTapFlags>) -> Float? {
++        guard let unit else { return nil }
++        if !isRunning {
++            AudioUnitReset(unit, kAudioUnitScope_Global, 0)
++            isRunning = true
++        }
++        var timeStamp = AudioTimeStamp()
++        timeStamp.mFlags = .sampleTimeValid
++        timeStamp.mSampleTime = sampleTime
++        var actionFlags = AudioUnitRenderActionFlags()
++        pulled = nil
++        let status = AudioUnitRender(unit, &actionFlags, &timeStamp, 0, UInt32(frames), buffers)
++        sampleTime += Float64(frames)
++        // Once the source was pulled it can't be pulled again, so report it even if the unit failed.
++        guard let pulled else { return nil }
++        framesOut.pointee = pulled.frames
++        flagsOut.pointee = pulled.flags
++        guard status == noErr else { return 0 }
++        var amount: AudioUnitParameterValue = 0
++        AudioUnitGetParameter(unit, kDynamicsProcessorParam_CompressionAmount, kAudioUnitScope_Global, 0, &amount)
++        return amount
++    }
++
++    /// The unit's input: the tap's source audio, measured for Back a Beat before the unit changes it.
++    fileprivate func pull(_ tapOwner: AudioTap, frames: UInt32, into buffers: UnsafeMutablePointer<AudioBufferList>) -> OSStatus {
++        guard let tap else { return kAudioUnitErr_NoConnection }
++        var range = CMTimeRange()
++        var count: CMItemCount = 0
++        var flags: MTAudioProcessingTapFlags = 0
++        let status = MTAudioProcessingTapGetSourceAudio(tap, CMItemCount(frames), buffers, &flags, &range, &count)
++        guard status == noErr else { return status }
++        pulled = (count, flags)
++        tapOwner.hear(buffers, frames: Int(count), at: range.start.seconds)
++        return noErr
++    }
++}
++
++private let pullSource: AURenderCallback = { refCon, _, _, _, frames, buffers in
++    guard let buffers else { return kAudio_ParamError }
++    let tap = Unmanaged<AudioTap>.fromOpaque(refCon).takeUnretainedValue()
++    return tap.pullForBooster(frames: frames, into: buffers)
++}
++
++/// The last 800 readings (8 seconds), in fixed arrays so the audio thread never allocates.
++private struct Ring {
++    static let capacity = 800
++    private var times = [TimeInterval](repeating: 0, count: capacity)
++    private var levels = [Float](repeating: 0, count: capacity)
++    private var count = 0
++    private var next = 0
++
++    private var sampleRate: Double = 0
++    private var isFloat = false
++    private var isInt16 = false
++    /// The slice being summed: its start time, sum of squares, and frames so far.
++    private var sliceStart: TimeInterval = 0
++    private var sliceSum: Double = 0
++    private var sliceFrames = 0
++    private var expected: TimeInterval = -1
++
++    mutating func prepare(_ format: AudioStreamBasicDescription) {
++        sampleRate = format.mSampleRate
++        isFloat = format.mFormatFlags & kAudioFormatFlagIsFloat != 0 && format.mBitsPerChannel == 32
++        isInt16 = format.mFormatFlags & kAudioFormatFlagIsSignedInteger != 0 && format.mBitsPerChannel == 16
++        count = 0
++        next = 0
++        expected = -1
++    }
++
++    mutating func add(_ list: UnsafeMutableAudioBufferListPointer, frames: Int, at start: TimeInterval) {
++        guard sampleRate > 0, isFloat || isInt16, frames > 0, start.isFinite else { return }
++        if abs(start - expected) > Loudness.slice {
++            // A seek, or a pause that renders the last moment again. Readings are keyed by media time,
++            // so the earlier ones still hold; drop only those at or after the new start.
++            while count > 0, times[(next - 1 + Self.capacity) % Self.capacity] >= start {
++                next = (next - 1 + Self.capacity) % Self.capacity
++                count -= 1
++            }
++            sliceStart = start
++            sliceSum = 0
++            sliceFrames = 0
++        }
++        let perSlice = Int(sampleRate * Loudness.slice)
++        for frame in 0..<frames {
++            var sum: Double = 0
++            var channels = 0
++            for buffer in list {
++                guard let data = buffer.mData else { continue }
++                let width = Int(buffer.mNumberChannels)
++                for channel in 0..<width {
++                    let index = frame * width + channel
++                    let sample = isFloat
++                        ? Double(data.assumingMemoryBound(to: Float.self)[index])
++                        : Double(data.assumingMemoryBound(to: Int16.self)[index]) / Double(Int16.max)
++                    sum += sample * sample
++                }
++                channels += width
++            }
++            guard channels > 0 else { return }
++            sliceSum += sum / Double(channels)
++            sliceFrames += 1
++            if sliceFrames == perSlice {
++                append(Loudness(time: sliceStart, level: Float((sliceSum / Double(sliceFrames)).squareRoot())))
++                sliceStart = start + Double(frame + 1) / sampleRate
++                sliceSum = 0
++                sliceFrames = 0
++            }
++        }
++        expected = start + Double(frames) / sampleRate
++    }
++
++    func readings(from start: TimeInterval, to end: TimeInterval) -> [Loudness] {
++        (0..<count)
++            .map { (next - count + $0 + Self.capacity) % Self.capacity }
++            .map { Loudness(time: times[$0], level: levels[$0]) }
++            .filter { $0.time >= start && $0.time < end }
++    }
++
++    private mutating func append(_ reading: Loudness) {
++        times[next] = reading.time
++        levels[next] = reading.level
++        next = (next + 1) % Self.capacity
++        count = min(count + 1, Self.capacity)
++    }
++}
+diff --git a/Casterr/Playback/LoudnessTap.swift b/Casterr/Playback/LoudnessTap.swift
+deleted file mode 100644
+index f022d18..0000000
+--- a/Casterr/Playback/LoudnessTap.swift
++++ /dev/null
+@@ -1,138 +0,0 @@
+-import AVFoundation
+-import CasterrCore
+-import MediaToolbox
+-import os
+-
+-/// Hears the audio as it plays and keeps the loudness of the last 8 seconds, for Back a Beat.
+-/// It taps the audio track before the speed change, so its times are media times at any speed.
+-/// The tap callbacks run on a real-time audio thread: no allocation, no actors, only the unfair lock.
+-final class LoudnessTap: Sendable {
+-    private let ring = OSAllocatedUnfairLock(initialState: Ring())
+-
+-    /// An audio mix that sends `track` through this tap, or nil if the tap can't be made.
+-    func audioMix(for track: AVAssetTrack) -> AVAudioMix? {
+-        var callbacks = MTAudioProcessingTapCallbacks(
+-            version: kMTAudioProcessingTapCallbacksVersion_0,
+-            clientInfo: Unmanaged.passRetained(self).toOpaque(),
+-            init: { _, clientInfo, storage in storage.pointee = clientInfo },
+-            finalize: { tap in Unmanaged<LoudnessTap>.fromOpaque(MTAudioProcessingTapGetStorage(tap)).release() },
+-            prepare: { tap, _, format in
+-                let format = format.pointee
+-                LoudnessTap.from(tap).ring.withLock { $0.prepare(format) }
+-            },
+-            unprepare: nil,
+-            process: { tap, frames, _, buffers, framesOut, flagsOut in
+-                var range = CMTimeRange()
+-                guard MTAudioProcessingTapGetSourceAudio(tap, frames, buffers, flagsOut, &range, framesOut) == noErr
+-                else { return }
+-                let list = UnsafeMutableAudioBufferListPointer(buffers)
+-                let count = Int(framesOut.pointee), start = range.start.seconds
+-                // Unchecked: the buffer pointer is only used inside the lock, on this thread.
+-                LoudnessTap.from(tap).ring.withLockUnchecked { $0.add(list, frames: count, at: start) }
+-            }
+-        )
+-        var tap: MTAudioProcessingTap?
+-        guard MTAudioProcessingTapCreate(nil, &callbacks, kMTAudioProcessingTapCreationFlag_PreEffects, &tap) == noErr,
+-              let tap
+-        else {
+-            Unmanaged.passUnretained(self).release()
+-            return nil
+-        }
+-        let input = AVMutableAudioMixInputParameters(track: track)
+-        input.audioTapProcessor = tap
+-        let mix = AVMutableAudioMix()
+-        mix.inputParameters = [input]
+-        return mix
+-    }
+-
+-    func loudness(from start: TimeInterval, to end: TimeInterval) -> [Loudness] {
+-        ring.withLock { $0.readings(from: start, to: end) }
+-    }
+-
+-    private static func from(_ tap: MTAudioProcessingTap) -> LoudnessTap {
+-        Unmanaged<LoudnessTap>.fromOpaque(MTAudioProcessingTapGetStorage(tap)).takeUnretainedValue()
+-    }
+-}
+-
+-/// The last 800 readings (8 seconds), in fixed arrays so the audio thread never allocates.
+-private struct Ring {
+-    static let capacity = 800
+-    private var times = [TimeInterval](repeating: 0, count: capacity)
+-    private var levels = [Float](repeating: 0, count: capacity)
+-    private var count = 0
+-    private var next = 0
+-
+-    private var sampleRate: Double = 0
+-    private var isFloat = false
+-    private var isInt16 = false
+-    /// The slice being summed: its start time, sum of squares, and frames so far.
+-    private var sliceStart: TimeInterval = 0
+-    private var sliceSum: Double = 0
+-    private var sliceFrames = 0
+-    private var expected: TimeInterval = -1
+-
+-    mutating func prepare(_ format: AudioStreamBasicDescription) {
+-        sampleRate = format.mSampleRate
+-        isFloat = format.mFormatFlags & kAudioFormatFlagIsFloat != 0 && format.mBitsPerChannel == 32
+-        isInt16 = format.mFormatFlags & kAudioFormatFlagIsSignedInteger != 0 && format.mBitsPerChannel == 16
+-        count = 0
+-        next = 0
+-        expected = -1
+-    }
+-
+-    mutating func add(_ list: UnsafeMutableAudioBufferListPointer, frames: Int, at start: TimeInterval) {
+-        guard sampleRate > 0, isFloat || isInt16, frames > 0, start.isFinite else { return }
+-        if abs(start - expected) > Loudness.slice {
+-            // A seek, or a pause that renders the last moment again. Readings are keyed by media time,
+-            // so the earlier ones still hold; drop only those at or after the new start.
+-            while count > 0, times[(next - 1 + Self.capacity) % Self.capacity] >= start {
+-                next = (next - 1 + Self.capacity) % Self.capacity
+-                count -= 1
+-            }
+-            sliceStart = start
+-            sliceSum = 0
+-            sliceFrames = 0
+-        }
+-        let perSlice = Int(sampleRate * Loudness.slice)
+-        for frame in 0..<frames {
+-            var sum: Double = 0
+-            var channels = 0
+-            for buffer in list {
+-                guard let data = buffer.mData else { continue }
+-                let width = Int(buffer.mNumberChannels)
+-                for channel in 0..<width {
+-                    let index = frame * width + channel
+-                    let sample = isFloat
+-                        ? Double(data.assumingMemoryBound(to: Float.self)[index])
+-                        : Double(data.assumingMemoryBound(to: Int16.self)[index]) / Double(Int16.max)
+-                    sum += sample * sample
+-                }
+-                channels += width
+-            }
+-            guard channels > 0 else { return }
+-            sliceSum += sum / Double(channels)
+-            sliceFrames += 1
+-            if sliceFrames == perSlice {
+-                append(Loudness(time: sliceStart, level: Float((sliceSum / Double(sliceFrames)).squareRoot())))
+-                sliceStart = start + Double(frame + 1) / sampleRate
+-                sliceSum = 0
+-                sliceFrames = 0
+-            }
+-        }
+-        expected = start + Double(frames) / sampleRate
+-    }
+-
+-    func readings(from start: TimeInterval, to end: TimeInterval) -> [Loudness] {
+-        (0..<count)
+-            .map { (next - count + $0 + Self.capacity) % Self.capacity }
+-            .map { Loudness(time: times[$0], level: levels[$0]) }
+-            .filter { $0.time >= start && $0.time < end }
+-    }
+-
+-    private mutating func append(_ reading: Loudness) {
+-        times[next] = reading.time
+-        levels[next] = reading.level
+-        next = (next + 1) % Self.capacity
+-        count = min(count + 1, Self.capacity)
+-    }
+-}
+diff --git a/Casterr/Screens/NowPlayingView.swift b/Casterr/Screens/NowPlayingView.swift
+index 6b02882..16bb568 100644
+--- a/Casterr/Screens/NowPlayingView.swift
++++ b/Casterr/Screens/NowPlayingView.swift
+@@ -44,6 +44,8 @@ struct NowPlayingView: View {
+                 }
+                 .accessibilityIdentifier("speed")
+                 Spacer()
++                VoiceBoostMenu()
++                Spacer()
+                 BookmarkButton().roundControl()
+                 Spacer()
+                 SleepTimerMenu()
+@@ -126,6 +128,59 @@ private struct SleepTimerMenu: View {
+     }
+ }
+ 
++/// A waveform, white while boost is on. The menu sets this show's choice or follows the default from Settings.
++private struct VoiceBoostMenu: View {
++    @Environment(AppModel.self) private var model
++    @Environment(Player.self) private var player
++    /// Nil follows the default.
++    @State private var choice: Bool?
++    @State private var global = false
++
++    var body: some View {
++        Menu {
++            Section("Voice boost: evens out loud and quiet voices") {
++                item("On for this show", isChosen: choice == true) { save(true) }
++                item("Off for this show", isChosen: choice == false) { save(false) }
++                item("Use my default (\(global ? "On" : "Off"))", isChosen: choice == nil) { save(nil) }
++            }
++        } label: {
++            Image(systemName: "waveform").roundControl(on: player.voiceBoost)
++        }
++        .accessibilityIdentifier("voiceBoost")
++        .accessibilityLabel("Voice boost")
++        .accessibilityValue("\(player.voiceBoost ? "On" : "Off"), \(choice == nil ? "your default" : "for this show")")
++        .task(id: "\(player.episode?.showKey.rawValue ?? "")\(model.revision)") { await load() }
++    }
++
++    @ViewBuilder private func item(_ title: String, isChosen: Bool, action: @escaping () -> Void) -> some View {
++        if isChosen {
++            Button(title, systemImage: "checkmark", action: action)
++        } else {
++            Button(title, action: action)
++        }
++    }
++
++    private func load() async {
++        global = (try? await model.library.globalVoiceBoost()) ?? false
++        if let show = player.episode?.showKey {
++            choice = try? await model.library.voiceBoostOverride(show)
++        }
++    }
++
++    /// Applies right away, so there's no Done button.
++    private func save(_ isOn: Bool?) {
++        guard isOn != choice, let show = player.episode?.showKey else { return }
++        choice = isOn
++        let library = model.library
++        Task {
++            await model.change {
++                try await library.setVoiceBoostOverride(show, to: isOn)
++                try await player.reloadVoiceBoost()
++            }
++        }
++    }
++}
++
+ /// Sets this show's speed. "Use my default" follows the default speed from Settings.
+ private struct SpeedSheet: View {
+     @Environment(AppModel.self) private var model
+diff --git a/Casterr/Screens/SettingsView.swift b/Casterr/Screens/SettingsView.swift
+index 76bdf1e..9205a70 100644
+--- a/Casterr/Screens/SettingsView.swift
++++ b/Casterr/Screens/SettingsView.swift
+@@ -7,7 +7,7 @@ enum SettingsSection: Hashable {
+ }
+ 
+ /// Global defaults only: how long episodes wait in the Inbox, how many Queue episodes stay downloaded,
+-/// and the default speed. Per-show settings live on the show page and in Now Playing.
++/// the default speed, and voice boost. Per-show settings live on the show page and in Now Playing.
+ struct SettingsView: View {
+     @Environment(AppModel.self) private var model
+     @Environment(Player.self) private var player
+@@ -16,6 +16,7 @@ struct SettingsView: View {
+     @State private var expiry: InboxExpiry = .standard
+     @State private var downloads = 3
+     @State private var speed = 1.0
++    @State private var voiceBoost = false
+     @State private var highlighted: SettingsSection?
+ 
+     var body: some View {
+@@ -73,10 +74,21 @@ struct SettingsView: View {
+                         }
+                     }
+                     .listRowBackground(rowBackground(.playback))
++                    Toggle("Voice boost", isOn: Binding(get: { voiceBoost }, set: { isOn in
++                        voiceBoost = isOn
++                        Task {
++                            await model.change {
++                                try await model.library.setGlobalVoiceBoost(isOn)
++                                try await player.reloadVoiceBoost()
++                            }
++                        }
++                    }))
++                    .accessibilityIdentifier("voiceBoostDefault")
++                    .listRowBackground(rowBackground(.playback))
+                 } header: {
+                     Text("Playback")
+                 } footer: {
+-                    Text("A show can have its own speed from Now Playing.")
++                    Text("Voice boost evens out loud and quiet voices. A show can have its own speed and voice boost from Now Playing.")
+                 }
+                 .id(SettingsSection.playback)
+             }
+@@ -101,5 +113,6 @@ struct SettingsView: View {
+         expiry = (try? await model.library.globalExpiry()) ?? .standard
+         downloads = (try? await model.library.downloadCount()) ?? 3
+         speed = ((try? await model.library.globalSpeed())?.value ?? 1.0)
++        voiceBoost = (try? await model.library.globalVoiceBoost()) ?? false
+     }
+ }
+diff --git a/CasterrCore/Sources/CasterrCore/Player/Player.swift b/CasterrCore/Sources/CasterrCore/Player/Player.swift
+index c03ef62..9d017e1 100644
+--- a/CasterrCore/Sources/CasterrCore/Player/Player.swift
++++ b/CasterrCore/Sources/CasterrCore/Player/Player.swift
+@@ -15,6 +15,8 @@ public protocol AudioEngine: AnyObject {
+     func seek(to position: TimeInterval)
+     /// What the engine heard between two media times, oldest first. Empty when it has nothing.
+     func loudness(from start: TimeInterval, to end: TimeInterval) -> [Loudness]
++    /// Evens out loud and quiet voices from now on, including in episodes loaded later.
++    func setVoiceBoost(_ isOn: Bool)
+ }
+ 
+ public enum SleepTimer: Equatable, Sendable {
+@@ -35,6 +37,7 @@ public final class Player {
+     public private(set) var position: TimeInterval = 0
+     public private(set) var duration: TimeInterval?
+     public private(set) var speed: PlaybackSpeed = .normal
++    public private(set) var voiceBoost = false
+     public private(set) var sleepTimer: SleepTimer?
+     /// When a duration timer pauses playback. Nil with no timer or the end-of-episode timer.
+     public private(set) var sleepTimerEndsAt: Date?
+@@ -126,6 +129,17 @@ public final class Player {
+         setSpeed(try await library.effectiveSpeed(for: episode.showKey))
+     }
+ 
++    /// Re-reads the effective voice boost after the global setting or a show's choice changed.
++    public func reloadVoiceBoost() async throws {
++        guard let episode else { return }
++        setVoiceBoost(try await library.effectiveVoiceBoost(for: episode.showKey))
++    }
++
++    private func setVoiceBoost(_ isOn: Bool) {
++        voiceBoost = isOn
++        engine.setVoiceBoost(isOn)
++    }
++
+     /// Saves the current position. The app also calls this on interruption and when going to the background.
+     public func saveProgress() async throws {
+         guard let episode else { return }
+@@ -159,6 +173,7 @@ public final class Player {
+         lastSavedPosition = position
+         duration = info.duration
+         speed = try await library.effectiveSpeed(for: info.showKey)
++        setVoiceBoost(try await library.effectiveVoiceBoost(for: info.showKey))
+         engine.load(localFile(info.key, info.audioURL) ?? info.audioURL, at: position)
+         engine.play(rate: speed.value)
+         isPlaying = true
+diff --git a/CasterrCore/Sources/CasterrCore/Storage/Library.swift b/CasterrCore/Sources/CasterrCore/Storage/Library.swift
+index b5fa2aa..d81e771 100644
+--- a/CasterrCore/Sources/CasterrCore/Storage/Library.swift
++++ b/CasterrCore/Sources/CasterrCore/Storage/Library.swift
+@@ -170,6 +170,16 @@ public actor Library {
+         try modelContext.save()
+     }
+ 
++    /// Nil when the show follows the global voice boost setting.
++    public func voiceBoostOverride(_ showKey: ShowKey) throws -> Bool? {
++        try subscription(showKey)?.voiceBoostOverride
++    }
++
++    public func setVoiceBoostOverride(_ showKey: ShowKey, to isOn: Bool?) throws {
++        try subscription(showKey)?.voiceBoostOverride = isOn
++        try modelContext.save()
++    }
++
+     public func setLevel(_ showKey: ShowKey, to level: TriageLevel) throws {
+         try subscription(showKey)?.level = level.rawValue
+         try modelContext.save()
+@@ -488,6 +498,18 @@ public actor Library {
+         )
+     }
+ 
++    public func globalVoiceBoost() throws -> Bool {
++        try settings().voiceBoost
++    }
++
++    public func setGlobalVoiceBoost(_ isOn: Bool) throws {
++        try changeSettings { $0.voiceBoost = isOn }
++    }
++
++    public func effectiveVoiceBoost(for showKey: ShowKey) throws -> Bool {
++        try voiceBoostOverride(showKey) ?? globalVoiceBoost()
++    }
++
+     public func globalExpiry() throws -> InboxExpiry {
+         InboxExpiry(storedDays: try settings().expiryDays)
+     }
+diff --git a/CasterrCore/Sources/CasterrCore/Storage/Models.swift b/CasterrCore/Sources/CasterrCore/Storage/Models.swift
+index c7002e7..af062ce 100644
+--- a/CasterrCore/Sources/CasterrCore/Storage/Models.swift
++++ b/CasterrCore/Sources/CasterrCore/Storage/Models.swift
+@@ -44,6 +44,8 @@ import SwiftData
+     var showKey: String = ""
+     var feedURL: URL?
+     var speedOverride: Double?
++    /// Nil follows the global voice boost setting.
++    var voiceBoostOverride: Bool?
+     var subscribedAt: Date = Date.distantPast
+     var level: String = TriageLevel.inbox.rawValue
+     /// Days, with 0 for never. Nil follows the global setting.
+@@ -79,6 +81,7 @@ import SwiftData
+ 
+ @Model final class UserSettings {
+     var speed: Double = 1.0
++    var voiceBoost: Bool = false
+     /// Days, with 0 for never.
+     var expiryDays: Int = 14
+     /// How many Queue episodes to keep downloaded, with 0 for Off.
+diff --git a/CasterrCore/Tests/CasterrCoreTests/PlayerTests.swift b/CasterrCore/Tests/CasterrCoreTests/PlayerTests.swift
+index 72ec595..0dd72c4 100644
+--- a/CasterrCore/Tests/CasterrCoreTests/PlayerTests.swift
++++ b/CasterrCore/Tests/CasterrCoreTests/PlayerTests.swift
+@@ -12,6 +12,7 @@ private final class FakeEngine: AudioEngine {
+     private(set) var rate: Double?
+     private(set) var seekedTo: TimeInterval?
+     var heard: [Loudness] = []
++    private(set) var voiceBoost = false
+ 
+     func load(_ url: URL, at position: TimeInterval) { loaded = (url, position) }
+     func play(rate: Double) { self.rate = rate }
+@@ -20,6 +21,7 @@ private final class FakeEngine: AudioEngine {
+     func loudness(from start: TimeInterval, to end: TimeInterval) -> [Loudness] {
+         heard.filter { $0.time >= start && $0.time < end }
+     }
++    func setVoiceBoost(_ isOn: Bool) { voiceBoost = isOn }
+ }
+ 
+ private let show = ShowKey(feedURL: URL(string: "https://example.com/feed")!)!
+@@ -80,6 +82,37 @@ struct PlayerTests {
+         #expect(h.engine.rate == 1.5)
+     }
+ 
++    @Test func newEpisodeGetsItsShowsVoiceBoost() async throws {
++        let h = try await Harness()
++        try await h.library.setGlobalVoiceBoost(true)
++        try await h.player.play(h.episodes[0].key)
++        #expect(h.player.voiceBoost && h.engine.voiceBoost)
++    }
++
++    @Test func voiceBoostChangeReachesThePlayingEpisode() async throws {
++        let h = try await Harness()
++        try await h.player.play(h.episodes[0].key)
++        #expect(!h.engine.voiceBoost)
++        try await h.library.setVoiceBoostOverride(show, to: true)
++        try await h.player.reloadVoiceBoost()
++        #expect(h.player.voiceBoost && h.engine.voiceBoost)
++        #expect(h.player.isPlaying)
++    }
++
++    @Test func anotherShowsEpisodeGetsItsOwnVoiceBoost() async throws {
++        let h = try await Harness()
++        let other = ShowKey(feedURL: URL(string: "https://example.com/other")!)!
++        try await h.library.addSubscription(other, feedURL: URL(string: "https://example.com/other")!)
++        try await h.library.saveFeed(try FeedParser.parse(fixture("podcast.xml")), for: other)
++        let otherEpisode = try #require(try await h.library.episodes(of: other).first)
++        try await h.library.setVoiceBoostOverride(show, to: true)
++
++        try await h.player.play(h.episodes[0].key)
++        #expect(h.engine.voiceBoost)
++        try await h.player.play(otherEpisode.key)
++        #expect(!h.player.voiceBoost && !h.engine.voiceBoost)
++    }
++
+     @Test func pauseSavesProgress() async throws {
+         let h = try await Harness()
+         try await h.player.play(h.episodes[0].key)
+diff --git a/CasterrCore/Tests/CasterrCoreTests/StorageTests.swift b/CasterrCore/Tests/CasterrCoreTests/StorageTests.swift
+index fdb3753..b33d8e8 100644
+--- a/CasterrCore/Tests/CasterrCoreTests/StorageTests.swift
++++ b/CasterrCore/Tests/CasterrCoreTests/StorageTests.swift
+@@ -145,6 +145,33 @@ struct SettingsStoreTests {
+         #expect(try await library.speedOverride(show) == nil)
+         #expect(try await library.effectiveSpeed(for: show) == PlaybackSpeed(1.5))
+     }
++
++    @Test func voiceBoostIsOffByDefault() async throws {
++        let library = try Library.open(inMemory: true)
++        try await library.addSubscription(show, feedURL: feedURL)
++        #expect(try await library.globalVoiceBoost() == false)
++        #expect(try await library.effectiveVoiceBoost(for: show) == false)
++    }
++
++    @Test func showsFollowTheVoiceBoostDefaultUnlessTheyChoose() async throws {
++        let library = try Library.open(inMemory: true)
++        try await library.addSubscription(show, feedURL: feedURL)
++        try await library.setGlobalVoiceBoost(true)
++        #expect(try await library.voiceBoostOverride(show) == nil)
++        #expect(try await library.effectiveVoiceBoost(for: show) == true)
++
++        try await library.setVoiceBoostOverride(show, to: false)
++        #expect(try await library.voiceBoostOverride(show) == false)
++        #expect(try await library.effectiveVoiceBoost(for: show) == false)
++
++        try await library.setGlobalVoiceBoost(false)
++        try await library.setVoiceBoostOverride(show, to: true)
++        #expect(try await library.effectiveVoiceBoost(for: show) == true)
++
++        try await library.setVoiceBoostOverride(show, to: nil)
++        #expect(try await library.voiceBoostOverride(show) == nil)
++        #expect(try await library.effectiveVoiceBoost(for: show) == false)
++    }
+ }
+ 
+ struct FeedCacheStoreTests {
+diff --git a/CasterrUITests/SmokeTests.swift b/CasterrUITests/SmokeTests.swift
+index d5d0c41..cfa1b46 100644
+--- a/CasterrUITests/SmokeTests.swift
++++ b/CasterrUITests/SmokeTests.swift
+@@ -53,9 +53,34 @@ final class SmokeTests: XCTestCase {
+         expectation(for: NSPredicate(format: "label != %@", atTwo), evaluatedWith: elapsed)
+         waitForExpectations(timeout: 15)
+ 
++        // Voice boost for this show applies right away, then follows the default again.
++        let boost = app.buttons["voiceBoost"]
++        XCTAssertEqual(boost.value as? String, "Off, your default")
++        boost.tap()
++        app.buttons["On for this show"].tap()
++        let onForShow = NSPredicate(format: "value == 'On, for this show'")
++        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: onForShow, object: boost)], timeout: 5), .completed,
++                       "voice boost says \(boost.value ?? "nil")")
++        boost.tap()
++        app.buttons["Use my default (Off)"].tap()
++        let followsDefault = NSPredicate(format: "value == 'Off, your default'")
++        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: followsDefault, object: boost)], timeout: 5), .completed,
++                       "voice boost says \(boost.value ?? "nil")")
++
+         // The played episode is playing at the top of the Queue.
+         app.swipeDown(velocity: .fast)
+         app.tabBars.buttons["Queue"].tap()
+         XCTAssertTrue(app.staticTexts["Playing"].waitForExistence(timeout: 10))
++
++        // Turning voice boost on in Settings reaches a show that follows the default.
++        app.navigationBars.buttons["Settings"].tap()
++        let boostDefault = app.switches["voiceBoostDefault"]
++        XCTAssertTrue(boostDefault.waitForExistence(timeout: 5))
++        boostDefault.switches.firstMatch.tap()
++        app.navigationBars.buttons.element(boundBy: 0).tap()
++        app.buttons["miniPlayer"].tap()
++        let boostOnByDefault = NSPredicate(format: "value == 'On, your default'")
++        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: boostOnByDefault, object: boost)], timeout: 5), .completed,
++                       "voice boost says \(boost.value ?? "nil")")
+     }
+ }

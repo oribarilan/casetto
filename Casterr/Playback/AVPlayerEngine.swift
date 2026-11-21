@@ -8,6 +8,7 @@ final class AVPlayerEngine: AudioEngine {
     var onTime: ((TimeInterval, TimeInterval?) -> Void)?
     var onEnd: (() -> Void)?
     var onFailure: ((any Error) -> Void)?
+    var onChapters: ((URL, [Chapter]) -> Void)?
 
     private let player = AVPlayer()
     private var timeObserver: Any?
@@ -16,6 +17,7 @@ final class AVPlayerEngine: AudioEngine {
     private var playRequest = 0
     private var tap: LoudnessTap?
     private let log = Logger(subsystem: "com.oribarilan.Casterr", category: "backABeat")
+    private let chapterLog = Logger(subsystem: "com.oribarilan.Casterr", category: "chapters")
 
     init() {
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
@@ -72,6 +74,27 @@ final class AVPlayerEngine: AudioEngine {
         }
     }
 
+    /// Reads the chapters embedded in the file. AVFoundation returns MP3 chapters only for the locale
+    /// it reports (often "und"), not for a preferred language.
+    private func loadChapters(of item: AVPlayerItem) {
+        guard item === player.currentItem, let asset = item.asset as? AVURLAsset else { return }
+        let url = asset.url
+        Task {
+            guard let locale = try? await asset.load(.availableChapterLocales).first,
+                  let groups = try? await asset.loadChapterMetadataGroups(withTitleLocale: locale, containingItemsWithCommonKeys: [.commonKeyArtwork])
+            else { return }
+            var chapters: [Chapter] = []
+            for (index, group) in groups.enumerated() {
+                let title = try? await AVMetadataItem.metadataItems(from: group.items, filteredByIdentifier: .commonIdentifierTitle).first?.load(.stringValue)
+                let artwork = try? await AVMetadataItem.metadataItems(from: group.items, filteredByIdentifier: .commonIdentifierArtwork).first?.load(.dataValue)
+                chapters.append(Chapter(start: group.timeRange.start.seconds, title: title ?? "Chapter \(index + 1)", artwork: artwork))
+            }
+            chapterLog.debug("The file has \(chapters.count) chapters, \(chapters.filter { $0.artwork != nil }.count) with pictures")
+            guard item === player.currentItem, !chapters.isEmpty else { return }
+            onChapters?(url, chapters)
+        }
+    }
+
     private func reportTime(_ time: CMTime) {
         guard let item = player.currentItem else { return }
         let duration = item.duration.isNumeric ? item.duration.seconds : nil
@@ -82,7 +105,10 @@ final class AVPlayerEngine: AudioEngine {
         notificationTasks.forEach { $0.cancel() }
         statusObservation = item.observe(\.status) { [weak self] item, _ in
             if item.status == .readyToPlay {
-                Task { @MainActor in self?.attachTap(to: item) }
+                Task { @MainActor in
+                    self?.attachTap(to: item)
+                    self?.loadChapters(of: item)
+                }
                 return
             }
             guard item.status == .failed else { return }

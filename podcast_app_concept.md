@@ -76,6 +76,7 @@ One word per idea, in everything people read in the app:
 - Playback speed from 1x to 2x with natural-sounding pitch. It has a global default, and each show can override it.
 - Skip forward is 30 seconds and skip back is 15, the same on every show. They are not configurable for now.
 - **Back a Beat:** when you play again after a pause, Casterr resumes at the latest quiet gap between 5 and 2 seconds before where you paused, so you hear the end of the thought. With no gap it resumes where you paused. It works for streamed and downloaded episodes and has no setting.
+- **Chapters:** from the audio file, or else from a timestamp list in the show notes. A pill under the show name in Now Playing shows the current chapter and fills as it plays; tapping it lists every chapter as its own progress bar, with the time left in the playing one, and a tap jumps there. A chapter's own picture replaces the artwork while it plays. The lock screen keeps skipping 30 and 15 seconds.
 - An episode counts as played when fewer than 60 seconds remain, or when you mark it played.
 
 ## Capture
@@ -132,7 +133,7 @@ Each milestone is one OpenSpec change.
 
 Then Casterr becomes my daily driver, and TestFlight follows.
 
-**After the MVP:** listening sessions ("I have 25 minutes"), skip silences, voice boost, topic-aware learning with Apple's on-device model, chapters and transcripts, CarPlay, Apple Watch.
+**After the MVP:** listening sessions ("I have 25 minutes"), skip silences, voice boost, topic-aware learning with Apple's on-device model, transcripts, CarPlay, Apple Watch. Parked work is in `BACKLOG.md`.
 
 ## Open questions
 
