@@ -16,6 +16,8 @@ final class AVPlayerEngine: AudioEngine {
     private var notificationTasks: [Task<Void, Never>] = []
     private var playRequest = 0
     private var tap: LoudnessTap?
+    /// Remembered so each new item's tap knows how much of the episode each played frame covers.
+    private var rate = 1.0
     private let log = Logger(subsystem: "com.oribarilan.Casterr", category: "backABeat")
     private let chapterLog = Logger(subsystem: "com.oribarilan.Casterr", category: "chapters")
 
@@ -38,6 +40,8 @@ final class AVPlayerEngine: AudioEngine {
 
     /// Activates the audio session off the main thread, then plays, unless a newer play or pause came first.
     func play(rate: Double) {
+        self.rate = rate
+        tap?.setRate(rate)
         playRequest += 1
         let request = playRequest
         Task {
@@ -67,6 +71,7 @@ final class AVPlayerEngine: AudioEngine {
     private func attachTap(to item: AVPlayerItem) {
         guard item === player.currentItem, item.audioMix == nil else { return }
         let tap = LoudnessTap()
+        tap.setRate(rate)
         self.tap = tap
         Task {
             guard let track = try? await item.asset.loadTracks(withMediaType: .audio).first else { return }

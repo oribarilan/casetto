@@ -2,12 +2,17 @@ import AVFoundation
 import CasterrCore
 import MediaToolbox
 import os
+import Synchronization
 
 /// Hears the audio as it plays and keeps the loudness of the last 8 seconds, for Back a Beat.
-/// It taps the audio track before the speed change, so its times are media times at any speed.
+/// It taps the audio after the speed change: with the tap before it, Apple's player could freeze its clock
+/// when the speed changed. `setRate` keeps the readings' times in episode time at any speed.
 /// The tap callbacks run on a real-time audio thread: no allocation, no actors, only the unfair lock.
 final class LoudnessTap: Sendable {
     private let ring = OSAllocatedUnfairLock(initialState: Ring())
+    /// The playback speed, as Double bits. The tap hears audio after the speed change, so one played
+    /// frame covers `rate` frames of the episode.
+    private let rate = Atomic<UInt64>(1.0.bitPattern)
 
     /// An audio mix that sends `track` through this tap, or nil if the tap can't be made.
     func audioMix(for track: AVAssetTrack) -> AVAudioMix? {
@@ -28,11 +33,13 @@ final class LoudnessTap: Sendable {
                 let list = UnsafeMutableAudioBufferListPointer(buffers)
                 let count = Int(framesOut.pointee), start = range.start.seconds
                 // Unchecked: the buffer pointer is only used inside the lock, on this thread.
-                LoudnessTap.from(tap).ring.withLockUnchecked { $0.add(list, frames: count, at: start) }
+                let me = LoudnessTap.from(tap)
+                let rate = Double(bitPattern: me.rate.load(ordering: .relaxed))
+                me.ring.withLockUnchecked { $0.add(list, frames: count, at: start, rate: rate) }
             }
         )
         var tap: MTAudioProcessingTap?
-        guard MTAudioProcessingTapCreate(nil, &callbacks, kMTAudioProcessingTapCreationFlag_PreEffects, &tap) == noErr,
+        guard MTAudioProcessingTapCreate(nil, &callbacks, kMTAudioProcessingTapCreationFlag_PostEffects, &tap) == noErr,
               let tap
         else {
             Unmanaged.passUnretained(self).release()
@@ -43,6 +50,10 @@ final class LoudnessTap: Sendable {
         let mix = AVMutableAudioMix()
         mix.inputParameters = [input]
         return mix
+    }
+
+    func setRate(_ newRate: Double) {
+        rate.store(newRate.bitPattern, ordering: .relaxed)
     }
 
     func loudness(from start: TimeInterval, to end: TimeInterval) -> [Loudness] {
@@ -80,8 +91,9 @@ private struct Ring {
         expected = -1
     }
 
-    mutating func add(_ list: UnsafeMutableAudioBufferListPointer, frames: Int, at start: TimeInterval) {
-        guard sampleRate > 0, isFloat || isInt16, frames > 0, start.isFinite else { return }
+    /// Measures played audio that starts at episode time `start` and plays at `rate`.
+    mutating func add(_ list: UnsafeMutableAudioBufferListPointer, frames: Int, at start: TimeInterval, rate: Double) {
+        guard sampleRate > 0, rate > 0, isFloat || isInt16, frames > 0, start.isFinite else { return }
         if abs(start - expected) > Loudness.slice {
             // A seek, or a pause that renders the last moment again. Readings are keyed by media time,
             // so the earlier ones still hold; drop only those at or after the new start.
@@ -93,7 +105,7 @@ private struct Ring {
             sliceSum = 0
             sliceFrames = 0
         }
-        let perSlice = Int(sampleRate * Loudness.slice)
+        let perSlice = max(Int((sampleRate * Loudness.slice / rate).rounded()), 1)
         for frame in 0..<frames {
             var sum: Double = 0
             var channels = 0
@@ -114,12 +126,12 @@ private struct Ring {
             sliceFrames += 1
             if sliceFrames == perSlice {
                 append(Loudness(time: sliceStart, level: Float((sliceSum / Double(sliceFrames)).squareRoot())))
-                sliceStart = start + Double(frame + 1) / sampleRate
+                sliceStart = start + Double(frame + 1) * rate / sampleRate
                 sliceSum = 0
                 sliceFrames = 0
             }
         }
-        expected = start + Double(frames) / sampleRate
+        expected = start + Double(frames) * rate / sampleRate
     }
 
     func readings(from start: TimeInterval, to end: TimeInterval) -> [Loudness] {

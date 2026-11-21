@@ -35,6 +35,7 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 ## Back a Beat
 
 - [ ] With headphones, pause a talk show mid-sentence about 10 times (Pause button, headphones, lock screen, and once with a phone call) and resume each time. Playback restarts at a pause between phrases, not inside a word, a few seconds back. Do it once on a downloaded episode and once on a streamed one, and once at 1.5x.
+- [ ] At 2x, pause mid-sentence and resume a few times: Back a Beat still restarts between phrases. Then drag the speed slider from 1.0x to 2.0x and back while playing: the elapsed time keeps moving and never freezes.
 
 ## Chapters
 

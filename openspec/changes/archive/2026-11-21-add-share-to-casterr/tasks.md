@@ -9,7 +9,7 @@
 
 ## 2. Extension and pickup
 
-- [ ] 2.1 Add the App Group to the simulator entitlements, a new device entitlements file with only the App Group, and the `CasterrShare` extension target with its own entitlements in `project.yml`; verify the app and extension build for the simulator and a device build signs with automatic provisioning
+- [x] 2.1 Add the App Group to the simulator entitlements, a new device entitlements file with only the App Group, and the `CasterrShare` extension target with its own entitlements in `project.yml`; verify the app and extension build for the simulator and a device build signs with automatic provisioning (simulator verified; the device build needs an Apple account in Xcode, so that check moved to `openspec/device-checks.md`)
 - [x] 2.2 Build the extension: accept the first audio file or an Apple Podcasts link, copy or resolve it, write the drop folder note last, post the Darwin notification, and show the confirmation card with the five messages (checking a file plays and reading its title tag); verify in the simulator by sharing an MP3 and an Ogg Opus voice note from Files and an Apple Podcasts link from Safari, and checking the drop folder contents and the card
 - [x] 2.3 Build `SharedInbox` and `SharedStore` in the app: pick up on becoming active and on the notification, copy files into `Application Support/Shared`, read title and duration, render Cassy as the built-in show's art, queue them, and resolve `casterr-shared:` URLs for the player; skip non-http URLs in `Downloader`; verify with a UI test that uses a `-uiTesting` hook to place a fixture file in the drop folder, then sees it first in the Queue with its tag title, and plays it
 
