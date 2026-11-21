@@ -51,6 +51,25 @@ public struct FeedService: Sendable {
         return .subscribed(key)
     }
 
+    /// Plays next the episode an Apple Podcasts link pointed to: the one the listener already has with the same GUID,
+    /// or else the one in its feed, saved without subscribing. Nil when the feed doesn't have it; nothing changes then.
+    public func playNext(_ found: DirectoryEpisode) async throws -> EpisodeKey? {
+        if let guid = found.guid, let existing = try await library.episodeKey(withGUID: guid) {
+            try await library.playNext(existing)
+            return existing
+        }
+        guard let showKey = ShowKey(feedURL: found.feedURL) else { return nil }
+        let feed = try await fetchAndParse(found.feedURL)
+        guard let episode = feed.episodes.first(where: { found.guid != nil && $0.guid == found.guid })
+                ?? feed.episodes.first(where: { found.audioURL != nil && $0.audioURL == found.audioURL })
+        else { return nil }
+        try await library.saveFeed(feed, for: showKey)
+        if try await !library.isSubscribed(showKey) { try await library.setFeedURL(found.feedURL, for: showKey) }
+        let key = EpisodeKey(show: showKey, guid: episode.guid, audioURL: episode.audioURL)
+        try await library.playNext(key)
+        return key
+    }
+
     /// Subscribes to every feed in the file. One bad feed doesn't stop the others.
     public func importOPML(_ data: Data) async throws -> OPMLImportReport {
         let opml = try OPMLParser.parse(data)

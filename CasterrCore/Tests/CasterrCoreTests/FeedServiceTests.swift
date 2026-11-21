@@ -238,3 +238,42 @@ struct TriageFlowTests {
         #expect(try await library.place(of: episode("tape-hiss-3")) == .archive(.unsubscribed))
     }
 }
+
+struct SharedLinkTests {
+    let otherAddress = URL(string: "https://cdn.example.com/rss/public")!
+
+    @Test func reusesTheEpisodeYouAlreadyHave() async throws {
+        let (service, library) = try makeService()
+        _ = try await service.subscribe(to: URL(string: "https://example.com/feed.xml")!)
+        let found = DirectoryEpisode(title: "Side B", feedURL: otherAddress, guid: "tape-hiss-2", audioURL: nil)
+        let key = try await service.playNext(found)
+        let followed = try #require(ShowKey(feedURL: URL(string: "https://example.com/feed.xml")!))
+        #expect(key?.rawValue.hasPrefix(followed.rawValue) == true)
+        #expect(try await library.playableQueue().contains(try #require(key)))
+        #expect(try await library.show(try #require(ShowKey(feedURL: otherAddress))) == nil)
+    }
+
+    @Test func savesAShowYouDoNotFollowWithoutSubscribing() async throws {
+        let (service, library) = try makeService()
+        let found = DirectoryEpisode(title: "Side C", feedURL: otherAddress, guid: "tape-hiss-3", audioURL: nil)
+        let key = try #require(try await service.playNext(found))
+        let showKey = try #require(ShowKey(feedURL: otherAddress))
+        #expect(try await library.playableQueue() == [key])
+        #expect(try await library.subscriptions().isEmpty)
+        #expect(try await library.cachedFeedURL(of: showKey) == otherAddress)
+    }
+
+    @Test func matchesByAudioAddressWithoutAGUID() async throws {
+        let (service, _) = try makeService()
+        let found = DirectoryEpisode(title: "Side C", feedURL: otherAddress, guid: nil, audioURL: URL(string: "https://example.com/tape-hiss/3.mp3")!)
+        #expect(try await service.playNext(found) != nil)
+    }
+
+    @Test func anEpisodeNotInTheFeedChangesNothing() async throws {
+        let (service, library) = try makeService()
+        let found = DirectoryEpisode(title: "Gone", feedURL: otherAddress, guid: "not-there", audioURL: nil)
+        #expect(try await service.playNext(found) == nil)
+        #expect(try await library.queue().isEmpty)
+        #expect(try await library.show(try #require(ShowKey(feedURL: otherAddress))) == nil)
+    }
+}

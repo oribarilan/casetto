@@ -340,6 +340,31 @@ public actor Library {
         try states(in: .queue).map { EpisodeKey(rawValue: $0.episodeKey) }
     }
 
+    /// The Queue as this device can show and play it: a shared file or an unfollowed show's episode
+    /// queued on another device has no record here, so it's skipped and the others keep their order.
+    public func playableQueue() throws -> [EpisodeKey] {
+        let known = try knownEpisodeKeys()
+        return try queue().filter { known.contains($0.rawValue) }
+    }
+
+    /// Moves a queued episode to `index` in the playable Queue, where hidden episodes don't count.
+    public func movePlayable(_ key: EpisodeKey, to index: Int) throws {
+        let others = try playableQueue().filter { $0 != key }
+        let full = try queue().filter { $0 != key }
+        let target: Int
+        if index < others.count {
+            target = full.firstIndex(of: others[max(index, 0)]) ?? 0
+        } else {
+            target = others.last.flatMap { full.firstIndex(of: $0) }.map { $0 + 1 } ?? full.count
+        }
+        try move(key, to: target)
+    }
+
+    /// Keys of the episodes in the feed cache: the ones this device can show and play.
+    private func knownEpisodeKeys() throws -> Set<String> {
+        Set(try modelContext.fetch(FetchDescriptor<EpisodeRecord>()).map(\.key))
+    }
+
     /// Adds to the end. An episode already in the Queue keeps its position.
     public func addToQueue(_ key: EpisodeKey) throws {
         let state = try state(key, creating: true)!
@@ -372,8 +397,11 @@ public actor Library {
     }
 
     /// Play-next episodes go after Now Playing and after earlier play-next episodes.
-    private func playNextIndex(in queued: [EpisodeState]) -> Int {
-        var index = min(1, queued.count)
+    /// Right after Now Playing, the first episode this device has, and after earlier Play next episodes.
+    private func playNextIndex(in queued: [EpisodeState]) throws -> Int {
+        let known = try knownEpisodeKeys()
+        guard let nowPlaying = queued.firstIndex(where: { known.contains($0.episodeKey) }) else { return queued.count }
+        var index = nowPlaying + 1
         while index < queued.count, queued[index].moveReason == MoveReason.playNext.stored {
             index += 1
         }
@@ -436,7 +464,7 @@ public actor Library {
         let wasQueued = state.place == Place.queue.stored.place
         var queued = try states(in: .queue)
         if place == .queue, !wasQueued {
-            queued.insert(state, at: reason == .playNext ? playNextIndex(in: queued) : queued.count)
+            queued.insert(state, at: reason == .playNext ? try playNextIndex(in: queued) : queued.count)
         } else if place != .queue, wasQueued {
             queued.removeAll { $0 === state }
         }
@@ -655,6 +683,75 @@ public actor Library {
             .map(info)
     }
 
+    // MARK: Shared with Casterr
+
+    public static let sharedShowTitle = "Shared with Casterr"
+
+    /// Adds a file shared to Casterr to the built-in show and plays it next, like Play next.
+    /// `id` makes the key unique; `audioURL` is the file's stable address, not its path.
+    @discardableResult
+    public func addSharedEpisode(id: String, title: String, duration: TimeInterval?, audioURL: URL) throws -> EpisodeKey {
+        let showRaw = ShowKey.shared.rawValue
+        if try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == showRaw })).isEmpty {
+            modelContext.insert(ShowRecord(key: showRaw, title: Self.sharedShowTitle))
+        }
+        let key = EpisodeKey(show: .shared, guid: "shared-\(id)", audioURL: audioURL)
+        let record = EpisodeRecord(key: key.rawValue, showKey: showRaw, title: title, audioURL: audioURL)
+        record.publishDate = clock()
+        record.duration = duration
+        modelContext.insert(record)
+        try relocate(state(key, creating: true)!, to: .queue, reason: .playNext)
+        try modelContext.save()
+        return key
+    }
+
+    /// An episode of any cached show with this GUID: lets a shared link reuse an episode the listener already has,
+    /// even when Apple's feed address differs from the one they follow.
+    public func episodeKey(withGUID guid: String) throws -> EpisodeKey? {
+        let suffix = "|guid:\(guid.trimmingCharacters(in: .whitespacesAndNewlines))"
+        return try modelContext.fetch(FetchDescriptor<EpisodeRecord>()).first { $0.key.hasSuffix(suffix) }
+            .map { EpisodeKey(rawValue: $0.key) }
+    }
+
+    /// Plays the episode next, like Play next, moving it there if it's already queued.
+    public func playNext(_ key: EpisodeKey) throws {
+        if let state = try state(key), state.place == Place.queue.stored.place {
+            try relocate(state, to: nil, reason: .listener)
+        }
+        try relocate(state(key, creating: true)!, to: .queue, reason: .playNext)
+        try modelContext.save()
+    }
+
+    /// Remembers where an unfollowed show's feed came from, so Subscribe works later.
+    public func setFeedURL(_ url: URL, for showKey: ShowKey) throws {
+        let raw = showKey.rawValue
+        try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == raw })).first?.feedURL = url
+        try modelContext.save()
+    }
+
+    public func cachedFeedURL(of showKey: ShowKey) throws -> URL? {
+        let raw = showKey.rawValue
+        return try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == raw })).first?.feedURL
+    }
+
+    /// Points the Shared with Casterr show at its art. Called on each pickup, since the file's path can change.
+    public func setSharedShowArtwork(_ url: URL) throws {
+        let raw = ShowKey.shared.rawValue
+        guard let show = try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == raw })).first,
+              show.artworkURL != url else { return }
+        show.artworkURL = url
+        try modelContext.save()
+    }
+
+    /// Removes a shared episode from wherever it is, and its record. The caller deletes the file.
+    public func deleteSharedEpisode(_ key: EpisodeKey) throws {
+        guard key.rawValue.hasPrefix(ShowKey.shared.rawValue + "|") else { return }
+        try removeFromQueue(key)
+        if let state = try state(key) { modelContext.delete(state) }
+        if let record = try episodeRecord(key) { modelContext.delete(record) }
+        try modelContext.save()
+    }
+
     public func episode(_ key: EpisodeKey) throws -> EpisodeInfo? {
         try episodeRecord(key).map(info)
     }
@@ -670,9 +767,11 @@ public actor Library {
     }
 
     /// Deletes all feed data. User data is untouched and re-attaches on the next fetch.
+    /// Keeps the built-in Shared with Casterr show: its episodes can't be fetched again.
     public func wipeFeedCache() throws {
-        try modelContext.delete(model: EpisodeRecord.self)
-        try modelContext.delete(model: ShowRecord.self)
+        let shared = ShowKey.shared.rawValue
+        try modelContext.delete(model: EpisodeRecord.self, where: #Predicate { $0.showKey != shared })
+        try modelContext.delete(model: ShowRecord.self, where: #Predicate { $0.key != shared })
         try modelContext.save()
     }
 

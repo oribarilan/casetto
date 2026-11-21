@@ -55,6 +55,19 @@ struct SubscriptionStoreTests {
 }
 
 struct QueueStoreTests {
+    @Test func playableQueueSkipsEpisodesThisDeviceDoesNotHave() async throws {
+        let library = try Library.open(inMemory: true)
+        try await library.addSubscription(show, feedURL: feedURL)
+        try await library.saveFeed(try FeedParser.parse(fixture("podcast.xml")), for: show)
+        let known = try await library.episodes(of: show).map(\.key)
+        let elsewhere = EpisodeKey(rawValue: "casterr:shared|guid:shared-1")
+        try await library.addToQueue(known[0])
+        try await library.addToQueue(elsewhere)
+        try await library.addToQueue(known[1])
+        #expect(try await library.queue() == [known[0], elsewhere, known[1]])
+        #expect(try await library.playableQueue() == [known[0], known[1]])
+    }
+
     @Test func addAppendsToTheEnd() async throws {
         let library = try await queuedLibrary(3)
         #expect(try await library.queue() == [episode(1), episode(2), episode(3)])
@@ -183,5 +196,90 @@ struct FeedCacheStoreTests {
         #expect(try await library.episode(queued)?.title == first.title)
         #expect(try await library.progress(of: queued) == 42)
         #expect(try await library.subscriptions().count == 1)
+    }
+}
+
+struct SharedShowTests {
+    let memo = URL(string: "casterr-shared:///memo.m4a")!
+
+    @Test func aSharedFilePlaysNext() async throws {
+        let library = try Library.open(inMemory: true)
+        try await library.addSubscription(show, feedURL: feedURL)
+        try await library.saveFeed(try FeedParser.parse(fixture("podcast.xml")), for: show)
+        let first = try await library.episodes(of: show)[0].key
+        try await library.addToQueue(first)
+
+        let second = try await library.episodes(of: show)[1].key
+        try await library.addToQueue(second)
+        let key = try await library.addSharedEpisode(id: "1", title: "Voice memo 12", duration: 95, audioURL: memo)
+        #expect(try await library.playableQueue() == [first, key, second])
+        let episode = try await library.episode(key)
+        #expect(episode?.title == "Voice memo 12" && episode?.duration == 95 && episode?.showKey == .shared)
+        #expect(try await library.show(.shared)?.title == "Shared with Casterr")
+    }
+
+    @Test func listsNewestFirst() async throws {
+        let library = try Library.open(inMemory: true)
+        await library.useClock { Date(timeIntervalSince1970: 1_000) }
+        let older = try await library.addSharedEpisode(id: "1", title: "Older", duration: nil, audioURL: memo)
+        await library.useClock { Date(timeIntervalSince1970: 2_000) }
+        let newer = try await library.addSharedEpisode(id: "2", title: "Newer", duration: nil, audioURL: URL(string: "casterr-shared:///b.mp3")!)
+        #expect(try await library.episodes(of: .shared).map(\.key) == [newer, older])
+    }
+
+    @Test func deleteRemovesItFromTheQueueAndTheShow() async throws {
+        let library = try Library.open(inMemory: true)
+        let a = try await library.addSharedEpisode(id: "1", title: "A", duration: nil, audioURL: memo)
+        let b = try await library.addSharedEpisode(id: "2", title: "B", duration: nil, audioURL: URL(string: "casterr-shared:///b.mp3")!)
+        try await library.deleteSharedEpisode(a)
+        #expect(try await library.queue() == [b])
+        #expect(try await library.episodes(of: .shared).map(\.key) == [b])
+        try await library.wipeFeedCache()
+        #expect(try await library.episodes(of: .shared).map(\.key) == [b])
+        #expect(try await library.episode(a) == nil)
+    }
+
+    @Test func theBuiltInShowIsNeverASubscription() async throws {
+        let library = try Library.open(inMemory: true)
+        try await library.addSharedEpisode(id: "1", title: "A", duration: nil, audioURL: memo)
+        #expect(try await library.subscriptions().isEmpty)
+    }
+
+    @Test func deleteIgnoresEpisodesOfOtherShows() async throws {
+        let library = try Library.open(inMemory: true)
+        try await library.addSubscription(show, feedURL: feedURL)
+        try await library.saveFeed(try FeedParser.parse(fixture("podcast.xml")), for: show)
+        let feedEpisode = try await library.episodes(of: show)[0].key
+        try await library.deleteSharedEpisode(feedEpisode)
+        #expect(try await library.episode(feedEpisode) != nil)
+    }
+}
+
+struct PlayableQueueTests {
+    /// Queue: hidden, a, b, c (hidden is an episode this device doesn't have).
+    private func setUp() async throws -> (Library, hidden: EpisodeKey, [EpisodeKey]) {
+        let library = try Library.open(inMemory: true)
+        try await library.addSubscription(show, feedURL: feedURL)
+        try await library.saveFeed(try FeedParser.parse(fixture("podcast.xml")), for: show)
+        let keys = Array(try await library.episodes(of: show).map(\.key).prefix(4))
+        let hidden = EpisodeKey(rawValue: "casterr:shared|guid:shared-elsewhere")
+        try await library.addToQueue(hidden)
+        for key in keys.prefix(3) { try await library.addToQueue(key) }
+        return (library, hidden, keys)
+    }
+
+    @Test func movingCountsOnlyWhatThisDeviceShows() async throws {
+        let (library, _, k) = try await setUp()
+        try await library.movePlayable(k[2], to: 0)
+        #expect(try await library.playableQueue() == [k[2], k[0], k[1]])
+        try await library.movePlayable(k[2], to: 2)
+        #expect(try await library.playableQueue() == [k[0], k[1], k[2]])
+    }
+
+    @Test func playNextLandsAfterTheVisibleNowPlaying() async throws {
+        let (library, _, k) = try await setUp()
+        try await library.addSharedEpisode(id: "x", title: "X", duration: nil, audioURL: URL(string: "casterr-shared:///x.mp3")!)
+        let shared = try #require(try await library.episodes(of: .shared).first?.key)
+        #expect(try await library.playableQueue() == [k[0], shared, k[1], k[2]])
     }
 }

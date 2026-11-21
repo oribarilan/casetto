@@ -13,6 +13,7 @@ targets:
     sources: [Casterr]
     dependencies:
       - package: CasterrCore
+      - target: CasterrShare
     settings:
       base:
         SWIFT_VERSION: "6"
@@ -23,6 +24,8 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Apple must approve CarPlay before device builds may carry it; the simulator doesn't check.
         "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": Casterr/CarPlay-Simulator.entitlements
+        # The iCloud entitlements file still has a placeholder container, so device builds carry only the App Group.
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]": Casterr/Casterr-Device.entitlements
     info:
       path: Casterr/Info.plist
       properties:
@@ -36,6 +39,36 @@ targets:
               - UISceneConfigurationName: CarPlay
                 UISceneClassName: CPTemplateApplicationScene
                 UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).CarPlaySceneDelegate
+  CasterrShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - CasterrShare
+      - Casterr/Screens/CassyView.swift
+    dependencies:
+      - package: CasterrCore
+    settings:
+      base:
+        SWIFT_VERSION: "6"
+        GENERATE_INFOPLIST_FILE: YES
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1"
+        PRODUCT_BUNDLE_IDENTIFIER: com.oribarilan.Casterr.Share
+        CODE_SIGN_ENTITLEMENTS: CasterrShare/CasterrShare.entitlements
+    info:
+      path: CasterrShare/Info.plist
+      properties:
+        CFBundleDisplayName: Casterr
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            # Audio files (Ogg voice notes conform too) or one link; other links get the card's explanation.
+            NSExtensionActivationRule: >-
+              SUBQUERY (extensionItems, $item, SUBQUERY ($item.attachments, $attachment,
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.audio"
+              OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.url").@count >= 1).@count >= 1
   CasterrUITests:
     type: bundle.ui-testing
     platform: iOS

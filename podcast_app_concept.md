@@ -65,7 +65,7 @@ One word per idea, in everything people read in the app:
 | **Remove** | An episode leaves your Inbox or Queue, because you swiped it or because it waited too long. It stays on its show page. | dismiss, clear, archive, tidy, delete |
 | **Skip** | A show's new episodes never enter your Inbox or Queue. | archive |
 | **Dismiss** | Close one of Cassy's cards or tips. Never used for episodes. | remove |
-| **Delete** | Bookmarks only, because they really are deleted. | remove |
+| **Delete** | Bookmarks and shared files only, because they really are deleted. | remove |
 
 "Archive" is a term inside the code and specs only.
 
@@ -82,6 +82,10 @@ One word per idea, in everything people read in the app:
 ## Capture
 
 One tap in Now Playing or on the mini player bookmarks the current episode and timestamp without pausing. A toast confirms it and offers Add Note. Notes are optional and editable later, in place in the Bookmarks tab. The Bookmarks tab searches notes, episode titles, and show titles. Each episode's bookmarks share as one Markdown file through the share sheet, ready for Obsidian, Notes, or any notes app. Export All shares every listed bookmark as one file. A bookmark keeps the show title, episode title, and audio URL, so it survives the episode disappearing from the feed.
+
+## Sharing to Casterr
+
+Casterr appears in other apps' share sheets for audio files (MP3, M4A, and WhatsApp and Telegram voice notes) and Apple Podcasts episode links. A shared item plays next, like Play next, and a small card with Cassy says "Up next in your Queue". A shared file stays on this phone in the built-in show "Shared with Casterr", with Cassy as its art, until you delete it there; it never syncs, and other devices don't show it. An Apple Podcasts link finds the episode through Apple's lookup and queues it without following the show, or reuses the episode you already have; the show's page offers Subscribe.
 
 ## Onboarding and subscribing
 
@@ -108,6 +112,7 @@ Data splits into what comes **from the feed**, a cache that can be wiped and re-
 | Episode state | Exactly one place (Inbox, Queue, Archive with a reason, or none), its Queue position when queued, listening progress, and its latest move (reason and time) for explanations and undo | Yes |
 | Proposal | A pending rule card, computed from outcomes. Only your dismissals are stored. | Dismissals |
 | Bookmark | Episode, timestamp, optional note, plus a snapshot of titles and audio URL | Yes |
+| Shared with Casterr | The built-in show of files shared to Casterr, and the files themselves | No |
 | Settings | Global defaults: expiry, speed, how many Queue episodes to keep downloaded | Yes |
 | Download | The audio file on this device | No |
 

@@ -44,7 +44,7 @@ struct QueueView: View {
                 let key = items[source].key
                 let destination = to > source ? to - 1 : to
                 items.move(fromOffsets: from, toOffset: to)
-                Task { await model.change { try await model.library.move(key, to: destination) } }
+                Task { await model.change { try await model.library.movePlayable(key, to: destination) } }
             }
         }
         .overlay {
@@ -98,7 +98,7 @@ struct QueueView: View {
     }
 
     private func load() async {
-        let keys = (try? await model.library.queue()) ?? []
+        let keys = (try? await model.library.playableQueue()) ?? []
         items = await model.episodes(keys)
         art = (try? await model.library.showArt()) ?? [:]
         moves = await model.moves(of: keys)

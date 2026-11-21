@@ -91,7 +91,7 @@ public final class Player {
             if pausedInPlace { backABeat() }
             engine.play(rate: speed.value)
             isPlaying = true
-        } else if let first = try await library.queue().first {
+        } else if let first = try await library.playableQueue().first {
             try await start(first)
         }
     }
@@ -113,6 +113,20 @@ public final class Player {
 
     public var currentChapter: Chapter? {
         chapterProgress.current.map { chapters[$0] }
+    }
+
+    /// Stops and forgets the episode if it's the one loaded, for when it's deleted. Nothing else starts.
+    public func unload(_ key: EpisodeKey) {
+        guard episode?.key == key else { return }
+        engine.pause()
+        isPlaying = false
+        pausedInPlace = false
+        episode = nil
+        show = nil
+        chapters = []
+        position = 0
+        duration = nil
+        loadedURL = nil
     }
 
     /// Moves to the chapter's start and keeps playing or paused.
@@ -209,7 +223,7 @@ public final class Player {
             sleepTimer = nil
             return
         }
-        if let next = try? await library.queue().first {
+        if let next = try? await library.playableQueue().first {
             try? await start(next)
         } else {
             queueRanOutAt = .now

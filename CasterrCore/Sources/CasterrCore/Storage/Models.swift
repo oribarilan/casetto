@@ -11,6 +11,8 @@ import SwiftData
     var summary: String?
     var lastRefreshSuccess: Date?
     var lastRefreshError: String?
+    /// Where the feed was fetched from, for a show reached without subscribing (a shared episode).
+    var feedURL: URL?
 
     init(key: String, title: String) {
         self.key = key

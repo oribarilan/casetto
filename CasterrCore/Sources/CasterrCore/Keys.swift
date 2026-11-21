@@ -29,6 +29,11 @@ public struct ShowKey: Hashable, Sendable {
 }
 
 /// An episode's stable identity within its show: the feed item's GUID, otherwise its audio URL.
+extension ShowKey {
+    /// The built-in show that holds files shared to Casterr. It lives only on this device.
+    public static let shared = ShowKey(rawValue: "casterr:shared")
+}
+
 public struct EpisodeKey: Hashable, Sendable {
     public let rawValue: String
 

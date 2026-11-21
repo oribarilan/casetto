@@ -18,6 +18,12 @@ struct ShowView: View {
     @State private var editingNewEpisodes = false
     @State private var showingPlayed = false
     @State private var fullDescription = false
+    /// Where an unfollowed show's feed came from, for Subscribe.
+    @State private var cachedFeedURL: URL?
+    @State private var subscribing = false
+
+    /// The built-in show for files shared to Casterr: Delete instead of following.
+    private var isShared: Bool { showKey == .shared }
 
     var body: some View {
         List {
@@ -67,8 +73,10 @@ struct ShowView: View {
             }
         }
         .toolbar {
-            Menu("More", systemImage: "ellipsis") {
-                Button("Unsubscribe", systemImage: "minus.circle", role: .destructive) { confirmingUnsubscribe = true }
+            if subscription != nil {
+                Menu("More", systemImage: "ellipsis") {
+                    Button("Unsubscribe", systemImage: "minus.circle", role: .destructive) { confirmingUnsubscribe = true }
+                }
             }
         }
         .confirmationDialog("Unsubscribe from this show?", isPresented: $confirmingUnsubscribe) {
@@ -96,6 +104,7 @@ struct ShowView: View {
         places = loaded
         moves = await model.moves(of: episodes.map(\.key))
         subscription = try? await library.subscriptions().first { $0.showKey == showKey }
+        cachedFeedURL = try? await library.cachedFeedURL(of: showKey)
         globalExpiry = (try? await library.globalExpiry()) ?? .standard
     }
 
@@ -116,6 +125,11 @@ struct ShowView: View {
         return EpisodeRow(episode: episode, identifier: "episode",
                           caption: caption(place), move: moves[episode.key],
                           art: art)
+            .contextMenu {
+                if isShared {
+                    Button("Delete", systemImage: "trash", role: .destructive) { delete(episode) }
+                }
+            }
             .swipeActions(edge: .leading) {
                 if place != .queue {
                     Button("Add to Queue", systemImage: "text.badge.plus") {
@@ -125,6 +139,9 @@ struct ShowView: View {
                 }
             }
             .swipeActions(edge: .trailing) {
+                if isShared {
+                    Button("Delete", systemImage: "trash", role: .destructive) { delete(episode) }
+                }
                 if played {
                     Button("Mark Unplayed", systemImage: "circle") {
                         Task { await model.change { try await model.library.markUnplayed(episode.key) } }
@@ -137,9 +154,39 @@ struct ShowView: View {
             }
     }
 
+    /// Deletes a shared file and its episode, wherever it is.
+    private func delete(_ episode: EpisodeInfo) {
+        model.player.unload(episode.key)
+        model.sharedStore?.delete(episode.audioURL)
+        Task { await model.change { try await model.library.deleteSharedEpisode(episode.key) } }
+    }
+
     /// One line saying what happens to new episodes; tapping it opens the sheet that changes it.
+    /// A show you don't follow offers Subscribe instead; the built-in shared show offers neither.
     @ViewBuilder private var newEpisodesRow: some View {
-        if let subscription {
+        if subscription == nil, isShared {
+            Section {
+                Text("Files you share to Casterr live here, on this iPhone only, until you delete them.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+        } else if subscription == nil, let feedURL = cachedFeedURL {
+            Section {
+                Button {
+                    subscribing = true
+                    Task {
+                        await model.change { _ = try await model.feeds.subscribe(to: feedURL) }
+                        subscribing = false
+                    }
+                } label: {
+                    Label(subscribing ? "Subscribing…" : "Subscribe", systemImage: "plus.circle.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(subscribing)
+                .listRowBackground(Color.clear)
+                .accessibilityIdentifier("subscribeShow")
+            }
+        } else if let subscription {
             Section {
                 Button { editingNewEpisodes = true } label: {
                     HStack(spacing: 12) {

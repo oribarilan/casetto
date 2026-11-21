@@ -12,6 +12,9 @@ final class AppModel {
     let feeds: FeedService
     let player: Player
     let downloader: Downloader
+    /// Files shared to Casterr. Nil only if Application Support can't be created.
+    let sharedStore: SharedStore?
+    @ObservationIgnored private(set) lazy var sharedInbox = SharedInbox(model: self, store: sharedStore)
     let directory = AppleDirectory()
     var tab: AppTab = .queue
     /// Each tab's navigation lives here, so it survives the tab content being rebuilt
@@ -43,8 +46,10 @@ final class AppModel {
         library = try Library.open(inMemory: inMemory)
         feeds = FeedService(library: library)
         let store = try DownloadStore.standard()
+        let shared = try? SharedStore.standard()
+        sharedStore = shared
         player = Player(library: library, engine: AVPlayerEngine(), localFile: { key, audioURL in
-            store.localFile(for: key, audioURL: audioURL)
+            shared?.file(for: audioURL) ?? store.localFile(for: key, audioURL: audioURL)
         })
         downloader = Downloader(store: store)
         if ProcessInfo.processInfo.arguments.contains("-fastClock") {
@@ -62,6 +67,7 @@ final class AppModel {
     }
 
     func appBecameActive() async {
+        await sharedInbox.pickUp()
         await refresh()
     }
 
@@ -111,7 +117,8 @@ final class AppModel {
     }
 
     private func performSync() async {
-        let queue = (try? await library.queue()) ?? []
+        // Shared files are already on the device.
+        let queue = ((try? await library.playableQueue()) ?? []).filter { $0.rawValue.hasPrefix(ShowKey.shared.rawValue + "|") == false }
         let keep = (try? await library.downloadCount()) ?? 0
         let running = await downloader.running()
         let plan = DownloadPlan.make(queue: queue, keep: keep, files: downloader.store.stems(), running: Set(running.keys))
@@ -134,7 +141,7 @@ final class AppModel {
 
     /// Reads the first Queue episode and how far into it the listener is.
     func loadUpNext() async {
-        guard let key = try? await library.queue().first, let episode = try? await library.episode(key) else {
+        guard let key = try? await library.playableQueue().first, let episode = try? await library.episode(key) else {
             upNext = nil
             return
         }

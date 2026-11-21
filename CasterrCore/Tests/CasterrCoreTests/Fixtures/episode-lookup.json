@@ -1,0 +1,51 @@
+{
+ "resultCount": 4,
+ "results": [
+  {
+   "wrapperType": "track",
+   "kind": "podcast",
+   "collectionId": 617416468,
+   "trackId": 617416468,
+   "trackName": "Accidental Tech Podcast",
+   "collectionName": "Accidental Tech Podcast",
+   "feedUrl": "https://cdn.atp.fm/rss/public?wtvryzdm",
+   "artworkUrl600": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/91/22/42/9122426f-df98-4302-6ba3-da67b0648e70/mza_5041274938111919910.png/600x600bb.jpg"
+  },
+  {
+   "wrapperType": "podcastEpisode",
+   "kind": "podcast-episode",
+   "collectionId": 617416468,
+   "trackId": 1000803195167,
+   "trackName": "The Warp Zone",
+   "collectionName": "Accidental Tech Podcast",
+   "feedUrl": "https://cdn.atp.fm/rss/public?wtvryzdm",
+   "episodeGuid": "r1bcrhc3ngzqqzbl",
+   "episodeUrl": "https://atp.fm/audio/r1bcrhc3ngzqqzbl/atp718.mp3",
+   "artworkUrl600": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/91/22/42/9122426f-df98-4302-6ba3-da67b0648e70/mza_5041274938111919910.png/600x600bb.jpg"
+  },
+  {
+   "wrapperType": "podcastEpisode",
+   "kind": "podcast-episode",
+   "collectionId": 617416468,
+   "trackId": 1000801592580,
+   "trackName": "Two Hot Streaks",
+   "collectionName": "Accidental Tech Podcast",
+   "feedUrl": "https://cdn.atp.fm/rss/public?wtvryzdm",
+   "episodeGuid": "t3vbwlfpueremdht",
+   "episodeUrl": "https://atp.fm/audio/t3vbwlfpueremdht/atp717.mp3",
+   "artworkUrl600": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/91/22/42/9122426f-df98-4302-6ba3-da67b0648e70/mza_5041274938111919910.png/600x600bb.jpg"
+  },
+  {
+   "wrapperType": "podcastEpisode",
+   "kind": "podcast-episode",
+   "collectionId": 617416468,
+   "trackId": 1000800115735,
+   "trackName": "Take the Null",
+   "collectionName": "Accidental Tech Podcast",
+   "feedUrl": "https://cdn.atp.fm/rss/public?wtvryzdm",
+   "episodeGuid": "ovrfd2tfegrrx1vc",
+   "episodeUrl": "https://atp.fm/audio/ovrfd2tfegrrx1vc/atp716.mp3",
+   "artworkUrl600": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/91/22/42/9122426f-df98-4302-6ba3-da67b0648e70/mza_5041274938111919910.png/600x600bb.jpg"
+  }
+ ]
+}

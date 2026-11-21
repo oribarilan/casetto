@@ -111,3 +111,62 @@ private struct ITunesResults: Decodable {
         }
     }
 }
+
+/// An Apple Podcasts episode link: `podcasts.apple.com/<country>/podcast/<slug>/id<show>?i=<episode>`.
+public struct ApplePodcastsLink: Equatable, Sendable {
+    public let showID: String
+    public let episodeID: String
+
+    /// Nil for anything that isn't an Apple Podcasts link to one episode.
+    public init?(_ url: URL) {
+        guard let host = url.host()?.lowercased(), host == "podcasts.apple.com" || host == "itunes.apple.com",
+              let showID = url.pathComponents.last(where: { $0.hasPrefix("id") }).map({ String($0.dropFirst(2)) }),
+              !showID.isEmpty, showID.allSatisfy(\.isNumber),
+              let episodeID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                  .queryItems?.first(where: { $0.name == "i" })?.value,
+              !episodeID.isEmpty, episodeID.allSatisfy(\.isNumber)
+        else { return nil }
+        self.showID = showID
+        self.episodeID = episodeID
+    }
+}
+
+/// What Apple's lookup knows about one episode: enough to find it in the show's feed.
+public struct DirectoryEpisode: Equatable, Codable, Sendable {
+    public var title: String
+    public var feedURL: URL
+    public var guid: String?
+    public var audioURL: URL?
+}
+
+extension AppleDirectory {
+    /// The linked episode, from the show's most recent 200 episodes. Nil when Apple doesn't list it.
+    public func episode(for link: ApplePodcastsLink) async throws(DirectoryError) -> DirectoryEpisode? {
+        var lookup = URLComponents(string: "https://itunes.apple.com/lookup")!
+        lookup.queryItems = [
+            URLQueryItem(name: "id", value: link.showID),
+            URLQueryItem(name: "entity", value: "podcastEpisode"),
+            URLQueryItem(name: "limit", value: "200"),
+        ]
+        let found: EpisodeResults = try await get(lookup.url!)
+        guard let episode = found.results.first(where: { $0.trackId.map(String.init) == link.episodeID }),
+              let title = episode.trackName,
+              let feed = (episode.feedUrl ?? found.results.first { $0.feedUrl != nil }?.feedUrl).flatMap(URL.init(string:))
+        else { return nil }
+        return DirectoryEpisode(title: title, feedURL: feed, guid: episode.episodeGuid,
+                                audioURL: episode.episodeUrl.flatMap(URL.init(string:)))
+    }
+
+}
+
+private struct EpisodeResults: Decodable {
+    struct Result: Decodable {
+        var trackId: Int?
+        var trackName: String?
+        var feedUrl: String?
+        var episodeGuid: String?
+        var episodeUrl: String?
+    }
+
+    var results: [Result]
+}

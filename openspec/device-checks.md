@@ -39,3 +39,7 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 ## Chapters
 
 - [ ] Play an ATP or Connected episode (chapters in the file), streamed and downloaded: the pill shows the chapter and fills as it plays, the list marks played chapters and shows the time left in the playing one, a tap jumps there, and a chapter with its own picture shows it in place of the show art. Then play a וויקלי סינק episode (chapters from the show notes): the Hebrew titles line up on the right and jumping works.
+
+## Sharing to Casterr
+
+- [ ] Needs an Apple account signed in to Xcode first (App Groups need an explicit App ID). Share an MP3 from Files, a voice note from WhatsApp and one from Telegram, and an Apple Podcasts episode link from Messages: each shows the "Up next in your Queue" card with the right title and lands right after Now Playing. Share once while Casterr plays in the background: it arrives within a few seconds without interrupting. Delete a shared file on the Shared with Casterr page. On a second device, the shared file doesn't appear, and its bookmark shows with play disabled.

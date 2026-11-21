@@ -64,3 +64,4 @@ fastlane/test_output
 # XcodeGen output (project.yml is the source)
 Casterr.xcodeproj/
 Casterr/Info.plist
+CasterrShare/Info.plist

@@ -38,7 +38,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     // MARK: Queue
 
     private func reloadQueue() async {
-        let keys = (try? await model.library.queue()) ?? []
+        let keys = (try? await model.library.playableQueue()) ?? []
         // Some cars cap list length.
         let episodes = await model.episodes(Array(keys.prefix(CPListTemplate.maximumItemCount)))
         let art = (try? await model.library.showArt()) ?? [:]

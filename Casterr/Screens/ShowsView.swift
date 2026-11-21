@@ -72,6 +72,11 @@ struct ShowsView: View {
                               failing: show?.lastRefreshError != nil))
         }
         shows = loaded.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        // Files shared to Casterr follow the shows you subscribe to, once there's at least one.
+        if let shared = try? await library.show(.shared), !((try? await library.episodes(of: .shared)) ?? []).isEmpty {
+            shows.append(Row(key: .shared, title: shared.title, author: nil, artworkURL: shared.artworkURL,
+                             starred: false, failing: false))
+        }
         self.loaded = true
     }
 

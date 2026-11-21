@@ -79,7 +79,11 @@ struct BookmarksView: View {
                     header(group)
                     ForEach(group, id: \.id) { BookmarkRow(bookmark: $0, canPlay: canPlay, editing: $editing) }
                 } footer: {
-                    if !canPlay { Text("No longer in the feed, so it can't play.") }
+                    if !canPlay {
+                        Text(group[0].episodeKey.rawValue.hasPrefix(ShowKey.shared.rawValue + "|")
+                             ? "This shared file isn't on this iPhone, so it can't play."
+                             : "No longer in the feed, so it can't play.")
+                    }
                 }
             }
         }

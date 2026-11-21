@@ -129,6 +129,24 @@ struct PlayerTests {
         #expect(h.engine.seekedTo == 0 && !h.player.isPlaying)
     }
 
+    @Test func resumeStartsTheFirstEpisodeThisDeviceHas() async throws {
+        let h = try await Harness()
+        try await h.library.addToQueue(EpisodeKey(rawValue: "casterr:shared|guid:shared-1"))
+        try await h.library.addToQueue(h.episodes[2].key)
+        try await h.player.resume()
+        #expect(h.player.episode?.key == h.episodes[2].key)
+        #expect(h.engine.loaded?.url == h.episodes[2].audioURL)
+    }
+
+    @Test func unloadStopsOnlyTheLoadedEpisode() async throws {
+        let h = try await Harness()
+        try await h.player.play(h.episodes[0].key)
+        h.player.unload(h.episodes[1].key)
+        #expect(h.player.isPlaying && h.player.episode?.key == h.episodes[0].key)
+        h.player.unload(h.episodes[0].key)
+        #expect(!h.player.isPlaying && h.player.episode == nil && h.engine.rate == nil)
+    }
+
     @Test func pauseSavesProgress() async throws {
         let h = try await Harness()
         try await h.player.play(h.episodes[0].key)

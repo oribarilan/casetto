@@ -96,3 +96,50 @@ struct OPMLWriterTests {
         #expect(parsed.invalidEntries.isEmpty)
     }
 }
+
+/// Serves the episode lookup fixture.
+private final class EpisodeLookupStub: URLProtocol {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func stopLoading() {}
+    override func startLoading() {
+        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: try! fixture("episode-lookup.json"))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+}
+
+struct ApplePodcastsLinkTests {
+    @Test func readsShowAndEpisode() {
+        let link = ApplePodcastsLink(URL(string: "https://podcasts.apple.com/us/podcast/the-warp-zone/id617416468?i=1000803195167")!)
+        #expect(link?.showID == "617416468" && link?.episodeID == "1000803195167")
+    }
+
+    @Test func aShowLinkIsNotAnEpisode() {
+        #expect(ApplePodcastsLink(URL(string: "https://podcasts.apple.com/us/podcast/atp/id617416468")!) == nil)
+    }
+
+    @Test func otherLinksAreNotApplePodcasts() {
+        #expect(ApplePodcastsLink(URL(string: "https://overcast.fm/+abc?i=123")!) == nil)
+        #expect(ApplePodcastsLink(URL(string: "https://example.com/podcast/id617416468?i=1000803195167")!) == nil)
+    }
+
+    @Test func findsTheLinkedEpisode() async throws {
+        let link = try #require(ApplePodcastsLink(URL(string: "https://podcasts.apple.com/us/podcast/x/id617416468?i=1000801592580")!))
+        let episode = try await directory(EpisodeLookupStub.self).episode(for: link)
+        #expect(episode == DirectoryEpisode(
+            title: "Two Hot Streaks", feedURL: URL(string: "https://cdn.atp.fm/rss/public?wtvryzdm")!,
+            guid: "t3vbwlfpueremdht", audioURL: URL(string: "https://atp.fm/audio/t3vbwlfpueremdht/atp717.mp3")!))
+    }
+
+    @Test func anEpisodeAppleDoesNotListIsNil() async throws {
+        let link = try #require(ApplePodcastsLink(URL(string: "https://podcasts.apple.com/us/podcast/x/id617416468?i=42")!))
+        #expect(try await directory(EpisodeLookupStub.self).episode(for: link) == nil)
+    }
+
+    @Test func offlineIsUnreachable() async throws {
+        let link = try #require(ApplePodcastsLink(URL(string: "https://podcasts.apple.com/us/podcast/x/id617416468?i=42")!))
+        await #expect(throws: DirectoryError.unreachable) { try await directory(OfflineStub.self).episode(for: link) }
+    }
+}
