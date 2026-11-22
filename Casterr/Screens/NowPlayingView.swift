@@ -5,7 +5,6 @@ struct NowPlayingView: View {
     @Environment(Player.self) private var player
     /// Closes Now Playing and opens the show page.
     let openShow: (ShowKey) -> Void
-    @State private var scrubbing: TimeInterval?
     @State private var choosingSpeed = false
     @State private var tint = Color(white: 0.18)
     /// The show's art, for the background tint and the share sheet's preview.
@@ -120,14 +119,10 @@ struct NowPlayingView: View {
 
     private var scrubber: some View {
         let duration = max(player.duration ?? 0, 1)
-        let shown = scrubbing ?? player.position
+        let shown = player.position
         return VStack {
-            Slider(value: Binding(get: { min(shown, duration) }, set: { scrubbing = $0 }), in: 0...duration) { editing in
-                if !editing, let target = scrubbing {
-                    player.seek(to: target)
-                    scrubbing = nil
-                }
-            }
+            // Seeks as the thumb moves, so a drag that never reports its end still lands where it stopped.
+            Slider(value: Binding(get: { min(shown, duration) }, set: { player.seek(to: $0) }), in: 0...duration)
             HStack {
                 Text(shown.clock).accessibilityIdentifier("elapsed")
                 Spacer()

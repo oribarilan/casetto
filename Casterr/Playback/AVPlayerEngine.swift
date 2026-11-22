@@ -15,6 +15,10 @@ final class AVPlayerEngine: AudioEngine {
     private var statusObservation: NSKeyValueObservation?
     private var notificationTasks: [Task<Void, Never>] = []
     private var playRequest = 0
+    /// Where the latest seek is going, until it lands. Time reports use it meanwhile, so the slider doesn't
+    /// jump back to the old spot between the seeks of a drag.
+    private var seekTarget: CMTime?
+    private var seekRequest = 0
     private var tap: AudioTap?
     /// Remembered so each new item's tap starts boosted or not.
     private var voiceBoost = false
@@ -36,6 +40,7 @@ final class AVPlayerEngine: AudioEngine {
         let item = AVPlayerItem(url: url)
         item.audioTimePitchAlgorithm = .timeDomain
         observe(item)
+        seekTarget = nil
         player.replaceCurrentItem(with: item)
         if position > 0 { seek(to: position) }
     }
@@ -61,7 +66,16 @@ final class AVPlayerEngine: AudioEngine {
     }
 
     func seek(to position: TimeInterval) {
-        player.seek(to: CMTime(seconds: position, preferredTimescale: 600))
+        let target = CMTime(seconds: position, preferredTimescale: 600)
+        seekRequest += 1
+        let request = seekRequest
+        seekTarget = target
+        player.seek(to: target) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.seekRequest == request else { return }
+                self.seekTarget = nil
+            }
+        }
     }
 
     func loudness(from start: TimeInterval, to end: TimeInterval) -> [Loudness] {
@@ -121,7 +135,7 @@ final class AVPlayerEngine: AudioEngine {
     private func reportTime(_ time: CMTime) {
         guard let item = player.currentItem else { return }
         let duration = item.duration.isNumeric ? item.duration.seconds : nil
-        onTime?(time.seconds, duration)
+        onTime?((seekTarget ?? time).seconds, duration)
     }
 
     private func observe(_ item: AVPlayerItem) {

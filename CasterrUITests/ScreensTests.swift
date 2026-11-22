@@ -411,12 +411,9 @@ final class ScreensTests: XCTestCase {
     @MainActor
     func testClipEditor() throws {
         try openATPNowPlaying()
-        // Move to the middle of the episode. The first move right after loading can be lost, so retry.
+        // Move to the middle of the episode and pause right away. The drag must land even if it never reports its end.
         let elapsed = app.staticTexts["elapsed"]
-        for _ in 0..<3 where (seconds(elapsed.label) ?? 0) < 600 {
-            app.sliders.firstMatch.adjust(toNormalizedSliderPosition: 0.3)
-            sleep(2)
-        }
+        app.sliders.firstMatch.adjust(toNormalizedSliderPosition: 0.3)
         app.buttons["pause.circle.fill"].tap()
         let now = try XCTUnwrap(seconds(elapsed.label))
         XCTAssertGreaterThan(now, 600)
