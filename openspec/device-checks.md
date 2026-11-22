@@ -44,3 +44,7 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 ## Sharing to Casterr
 
 - [ ] Needs an Apple account signed in to Xcode first (App Groups need an explicit App ID). Share an MP3 from Files, a voice note from WhatsApp and one from Telegram, and an Apple Podcasts episode link from Messages: each shows the "Up next in your Queue" card with the right title and lands right after Now Playing. Share once while Casterr plays in the background: it arrives within a few seconds without interrupting. Delete a shared file on the Shared with Casterr page. On a second device, the shared file doesn't appear, and its bookmark shows with play disabled.
+
+## Sharing from Casterr
+
+- [ ] Share a clip to WhatsApp: the video plays inline with the art and the badge, and check whether the caption with the link arrives. Make one clip of a streamed episode and one of a downloaded one, and listen that each starts and ends between words and matches what you heard (try an ad-inserting show such as Planet Money). Share Episode to Messages and check its preview, and Share Show. Check the loudness bars make pauses easy to see on a calm show, and tune `LoudnessBars.range` if not.

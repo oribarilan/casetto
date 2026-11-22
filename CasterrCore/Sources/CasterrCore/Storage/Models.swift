@@ -13,6 +13,7 @@ import SwiftData
     var lastRefreshError: String?
     /// Where the feed was fetched from, for a show reached without subscribing (a shared episode).
     var feedURL: URL?
+    var webPage: URL?
 
     init(key: String, title: String) {
         self.key = key
@@ -30,6 +31,7 @@ import SwiftData
     var publishDate: Date?
     var duration: TimeInterval?
     var summary: String?
+    var webPage: URL?
 
     init(key: String, showKey: String, title: String, audioURL: URL) {
         self.key = key

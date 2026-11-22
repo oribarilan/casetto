@@ -39,6 +39,29 @@ struct FeedParserTests {
         #expect(show.newFeedURL == URL(string: "https://new.example.com/moving-day.xml"))
     }
 
+    @Test func readsEachEpisodesOwnWebPage() throws {
+        let show = try FeedParser.parse(fixture("own-links.xml"))
+        #expect(show.webPage == URL(string: "https://example.com/own"))
+        #expect(show.episodes.map(\.webPage) == [URL(string: "https://example.com/own/2"), URL(string: "https://example.com/own/1")])
+    }
+
+    @Test func dropsEpisodeLinksThatPointAtTheShowPage() throws {
+        let show = try FeedParser.parse(fixture("show-page-links.xml"))
+        #expect(show.webPage == URL(string: "https://example.com/one-page"))
+        #expect(show.episodes.map(\.webPage) == [nil, nil])
+    }
+
+    @Test func dropsEpisodeLinksSharedByMoreThanOneEpisode() throws {
+        let episodes = try FeedParser.parse(fixture("repeated-links.xml")).episodes
+        #expect(episodes.map(\.webPage) == [URL(string: "https://example.com/repeats/3"), nil, nil])
+    }
+
+    @Test func feedWithoutLinksHasNoWebPages() throws {
+        let show = try FeedParser.parse(fixture("no-guids.xml"))
+        #expect(show.webPage == nil)
+        #expect(show.episodes.map(\.webPage) == [nil, nil])
+    }
+
     @Test func rejectsFeedWithoutAudio() {
         #expect(throws: FeedParseError.notPodcast) { try FeedParser.parse(fixture("not-podcast.xml")) }
     }

@@ -171,6 +171,16 @@ struct FeedCacheStoreTests {
         #expect(dates == dates.sorted(by: >))
     }
 
+    @Test func keepsWebPages() async throws {
+        let library = try Library.open(inMemory: true)
+        try await library.saveFeed(try FeedParser.parse(fixture("own-links.xml")), for: show)
+        #expect(try await library.show(show)?.webPage == URL(string: "https://example.com/own"))
+        let pages = try await library.episodes(of: show).map(\.webPage)
+        #expect(Set(pages) == [URL(string: "https://example.com/own/1"), URL(string: "https://example.com/own/2")])
+        let episode = try #require(try await library.episodes(of: show).first)
+        #expect(try await library.episode(episode.key)?.webPage == episode.webPage)
+    }
+
     @Test func savingTheSameFeedTwiceCreatesNoDuplicates() async throws {
         let library = try Library.open(inMemory: true)
         let feed = try FeedParser.parse(fixture("podcast.xml"))

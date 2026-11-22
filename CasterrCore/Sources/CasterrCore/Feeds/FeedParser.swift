@@ -9,6 +9,8 @@ public struct ParsedShow: Equatable, Sendable {
     /// The feed's `itunes:new-feed-url`, when it declares a move.
     public var newFeedURL: URL?
     public var episodes: [ParsedEpisode]
+    /// The channel's `<link>`.
+    public var webPage: URL?
 }
 
 public struct ParsedEpisode: Equatable, Sendable {
@@ -19,6 +21,8 @@ public struct ParsedEpisode: Equatable, Sendable {
     /// In seconds.
     public var duration: TimeInterval?
     public var description: String?
+    /// The item's `<link>`, or nil when it's the show's page or another item's too.
+    public var webPage: URL?
 }
 
 public enum FeedParseError: Error, Equatable {
@@ -36,8 +40,16 @@ public enum FeedParser {
         } catch {
             throw .malformed
         }
-        let episodes = (channel?.items ?? []).compactMap(episode)
+        var episodes = (channel?.items ?? []).compactMap(episode)
         guard let channel, !episodes.isEmpty else { throw .notPodcast }
+
+        let showPage = url(channel.link)
+        let linkCounts = Dictionary(episodes.compactMap(\.webPage).map { ($0, 1) }, uniquingKeysWith: +)
+        for index in episodes.indices {
+            if let page = episodes[index].webPage, page == showPage || linkCounts[page, default: 0] > 1 {
+                episodes[index].webPage = nil
+            }
+        }
 
         return ParsedShow(
             title: channel.title ?? "",
@@ -45,7 +57,8 @@ public enum FeedParser {
             artworkURL: url(channel.iTunes?.image?.attributes?.href ?? channel.image?.url),
             description: channel.description,
             newFeedURL: url(channel.iTunes?.newFeedURL),
-            episodes: episodes
+            episodes: episodes,
+            webPage: showPage
         )
     }
 
@@ -62,7 +75,8 @@ public enum FeedParser {
             audioURL: audioURL,
             publishDate: item.pubDate,
             duration: item.iTunes?.duration,
-            description: item.description
+            description: item.description,
+            webPage: url(item.link)
         )
     }
 

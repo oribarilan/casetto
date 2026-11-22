@@ -8,6 +8,9 @@ struct NowPlayingView: View {
     @State private var scrubbing: TimeInterval?
     @State private var choosingSpeed = false
     @State private var tint = Color(white: 0.18)
+    /// The show's art, for the background tint and the share sheet's preview.
+    @State private var showArt: UIImage?
+    @State private var clipRequest: ClipRequest?
 
     var body: some View {
         VStack(spacing: 24) {
@@ -55,6 +58,7 @@ struct NowPlayingView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .topTrailing) { shareMenu.padding(.trailing, 18).padding(.top, 8) }
         .background(LinearGradient(colors: [tint, tint.mix(with: .black, by: 0.45)], startPoint: .top, endPoint: .bottom))
         .tint(.white)
         .environment(\.colorScheme, .dark)
@@ -62,6 +66,32 @@ struct NowPlayingView: View {
         .bookmarkToast()
         .cassyToast()
         .sheet(isPresented: $choosingSpeed) { SpeedSheet() }
+        .sheet(item: $clipRequest) { ClipEditor(request: $0) }
+    }
+
+    /// Share Episode, from now, and Share Clip. Files shared to Casterr have no link, so they get neither.
+    @ViewBuilder private var shareMenu: some View {
+        if let episode = player.episode, episode.showKey != .shared {
+            Menu {
+                ArtShareLink(share: ShareText.episode(episode, show: player.show, at: player.position), art: showArt) {
+                    Text("Share Episode")
+                    Text("from \(player.position.clock)")
+                }
+                Button("Share Clip…") {
+                    clipRequest = ClipRequest(
+                        window: ClipWindow(position: player.position, duration: player.duration ?? 0),
+                        episode: episode, show: player.show, audioURL: player.loadedURL,
+                        chapterArt: player.currentChapter?.artwork)
+                }
+            } label: {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.headline)
+                    .frame(width: 44, height: 44)
+                    .background(.white.opacity(0.14), in: .circle)
+            }
+            .accessibilityLabel("Share")
+            .accessibilityIdentifier("nowPlayingShare")
+        }
     }
 
     /// The playing chapter's picture when the file has one, otherwise the show's art.
@@ -80,7 +110,8 @@ struct NowPlayingView: View {
     private func loadTint() async {
         guard let url = player.show?.artworkURL,
               let (data, _) = try? await URLSession.shared.data(from: url),
-              let image = UIImage(data: data)?.cgImage else { return }
+              let art = UIImage(data: data), let image = art.cgImage else { return }
+        showArt = art
         let rgb = ArtworkTint.color(of: image)
         withAnimation { tint = Color(red: rgb.red, green: rgb.green, blue: rgb.blue) }
     }

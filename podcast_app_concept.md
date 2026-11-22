@@ -87,6 +87,10 @@ One tap in Now Playing or on the mini player bookmarks the current episode and t
 
 Casterr appears in other apps' share sheets for audio files (MP3, M4A, and WhatsApp and Telegram voice notes) and Apple Podcasts episode links. A shared item plays next, like Play next, and a small card with Cassy says "Up next in your Queue". A shared file stays on this phone in the built-in show "Shared with Casterr", with Cassy as its art, until you delete it there; it never syncs, and other devices don't show it. An Apple Podcasts link finds the episode through Apple's lookup and queues it without following the show, or reuses the episode you already have; the show's page offers Subscribe.
 
+## Sharing from Casterr
+
+Now Playing has a share button with Share Episode and Share Clip; show page rows have Share Episode and the show page has Share Show. An episode goes out as "Episode – Show" with its own web page from the feed, or its audio link, and "from 12:34" when shared from Now Playing. A show goes out with its web page or feed address. Share Clip opens a small editor on the two minutes around now, drawn as loudness bars, with a 30-second clip whose edges snap to pauses between words; you drag it to 5 to 60 seconds and can preview it. The clip becomes a square video of the art Now Playing shows, with a "Clipped with Casterr" badge in the top left, at normal speed, sent with the episode's text and link. Streamed MP3s fetch only those two minutes; other streams ask you to download the episode first. Files in Shared with Casterr have no share actions.
+
 ## Onboarding and subscribing
 
 - The app has three tabs: Queue, Shows, and Bookmarks. The Inbox stays one tap from the Queue.

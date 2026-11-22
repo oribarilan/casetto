@@ -26,6 +26,8 @@ public struct ShowInfo: Equatable, Sendable {
         return text.isEmpty ? nil : text
     }
     public var lastRefreshError: String?
+    /// The show's page from its feed.
+    public var webPage: URL?
 }
 
 public struct ShowArt: Equatable, Sendable {
@@ -58,6 +60,8 @@ public struct EpisodeInfo: Equatable, Sendable {
     public var publishDate: Date?
     public var duration: TimeInterval?
     public var summary: String?
+    /// The episode's own page from its feed.
+    public var webPage: URL?
 }
 
 /// The app's only access to storage. It owns one long-lived context and hands out value types only.
@@ -628,6 +632,7 @@ public actor Library {
         show.author = feed.author
         show.artworkURL = feed.artworkURL
         show.summary = feed.description
+        show.webPage = feed.webPage
         show.lastRefreshSuccess = .now
         show.lastRefreshError = nil
 
@@ -649,6 +654,7 @@ public actor Library {
             record.publishDate = parsed.publishDate
             record.duration = parsed.duration
             record.summary = parsed.description
+            record.webPage = parsed.webPage
         }
         try modelContext.save()
     }
@@ -672,7 +678,7 @@ public actor Library {
         return try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == raw })).first
             .map { ShowInfo(
                 key: showKey, title: $0.title, author: $0.author, artworkURL: $0.artworkURL, summary: $0.summary,
-                lastRefreshSuccess: $0.lastRefreshSuccess, lastRefreshError: $0.lastRefreshError
+                lastRefreshSuccess: $0.lastRefreshSuccess, lastRefreshError: $0.lastRefreshError, webPage: $0.webPage
             ) }
     }
 
@@ -778,7 +784,8 @@ public actor Library {
     private func info(_ record: EpisodeRecord) -> EpisodeInfo {
         EpisodeInfo(
             key: EpisodeKey(rawValue: record.key), showKey: ShowKey(rawValue: record.showKey), title: record.title,
-            audioURL: record.audioURL, publishDate: record.publishDate, duration: record.duration, summary: record.summary
+            audioURL: record.audioURL, publishDate: record.publishDate, duration: record.duration, summary: record.summary,
+            webPage: record.webPage
         )
     }
 }

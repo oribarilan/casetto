@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>One Page</title>
+    <link>https://example.com/one-page</link>
+    <item>
+      <title>Two</title>
+      <link>https://example.com/one-page</link>
+      <enclosure url="https://example.com/one-page/2.mp3" length="1000" type="audio/mpeg"/>
+    </item>
+    <item>
+      <title>One</title>
+      <link>https://example.com/one-page</link>
+      <enclosure url="https://example.com/one-page/1.mp3" length="1000" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>

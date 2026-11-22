@@ -21,6 +21,8 @@ struct ShowView: View {
     /// Where an unfollowed show's feed came from, for Subscribe.
     @State private var cachedFeedURL: URL?
     @State private var subscribing = false
+    /// The show's art, for the share sheet's preview.
+    @State private var showArt: UIImage?
 
     /// The built-in show for files shared to Casterr: Delete instead of following.
     private var isShared: Bool { showKey == .shared }
@@ -73,6 +75,11 @@ struct ShowView: View {
             }
         }
         .toolbar {
+            if let show, !isShared, let feedURL = subscription?.feedURL ?? cachedFeedURL {
+                ArtShareLink(share: ShareText.show(show, feedURL: feedURL), art: showArt) {
+                    Label("Share Show", systemImage: "square.and.arrow.up")
+                }
+            }
             if subscription != nil {
                 Menu("More", systemImage: "ellipsis") {
                     Button("Unsubscribe", systemImage: "minus.circle", role: .destructive) { confirmingUnsubscribe = true }
@@ -106,6 +113,9 @@ struct ShowView: View {
         subscription = try? await library.subscriptions().first { $0.showKey == showKey }
         cachedFeedURL = try? await library.cachedFeedURL(of: showKey)
         globalExpiry = (try? await library.globalExpiry()) ?? .standard
+        if showArt == nil, let url = show?.artworkURL, let (data, _) = try? await URLSession.shared.data(from: url) {
+            showArt = UIImage(data: data)
+        }
     }
 
     private func caption(_ place: Place?) -> String? {
@@ -128,6 +138,10 @@ struct ShowView: View {
             .contextMenu {
                 if isShared {
                     Button("Delete", systemImage: "trash", role: .destructive) { delete(episode) }
+                } else {
+                    ArtShareLink(share: ShareText.episode(episode, show: show, at: nil), art: showArt) {
+                        Label("Share Episode", systemImage: "square.and.arrow.up")
+                    }
                 }
             }
             .swipeActions(edge: .leading) {

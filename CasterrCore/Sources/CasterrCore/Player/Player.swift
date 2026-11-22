@@ -52,7 +52,8 @@ public final class Player {
     private let sleep: @Sendable (Duration) async throws -> Void
     private let localFile: (EpisodeKey, URL) -> URL?
     private var lastSavedPosition: TimeInterval = 0
-    private var loadedURL: URL?
+    /// What the engine loaded: the downloaded file, or else the stream.
+    public private(set) var loadedURL: URL?
     private var sleepTask: Task<Void, Never>?
     /// Set by a pause; a seek or another episode clears it, which turns off Back a Beat.
     private var pausedInPlace = false

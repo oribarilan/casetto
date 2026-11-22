@@ -383,6 +383,127 @@ final class ScreensTests: XCTestCase {
         snapshot("20 Chapters After Jump")
     }
 
+    /// Now Playing's share menu offers Share Episode and Share Clip, and Share Episode opens the share sheet.
+    /// The show page offers Share Show and Share Episode on a row.
+    @MainActor
+    func testShareMenu() throws {
+        try openATPNowPlaying()
+        app.buttons["nowPlayingShare"].tap()
+        let shareEpisode = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Share Episode'")).firstMatch
+        XCTAssertTrue(shareEpisode.waitForExistence(timeout: 5), "no Share Episode")
+        XCTAssertTrue(app.buttons["Share Clip…"].exists, "no Share Clip")
+        snapshot("25 Share Menu")
+        shareEpisode.tap()
+        let sheet = app.otherElements["ActivityListView"]
+        XCTAssertTrue(sheet.waitForExistence(timeout: 10), "Share Episode didn't open the share sheet")
+        snapshot("26 Share Episode Sheet")
+        // Tapping above the sheet closes it.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
+        XCTAssertTrue(sheet.waitForNonExistence(timeout: 5))
+
+        app.swipeDown(velocity: .fast)
+        XCTAssertTrue(app.navigationBars.buttons["Share Show"].waitForExistence(timeout: 5), "no Share Show")
+        app.buttons.matching(identifier: "episode").firstMatch.press(forDuration: 1.2)
+        XCTAssertTrue(app.buttons["Share Episode"].waitForExistence(timeout: 5), "no Share Episode on the row")
+    }
+
+    /// The clip editor opens around now, an edge drag changes the length, and the length stops at 60 s.
+    @MainActor
+    func testClipEditor() throws {
+        try openATPNowPlaying()
+        // Move to the middle of the episode. The first move right after loading can be lost, so retry.
+        let elapsed = app.staticTexts["elapsed"]
+        for _ in 0..<3 where (seconds(elapsed.label) ?? 0) < 600 {
+            app.sliders.firstMatch.adjust(toNormalizedSliderPosition: 0.3)
+            sleep(2)
+        }
+        app.buttons["pause.circle.fill"].tap()
+        let now = try XCTUnwrap(seconds(elapsed.label))
+        XCTAssertGreaterThan(now, 600)
+        app.buttons["nowPlayingShare"].tap()
+        app.buttons["Share Clip…"].tap()
+
+        let end = app.otherElements["clipEnd"]
+        XCTAssertTrue(end.waitForExistence(timeout: 20), "no bars")
+        let nowLabel = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'now '")).firstMatch
+        XCTAssertEqual(try XCTUnwrap(seconds(String(nowLabel.label.dropFirst(4)))), now, accuracy: 1, nowLabel.label)
+        let times = app.staticTexts["clipTimes"]
+        let (start, finish, length) = try clipTimes(times.label)
+        XCTAssertEqual(start, now - 15, accuracy: 1.5, times.label)
+        XCTAssertEqual(finish, now + 15, accuracy: 1.5, times.label)
+        XCTAssertTrue((29...31).contains(length), times.label)
+        XCTAssertEqual(end.value as? String, "Ends at \(clock(finish.rounded()))")
+        snapshot("27 Clip Editor")
+
+        // Preview plays the fetched audio until stopped.
+        let preview = app.buttons["clipPreview"]
+        preview.tap()
+        XCTAssertTrue(app.buttons["Stop"].waitForExistence(timeout: 3), "Preview didn't play")
+        preview.tap()
+        XCTAssertTrue(app.buttons["Preview"].waitForExistence(timeout: 3))
+
+        app.buttons["clipShare"].tap()
+        let sheet = app.otherElements["ActivityListView"]
+        XCTAssertTrue(sheet.waitForExistence(timeout: 30), "Share didn't open the share sheet")
+        snapshot("28 Clip Share Sheet")
+        app.buttons["Close"].tap()
+        XCTAssertTrue(sheet.waitForNonExistence(timeout: 5))
+
+        let grip = end.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        grip.press(forDuration: 0.2, thenDragTo: grip.withOffset(CGVector(dx: 90, dy: 0)))
+        let longer = try clipTimes(times.label).length
+        XCTAssertGreaterThan(longer, length + 3, times.label)
+        let movedGrip = end.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        movedGrip.press(forDuration: 0.2, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0)).withOffset(CGVector(dx: 0, dy: end.frame.midY)))
+        XCTAssertEqual(try clipTimes(times.label).length, 60, times.label)
+        snapshot("29 Clip At Sixty")
+    }
+
+    /// Subscribes to ATP, plays its latest episode, and opens Now Playing.
+    @MainActor
+    private func openATPNowPlaying() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launch()
+        app.tabBars.buttons["Shows"].tap()
+        subscribe(to: "https://atp.fm/rss")
+        let show = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Accidental Tech Podcast'")).firstMatch
+        XCTAssertTrue(show.waitForExistence(timeout: 30))
+        show.tap()
+        let episode = app.buttons.matching(identifier: "episode").firstMatch
+        XCTAssertTrue(episode.waitForExistence(timeout: 10))
+        episode.tap()
+        let miniPlayer = app.buttons["miniPlayer"]
+        XCTAssertTrue(miniPlayer.waitForExistence(timeout: 15))
+        miniPlayer.tap()
+        let share = app.buttons["nowPlayingShare"]
+        XCTAssertTrue(share.waitForExistence(timeout: 10), "no share button")
+        // Wait for the duration, which the editor needs.
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "label != '0:00'"),
+                                                                        object: app.staticTexts["elapsed"])], timeout: 30), .completed)
+    }
+
+    /// "12:04.4 – 12:33.8 · 0:29" as start, end and whole seconds of length.
+    private func clipTimes(_ label: String) throws -> (start: TimeInterval, end: TimeInterval, length: Int) {
+        let parts = label.components(separatedBy: CharacterSet(charactersIn: "–·")).map { $0.trimmingCharacters(in: .whitespaces) }
+        XCTAssertEqual(parts.count, 3, label)
+        return (try XCTUnwrap(seconds(parts[0])), try XCTUnwrap(seconds(parts[1])), Int(try XCTUnwrap(seconds(parts[2]))))
+    }
+
+    /// Seconds in "1:02:03", "12:04" or "12:04.4".
+    private func seconds(_ clock: String) -> TimeInterval? {
+        let fields = clock.split(separator: ":").map { Double($0) }
+        guard !fields.isEmpty, !fields.contains(nil) else { return nil }
+        return fields.compactMap(\.self).reduce(0) { $0 * 60 + $1 }
+    }
+
+    private func clock(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds)
+        return total >= 3600 ? String(format: "%d:%02d:%02d", total / 3600, total % 3600 / 60, total % 60)
+                             : String(format: "%d:%02d", total / 60, total % 60)
+    }
+
     /// A shared audio file arrives in the Queue, plays, and lives on the Shared with Casterr page.
     @MainActor
     func testSharedFile() throws {
@@ -402,6 +523,7 @@ final class ScreensTests: XCTestCase {
         miniPlayer.tap()
         let elapsed = app.staticTexts["elapsed"]
         XCTAssertTrue(elapsed.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["nowPlayingShare"].exists, "a shared file offers sharing")
         let advanced = NSPredicate(format: "label != '0:00'")
         XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: advanced, object: elapsed)], timeout: 10), .completed,
                        "shared file didn't play")
@@ -416,6 +538,12 @@ final class ScreensTests: XCTestCase {
         let episode = app.buttons.matching(identifier: "episode").firstMatch
         XCTAssertTrue(episode.waitForExistence(timeout: 5))
         XCTAssertFalse(app.navigationBars.buttons["More"].exists, "the built-in show offers Unsubscribe")
+        XCTAssertFalse(app.navigationBars.buttons["Share Show"].exists, "the built-in show offers Share Show")
+        episode.press(forDuration: 1.2)
+        XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Share Episode"].exists, "a shared file offers Share Episode")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+        XCTAssertTrue(app.buttons["Delete"].waitForNonExistence(timeout: 5))
         snapshot("23 Shared With Casterr")
         episode.swipeLeft()
         app.buttons["Delete"].tap()

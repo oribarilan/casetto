@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Repeats</title>
+    <link>https://example.com/repeats</link>
+    <item>
+      <title>Three</title>
+      <link>https://example.com/repeats/3</link>
+      <enclosure url="https://example.com/repeats/3.mp3" length="1000" type="audio/mpeg"/>
+    </item>
+    <item>
+      <title>Two</title>
+      <link>https://example.com/repeats/latest</link>
+      <enclosure url="https://example.com/repeats/2.mp3" length="1000" type="audio/mpeg"/>
+    </item>
+    <item>
+      <title>One</title>
+      <link>https://example.com/repeats/latest</link>
+      <enclosure url="https://example.com/repeats/1.mp3" length="1000" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>
