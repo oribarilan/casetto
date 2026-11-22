@@ -114,12 +114,16 @@ The system SHALL export every subscription as an OPML 2.0 file with each show's 
 - **THEN** the other device subscribes to the same shows
 
 ### Requirement: Search your shows
-Searching on the Shows tab SHALL list the shows the listener follows that match, first, then more shows from the directory without the ones already followed. A followed show MUST match when every word of the search appears in its title or author, ignoring case and accents.
+Searching on the Shows tab SHALL show only the shows the listener follows that match, in the grid, and no shows from the directory. A followed show MUST match when every word of the search appears in its title or author, ignoring case and accents. With no match, the tab MUST say so. While the listener follows no shows, the Shows tab is Find Shows and its search covers the directory.
 
 #### Scenario: Split results
 - **WHEN** the listener follows Planet Money and searches "planet"
-- **THEN** "Your shows" lists Planet Money, and "More shows" lists other matching shows from the directory but not Planet Money
+- **THEN** the grid shows only Planet Money, and no directory shows appear
 
 #### Scenario: Partial words
 - **WHEN** the listener searches "pock econ"
 - **THEN** a followed show named Pocket Economics matches
+
+#### Scenario: No match
+- **WHEN** the listener follows Planet Money and searches "zzz"
+- **THEN** the tab says no shows match "zzz"

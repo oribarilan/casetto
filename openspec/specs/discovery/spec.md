@@ -21,15 +21,15 @@ The system SHALL list Apple's top podcasts for the chart country, in chart order
 - **THEN** the top shows appear as if nothing failed
 
 ### Requirement: Search
-The system SHALL search podcasts by name through the iTunes Search API, in the chart country's store, from the Shows tab and Find Shows. A search MUST wait until typing pauses, so it stays within the API's rate limit. While the Shows tab's search field is active and empty, it SHALL show the top shows.
+The system SHALL search the directory by name through the iTunes Search API, in the chart country's store, from Find Shows. A search MUST wait until typing pauses, so it stays within the API's rate limit. The Shows tab's search covers only followed shows, as Search your shows says.
 
 #### Scenario: Search by name
-- **WHEN** the listener types "planet money" and pauses
+- **WHEN** the listener types "planet money" in Find Shows and pauses
 - **THEN** matching shows appear, each with a subscribe button
 
 #### Scenario: Empty search
 - **WHEN** the listener follows shows, taps the Shows tab's search field, and types nothing
-- **THEN** the top shows appear under "Popular now", each with Subscribe and Star
+- **THEN** the grid of their shows stays as it is, with no directory shows
 
 ### Requirement: Subscribe and star from the directory
 Each directory show SHALL offer Subscribe, which starts the show at the Inbox level, and Star, which subscribes at the Auto-queue level. Tapping Star again MUST return the show to the Inbox level. Tapping a subscribed show's Subscribe button again MUST unsubscribe.
@@ -82,7 +82,7 @@ The system SHALL teach a control with a one-time tip at the moment the listener 
 - **THEN** the tip closes and doesn't show again
 
 ### Requirement: Chart country
-The chart country SHALL start as the phone's region, or the United States when the phone has no region. When the region isn't the United States, the Popular now heading MUST be a menu offering the region and the United States, and the choice MUST be kept on this device. There SHALL be no worldwide choice, because Apple has no worldwide chart.
+The chart country SHALL start as the phone's region, or the United States when the phone has no region. When the region isn't the United States, the Popular now heading MUST be a menu offering the region and the United States, and the choice MUST be kept on this device. Switching to a country with no saved chart MUST show the loading state until the new chart arrives. There SHALL be no worldwide choice, because Apple has no worldwide chart.
 
 #### Scenario: Switch to the United States
 - **WHEN** the phone's region is Israel and the listener picks United States from the heading
@@ -96,9 +96,28 @@ The chart country SHALL start as the phone's region, or the United States when t
 - **WHEN** the listener picked United States and later opens Find Shows again
 - **THEN** the list still shows the United States chart
 
+#### Scenario: Switching loads
+- **WHEN** no United States chart is saved and the listener picks United States from the heading
+- **THEN** the Israel list goes away and the loading Cassy shows "Flipping through the shelves…" until the United States chart appears
+
 ### Requirement: Find Shows after onboarding
 The Shows tab's + menu SHALL offer Find Shows as its first item. It MUST open the onboarding's Find Shows screen, with the top shows, search, Subscribe and Star, as a sheet without the welcome screen, closed with Done.
 
 #### Scenario: Open from the + menu
 - **WHEN** the listener follows shows and picks Find Shows from the + menu
 - **THEN** a sheet titled "Find Shows" shows the top shows and search, and Done closes it
+
+### Requirement: Saved charts
+The system SHALL keep the last top shows of the phone's region and of the United States on the device. Find Shows MUST show the saved list for the chart country at once and replace it when a fresh chart arrives. Opening Find Shows MUST fetch both charts. When a fresh chart fails and a saved one exists, the saved list MUST stay, with no error.
+
+#### Scenario: Second visit
+- **WHEN** the listener opens Find Shows a second time
+- **THEN** the top shows from the last visit appear at once, with no loading Cassy, and are replaced when the fresh chart arrives
+
+#### Scenario: Switch after a visit
+- **WHEN** the phone's region is Israel, Find Shows has loaded once, and the listener picks United States
+- **THEN** the United States chart appears at once
+
+#### Scenario: Offline with a saved chart
+- **WHEN** the listener opens Find Shows offline after an earlier visit
+- **THEN** the saved top shows appear, with their art

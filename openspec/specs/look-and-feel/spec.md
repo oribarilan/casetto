@@ -109,3 +109,14 @@ All text in the app SHALL use one word per idea: "Remove" when an episode leaves
 #### Scenario: Automatic removal
 - **WHEN** an Inbox episode expires after 7 days
 - **THEN** its row reads "Removed after 7 days" and the refresh summary says "removed 1 old one from your Inbox"
+
+### Requirement: Show art on the device
+Show art SHALL be kept on the device once loaded and shown from there without asking the server again, wherever it appears. It MUST show offline once it has loaded before.
+
+#### Scenario: Offline grid
+- **WHEN** the listener follows shows whose art has loaded, then opens the Shows tab offline
+- **THEN** every show's art appears
+
+#### Scenario: No reload
+- **WHEN** the listener scrolls the Shows grid away and back
+- **THEN** the art appears at once, with no letter placeholder in between
