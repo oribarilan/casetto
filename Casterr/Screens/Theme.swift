@@ -1,3 +1,5 @@
+import CasterrCore
+import CryptoKit
 import SwiftUI
 import UIKit
 
@@ -34,25 +36,29 @@ enum Theme {
     }
 }
 
-/// A show's artwork, or a tangerine square with the show's first letter while it loads or when there's none.
+/// A show's artwork. A grey shimmer while it downloads, and a tangerine square with the show's first letter
+/// when there's no art or it fails to load.
 struct ArtworkView: View {
     let url: URL?
     let title: String
     let size: CGFloat
     @Environment(\.displayScale) private var scale
     @State private var image: UIImage?
+    @State private var failed = false
 
     var body: some View {
         Group {
-            // A kept image shows on the first frame, with no placeholder flash.
+            // A kept image shows on the first frame, with no shimmer.
             if let image = image ?? url.flatMap({ ArtCache.kept($0, pixels: size * scale) }) {
                 Image(uiImage: image).resizable().scaledToFill()
-            } else {
+            } else if url == nil || failed {
                 Color.tangerine.overlay {
                     Text(title.first.map(String.init) ?? "")
                         .font(.system(size: size * 0.45, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
                 }
+            } else {
+                ArtShimmer()
             }
         }
         .frame(width: size, height: size)
@@ -60,17 +66,52 @@ struct ArtworkView: View {
         .accessibilityHidden(true)
         .task(id: url) {
             image = nil
+            failed = false
             guard let url else { return }
-            image = await ArtCache.image(for: url, pixels: size * scale)
+            let started = Date.now
+            let loaded = await ArtCache.image(for: url, pixels: size * scale)
+            // Art saved on the device arrives in a few milliseconds and pops in; a download fades in.
+            withAnimation(Date.now.timeIntervalSince(started) < 0.1 ? nil : .easeOut(duration: 0.25)) {
+                image = loaded
+                failed = loaded == nil
+            }
         }
     }
 }
 
-/// Show art, kept once loaded: files in the 300 MB download cache, read without asking the server again,
-/// and decoded images in memory so lists don't flash the placeholder.
+/// A soft grey square with a light band sweeping across, or still grey with Reduce Motion.
+private struct ArtShimmer: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var sweeping = false
+
+    var body: some View {
+        Color(.systemGray5)
+            .overlay {
+                if !reduceMotion {
+                    GeometryReader { proxy in
+                        LinearGradient(colors: [.clear, .white.opacity(0.35), .clear], startPoint: .leading, endPoint: .trailing)
+                            .frame(width: proxy.size.width * 0.6)
+                            .offset(x: proxy.size.width * (sweeping ? 1 : -0.6))
+                    }
+                    .onAppear {
+                        withAnimation(.linear(duration: 1.2).repeatForever(autoreverses: false)) { sweeping = true }
+                    }
+                }
+            }
+            .clipped()
+    }
+}
+
+/// Show art, kept once loaded: originals in the 300 MB download cache, read without asking the server again;
+/// shrunk copies as small files, so a launch doesn't shrink 3000-pixel art again; and decoded images in memory,
+/// so lists don't flash the placeholder.
 @MainActor
 enum ArtCache {
     private static let memory = NSCache<NSString, UIImage>()
+    private static let folder = URL.cachesDirectory.appending(path: "Art")
+
+    /// Bytes of shrunk copies on disk.
+    static var diskSize: Int { FileManager.default.size(ofFolder: folder) }
 
     /// The decoded art already in memory, if any.
     static func kept(_ url: URL, pixels: CGFloat) -> UIImage? {
@@ -81,12 +122,20 @@ enum ArtCache {
     static func image(for url: URL, pixels: CGFloat) async -> UIImage? {
         let key = key(url, pixels)
         if let image = memory.object(forKey: key) { return image }
+        let file = folder.appending(path: SHA256.hash(data: Data((key as String).utf8)).map { String(format: "%02x", $0) }.joined())
+        if let saved = UIImage(contentsOfFile: file.path(percentEncoded: false)),
+           let image = await saved.byPreparingForDisplay() {
+            memory.setObject(image, forKey: key)
+            return image
+        }
         let side = max(pixels.rounded(.up), 1)
         guard let data = await data(for: url), let full = UIImage(data: data) else { return nil }
         // Feeds often carry 3000-pixel art; shrinking keeps memory small and decodes it off the main thread.
         let shrunk = CGSize(width: side, height: side * full.size.height / max(full.size.width, 1))
         let image = await full.byPreparingThumbnail(ofSize: shrunk) ?? full
         memory.setObject(image, forKey: key)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try? image.jpegData(compressionQuality: 0.85)?.write(to: file, options: .atomic)
         return image
     }
 
@@ -99,6 +148,7 @@ enum ArtCache {
     static func clear() {
         memory.removeAllObjects()
         URLCache.shared.removeAllCachedResponses()
+        try? FileManager.default.removeItem(at: folder)
     }
 
     private static func key(_ url: URL, _ pixels: CGFloat) -> NSString {

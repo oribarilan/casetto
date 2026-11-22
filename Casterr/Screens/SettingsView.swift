@@ -20,6 +20,9 @@ struct SettingsView: View {
     @State private var highlighted: SettingsSection?
     /// Bytes of kept show art, other downloaded responses, and saved popular lists.
     @State private var cacheSize = 0
+    @State private var downloadsSize = 0
+    /// Shows "Cleared" on the button for a moment after Clear Cache.
+    @State private var cleared = false
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -95,23 +98,22 @@ struct SettingsView: View {
                 .id(SettingsSection.playback)
 
                 Section {
+                    LabeledContent("Downloaded episodes", value: downloadsSize.formatted(.byteCount(style: .file)))
+                        .accessibilityIdentifier("downloadsSize")
                     LabeledContent("Saved art and popular lists", value: cacheSize.formatted(.byteCount(style: .file)))
                         .accessibilityIdentifier("cacheSize")
-                    Button("Clear Cache") {
-                        ArtCache.clear()
-                        model.savedCharts.clear()
-                        // iOS empties its download cache in the background, so read the size again as it does.
-                        Task {
-                            for _ in 0..<6 {
-                                try? await Task.sleep(for: .milliseconds(500))
-                                cacheSize = currentCacheSize
-                            }
+                    Button(action: clearCache) {
+                        if cleared {
+                            Label("Cleared", systemImage: "checkmark")
+                        } else {
+                            Text("Clear Cache")
                         }
                     }
+                    .disabled(cleared)
                 } header: {
                     Text("Storage")
                 } footer: {
-                    Text("Show art and popular lists download again when needed. Downloaded episodes, bookmarks, and shared files stay.")
+                    Text("Keep downloaded decides which episodes stay downloaded. Clear Cache deletes saved show art and popular lists, which download again when needed.")
                 }
             }
             .navigationTitle("Settings")
@@ -137,7 +139,22 @@ struct SettingsView: View {
         speed = ((try? await model.library.globalSpeed())?.value ?? 1.0)
         voiceBoost = (try? await model.library.globalVoiceBoost()) ?? false
         cacheSize = currentCacheSize
+        downloadsSize = model.downloader.store.size
     }
 
-    private var currentCacheSize: Int { URLCache.shared.currentDiskUsage + model.savedCharts.size }
+    private var currentCacheSize: Int { URLCache.shared.currentDiskUsage + model.savedCharts.size + ArtCache.diskSize }
+
+    private func clearCache() {
+        ArtCache.clear()
+        model.savedCharts.clear()
+        withAnimation { cleared = true }
+        Task {
+            // iOS empties its download cache in the background, so read the size again as it does.
+            for step in 1...6 {
+                try? await Task.sleep(for: .milliseconds(500))
+                cacheSize = currentCacheSize
+                if step == 4 { withAnimation { cleared = false } }
+            }
+        }
+    }
 }

@@ -47,6 +47,9 @@ public struct DownloadStore: Sendable {
         try FileManager.default.moveItem(at: downloaded, to: destination)
     }
 
+    /// Bytes of downloaded files.
+    public var size: Int { FileManager.default.size(ofFolder: folder) }
+
     /// The stems of the files in the folder.
     public func stems() -> [String] {
         let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []

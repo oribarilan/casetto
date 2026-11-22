@@ -643,8 +643,10 @@ final class ScreensTests: XCTestCase {
         let size = app.descendants(matching: .any)["cacheSize"]
         XCTAssertTrue(size.waitForExistence(timeout: 5))
         let shown = { "\(size.label) \(size.value as? String ?? "")" }
+        XCTAssertTrue(app.descendants(matching: .any)["downloadsSize"].exists, "no downloads row in Storage")
         let before = shown()
         app.buttons["Clear Cache"].tap()
+        XCTAssertTrue(app.buttons["Cleared"].waitForExistence(timeout: 1), "Clear Cache didn't confirm")
         // The size drops as iOS empties its download cache in the background.
         for _ in 0..<5 where shown() == before { _ = size.waitForNonExistence(timeout: 1) }
         XCTAssertNotEqual(shown(), before)

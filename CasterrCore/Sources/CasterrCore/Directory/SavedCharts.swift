@@ -20,10 +20,7 @@ public struct SavedCharts: Sendable {
     }
 
     /// Bytes on disk.
-    public var size: Int {
-        let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileSizeKey])) ?? []
-        return files.reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
-    }
+    public var size: Int { FileManager.default.size(ofFolder: folder) }
 
     public func clear() {
         try? FileManager.default.removeItem(at: folder)
