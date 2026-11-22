@@ -2,13 +2,15 @@ import CasterrCore
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The shows you follow, search, adding by URL, and OPML import and export.
-/// When you follow nothing, it shows the top shows instead.
+/// The shows you follow, search, Find Shows, adding by URL, and OPML import and export.
+/// When you follow nothing, or the search is open with nothing typed, it shows the top shows instead.
 struct ShowsView: View {
     @Environment(AppModel.self) private var model
     @State private var shows: [Row] = []
     @State private var loaded = false
     @State private var query = ""
+    @State private var searching = false
+    @State private var findingShows = false
     @State private var addingFeed = false
     @State private var importingOPML = false
     @State private var importReport: OPMLImportReport?
@@ -16,8 +18,8 @@ struct ShowsView: View {
 
     var body: some View {
         Group {
-            if !query.isEmpty || (loaded && shows.isEmpty) {
-                // While searching, your matching shows come first, then more from the directory.
+            if searching || !query.isEmpty || (loaded && shows.isEmpty) {
+                // An empty search shows the top shows. While typing, your matching shows come first, then more from the directory.
                 DiscoverView(query: query, followed: query.isEmpty ? [] : shows.filter {
                     ShowSearch.matches(query, title: $0.title, author: $0.author)
                 }.map { FollowedShow(key: $0.key, title: $0.title, author: $0.author, artworkURL: $0.artworkURL) })
@@ -34,10 +36,12 @@ struct ShowsView: View {
                 .background(Color(.systemGroupedBackground))
             }
         }
-        .searchable(text: $query, prompt: "Search shows")
+        .searchable(text: $query, isPresented: $searching, prompt: "Search shows")
         .navigationTitle("Shows")
         .toolbar {
             Menu("Add", systemImage: "plus") {
+                Button("Find Shows", systemImage: "magnifyingglass") { findingShows = true }
+                Divider()
                 Button("Add by Feed Address", systemImage: "link") { addingFeed = true }
                 Button("Import OPML File", systemImage: "square.and.arrow.down") { importingOPML = true }
                 Divider()
@@ -49,6 +53,7 @@ struct ShowsView: View {
         }
         .refreshable { await model.refresh() }
         .sheet(isPresented: $addingFeed) { AddFeedView() }
+        .sheet(isPresented: $findingShows) { FindShowsView { findingShows = false } }
         .sheet(item: $importReport) { ImportReportView(report: $0) }
         .fileImporter(isPresented: $importingOPML, allowedContentTypes: [.xml, UTType(filenameExtension: "opml") ?? .xml]) { result in
             Task { await importOPML(result) }

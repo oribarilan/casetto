@@ -18,6 +18,8 @@ struct DiscoverView: View {
     @State private var loading = false
     @State private var topShowsFailed = false
     @State private var attempt = 0
+    /// "us" once the listener picks the United States chart; empty follows the phone's region. Kept on this device.
+    @AppStorage("chartCountry") private var chosenCountry = ""
     /// The one-time tip on a star, right after the first follow with +.
     @State private var tip: CassyTip?
 
@@ -66,27 +68,49 @@ struct DiscoverView: View {
                             }
                         }
                     }
-                    Section(query.isEmpty ? popularHeading : followed.isEmpty ? "Results" : "More shows") {
+                    Section {
                         if let message {
                             Text(message).foregroundStyle(.secondary)
                         }
                         ForEach(directoryResults, id: \.id) { show in
                             row(show)
                         }
+                    } header: {
+                        if query.isEmpty { popularHeading } else { Text(followed.isEmpty ? "Results" : "More shows") }
                     }
                 }
                 .cassyTips($tip)
             }
         }
-        .task(id: "\(query)|\(attempt)") { await loadResults() }
+        .task(id: "\(query)|\(attempt)|\(country)") { await loadResults() }
         .task(id: model.revision) { await loadLevels() }
     }
 
-    /// "Popular now · United States", from the phone's region, the same one the chart uses.
-    private var popularHeading: String {
-        guard let region = Locale.current.region,
-              let name = Locale.current.localizedString(forRegionCode: region.identifier) else { return "Popular now" }
-        return "Popular now · \(name)"
+    /// The chart and search country: the listener's pick, or the phone's region.
+    private var country: String { chosenCountry.isEmpty ? AppleDirectory.deviceCountry : chosenCountry }
+
+    /// "Popular now · Israel". Outside the United States it's a menu to switch to the United States chart and back.
+    @ViewBuilder private var popularHeading: some View {
+        let name = Locale.current.region.flatMap { _ in Locale.current.localizedString(forRegionCode: country.uppercased()) }
+        let title = name.map { "Popular now · \($0)" } ?? "Popular now"
+        if let region = Locale.current.region?.identifier, region != "US",
+           let regionName = Locale.current.localizedString(forRegionCode: region),
+           let us = Locale.current.localizedString(forRegionCode: "US") {
+            Menu {
+                Picker("Chart", selection: $chosenCountry) {
+                    Text(regionName).tag("")
+                    Text(us).tag("us")
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(title).foregroundStyle(Color(.secondaryLabel))
+                    Image(systemName: "chevron.down").font(.caption.weight(.semibold))
+                }
+            }
+            .accessibilityIdentifier("chartCountry")
+        } else {
+            Text(title)
+        }
     }
 
     /// Cassy's card: an invitation to add shows, or a cheer once a show is starred.
@@ -182,12 +206,12 @@ struct DiscoverView: View {
         defer { loading = false }
         do {
             if term.isEmpty {
-                results = try await model.directory.topShows()
+                results = try await model.directory.topShows(country: country)
                 topShowsFailed = false
             } else {
                 // Wait for typing to pause: the search API allows about 20 calls a minute.
                 try await Task.sleep(for: .milliseconds(400))
-                results = try await model.directory.search(term)
+                results = try await model.directory.search(term, country: country)
             }
             message = results.isEmpty && !term.isEmpty ? "No shows found." : nil
         } catch is CancellationError {
@@ -202,30 +226,37 @@ struct DiscoverView: View {
     }
 }
 
-/// First launch: top shows and search, closed with Done or Skip.
+/// First launch: the welcome screen, then Find Shows.
 struct OnboardingView: View {
-    @Environment(AppModel.self) private var model
     let close: () -> Void
-    @State private var query = ""
-    @State private var following = false
     @State private var welcomed = false
 
     var body: some View {
         if welcomed {
-            findShows
+            FindShowsView(inOnboarding: true, close: close)
         } else {
             WelcomeView { withAnimation { welcomed = true } }
         }
     }
+}
 
-    private var findShows: some View {
+/// Top shows and search with a large title. Onboarding closes it with Skip until a show is followed, then Done;
+/// the Shows tab's + menu opens it as a sheet closed with Done.
+struct FindShowsView: View {
+    @Environment(AppModel.self) private var model
+    var inOnboarding = false
+    let close: () -> Void
+    @State private var query = ""
+    @State private var following = false
+
+    var body: some View {
         NavigationStack {
-            DiscoverView(query: query, inOnboarding: true)
+            DiscoverView(query: query, inOnboarding: inOnboarding)
                 .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search podcasts")
                 .navigationTitle("Find Shows")
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar {
-                    Button(following ? "Done" : "Skip", action: close)
+                    Button(following || !inOnboarding ? "Done" : "Skip", action: close)
                 }
                 .task(id: model.revision) {
                     following = !((try? await model.library.subscriptions().isEmpty) ?? true)

@@ -592,16 +592,80 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(tip.waitForExistence(timeout: 30))
         snapshot("13b Star Tip")
 
-        // The grey ✕ closes it.
+        // The ✕ closes it.
         app.buttons["Dismiss tip"].tap()
         XCTAssertTrue(tip.waitForNonExistence(timeout: 5))
+    }
+
+    /// After onboarding: Find Shows in the + menu, and the top shows in an empty search.
+    @MainActor
+    func testFindMoreShows() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launch()
+
+        app.tabBars.buttons["Shows"].tap()
+        subscribe(to: feed)
+        XCTAssertTrue(app.buttons["Planet Money, NPR"].waitForExistence(timeout: 30))
+
+        app.navigationBars["Shows"].buttons["Add"].tap()
+        app.buttons["Find Shows"].tap()
+        XCTAssertTrue(app.navigationBars["Find Shows"].waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForTopShows())
+        snapshot("25 Find Shows Sheet")
+        app.navigationBars["Find Shows"].buttons["Done"].tap()
+        XCTAssertTrue(app.navigationBars["Find Shows"].waitForNonExistence(timeout: 5))
+
+        app.searchFields["Search shows"].tap()
+        XCTAssertTrue(waitForTopShows(), "an empty search doesn't show the top shows")
+        XCTAssertTrue(app.buttons.matching(identifier: "starButton").firstMatch.waitForExistence(timeout: 5))
+        snapshot("26 Empty Search")
+    }
+
+    /// Outside the United States, the heading switches the chart to the United States, and the choice is kept.
+    @MainActor
+    func testChartCountry() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES", "-AppleLocale", "en_IL"]
+        app.launch()
+        app.tabBars.buttons["Shows"].tap()
+        XCTAssertTrue(waitForTopShows())
+
+        // Start from the region, whatever an earlier run left.
+        pickChart("Israel")
+        XCTAssertTrue(app.buttons["chartCountry"].label.hasPrefix("Popular now · Israel"))
+        pickChart("United States")
+        XCTAssertTrue(waitForTopShows())
+        XCTAssertTrue(app.buttons["chartCountry"].label.hasPrefix("Popular now · United States"))
+        snapshot("27 Chart Country")
+
+        app.terminate()
+        app.launch()
+        app.tabBars.buttons["Shows"].tap()
+        XCTAssertTrue(waitForTopShows())
+        XCTAssertTrue(app.buttons["chartCountry"].label.hasPrefix("Popular now · United States"), "the choice wasn't kept")
+        pickChart("Israel")
+    }
+
+    @MainActor
+    private func pickChart(_ country: String) {
+        let menu = app.buttons["chartCountry"]
+        XCTAssertTrue(menu.waitForExistence(timeout: 5))
+        menu.tap()
+        let item = app.buttons[country]
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
+        item.tap()
+        XCTAssertTrue(app.buttons["chartCountry"].waitForExistence(timeout: 5))
     }
 
     /// Waits for Apple's top shows. Its chart fails now and then, so this taps Try Again a few times.
     @MainActor
     private func waitForTopShows() -> Bool {
         for _ in 0..<4 {
-            let heading = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Popular now'")).firstMatch
+            // Plain text, or a menu outside the United States.
+            let heading = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Popular now'")).firstMatch
             if heading.waitForExistence(timeout: 25) { return true }
             let retry = app.buttons["Try Again"]
             guard retry.exists else { return false }
