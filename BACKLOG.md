@@ -86,3 +86,15 @@ The Now Playing sheet shows no grab handle. Nobody chose that: it's a plain full
 ## Download status in the Queue (logged 2026-11-22)
 
 Show each Queue episode's download status and progress in the Queue view.
+
+## Cassy's entrance and exit while the Queue loads (logged 2026-11-22)
+
+While the Queue loads, Cassy pops in and then vanishes. Explore a nicer animation for her appearing and disappearing.
+
+## Find Shows card reacts to this visit (logged 2026-11-22)
+
+Cassy's card in Find Shows should react to what the listener does during this visit. Today it says "Nice pick!" whenever any followed show is starred, so once you've ever starred a show it always cheers (`starred` in `DiscoverView.swift` checks every subscription).
+
+## Download space next to Keep downloaded (logged 2026-11-22)
+
+Show how much space the downloads take where the listener picks Keep downloaded, for example "about 210 MB" under the current choice, estimated by adding up the file sizes the feed lists for the top N Queue episodes. Decided against a separate megabyte cap: two limits need a rule for which wins, and an episode that silently doesn't download would need explaining in the Queue.
