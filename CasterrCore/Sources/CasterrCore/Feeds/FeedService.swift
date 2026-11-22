@@ -51,6 +51,15 @@ public struct FeedService: Sendable {
         return .subscribed(key)
     }
 
+    /// Fetches and saves a show's feed without following it, so its page can list the episodes.
+    public func preview(_ url: URL) async throws -> ShowKey {
+        guard let key = ShowKey(feedURL: url) else { throw SubscribeError.invalidURL }
+        let feed = try await fetchAndParse(url)
+        try await library.saveFeed(feed, for: key)
+        if try await !library.isSubscribed(key) { try await library.setFeedURL(url, for: key) }
+        return key
+    }
+
     /// Plays next the episode an Apple Podcasts link pointed to: the one the listener already has with the same GUID,
     /// or else the one in its feed, saved without subscribing. Nil when the feed doesn't have it; nothing changes then.
     public func playNext(_ found: DirectoryEpisode) async throws -> EpisodeKey? {

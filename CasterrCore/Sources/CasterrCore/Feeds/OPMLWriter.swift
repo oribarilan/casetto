@@ -10,7 +10,7 @@ public enum OPMLWriter {
         let lines = [
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
             "<opml version=\"2.0\">",
-            "  <head><title>Casterr Subscriptions</title></head>",
+            "  <head><title>Casterr Shows</title></head>",
             "  <body>",
         ] + outlines + ["  </body>", "</opml>", ""]
         return Data(lines.joined(separator: "\n").utf8)

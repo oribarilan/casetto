@@ -1,12 +1,14 @@
 import CasterrCore
 import SwiftUI
 
-/// One show: a header with its description, what happens to new episodes, the episodes left to hear,
-/// played episodes folded away, refresh status, speed override, and unsubscribe.
+/// One show: a header with its description, Follow and Star, what happens to new episodes, the episodes left to hear,
+/// played episodes folded away, refresh status, and speed override.
 struct ShowView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let showKey: ShowKey
+    /// For a show opened from Find Shows: where to fetch its feed when the device doesn't have it.
+    var feedURL: URL?
 
     @State private var show: ShowInfo?
     @State private var episodes: [EpisodeInfo] = []
@@ -14,13 +16,16 @@ struct ShowView: View {
     @State private var moves: [EpisodeKey: LastMove] = [:]
     @State private var subscription: SubscriptionInfo?
     @State private var globalExpiry: InboxExpiry = .standard
-    @State private var confirmingUnsubscribe = false
+    @State private var confirmingUnfollow = false
     @State private var editingNewEpisodes = false
     @State private var showingPlayed = false
     @State private var fullDescription = false
-    /// Where an unfollowed show's feed came from, for Subscribe.
+    /// Where an unfollowed show's feed came from, for Follow.
     @State private var cachedFeedURL: URL?
-    @State private var subscribing = false
+    /// Following, unfollowing, or starring is under way.
+    @State private var working = false
+    /// Fetching the feed of a show opened from Find Shows.
+    @State private var fetchingFeed = false
     /// The show's art, for the share sheet's preview.
     @State private var showArt: UIImage?
 
@@ -30,6 +35,10 @@ struct ShowView: View {
     var body: some View {
         List {
             header
+            followButtons
+            if fetchingFeed && episodes.isEmpty {
+                Section { ProgressView("Loading episodes…").frame(maxWidth: .infinity) }
+            }
             Section {
                 failingFeed
                 if let speedOverride = subscription?.speedOverride {
@@ -80,24 +89,67 @@ struct ShowView: View {
                     Label("Share Show", systemImage: "square.and.arrow.up")
                 }
             }
-            if subscription != nil {
-                Menu("More", systemImage: "ellipsis") {
-                    Button("Unsubscribe", systemImage: "minus.circle", role: .destructive) { confirmingUnsubscribe = true }
-                }
-            }
         }
-        .confirmationDialog("Unsubscribe from this show?", isPresented: $confirmingUnsubscribe) {
-            Button("Unsubscribe", role: .destructive) {
-                Task {
-                    await model.change { try await model.feeds.unsubscribe(showKey) }
-                    dismiss()
-                }
-            }
+        .confirmationDialog("Unfollow this show?", isPresented: $confirmingUnfollow) {
+            Button("Unfollow", role: .destructive) { unfollow() }
         } message: {
             Text("Episodes you queued stay in your Queue.")
         }
         .refreshable { await model.refresh() }
         .task(id: model.revision) { await load() }
+        .task { await fetchFeedIfMissing() }
+    }
+
+    /// Follow or Following, and Star or Starred. Star is the Auto-queue level, as in Find Shows.
+    @ViewBuilder private var followButtons: some View {
+        if !isShared, let url = subscription?.feedURL ?? cachedFeedURL ?? feedURL {
+            let starred = subscription?.level == .autoQueue
+            HStack(spacing: 10) {
+                ShowPageButton(title: subscription == nil ? "Follow" : "Following",
+                               symbol: subscription == nil ? "plus" : "checkmark", on: subscription != nil) {
+                    if subscription == nil { act { _ = try await model.feeds.subscribe(to: url) } } else { confirmingUnfollow = true }
+                }
+                .accessibilityIdentifier("followShow")
+                ShowPageButton(title: starred ? "Starred" : "Star", symbol: starred ? "star.fill" : "star", on: starred) {
+                    act {
+                        switch subscription?.level {
+                        case nil: _ = try await model.feeds.subscribe(to: url, level: .autoQueue)
+                        case .autoQueue: try await model.library.setLevel(showKey, to: .inbox)
+                        default: try await model.library.setLevel(showKey, to: .autoQueue)
+                        }
+                    }
+                }
+                .accessibilityIdentifier("starShow")
+            }
+            .disabled(working)
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
+        }
+    }
+
+    private func act(_ work: @escaping () async throws -> Void) {
+        working = true
+        Task {
+            await model.change(work)
+            working = false
+        }
+    }
+
+    /// Unfollows but keeps the feed address, so the page can offer Follow again.
+    private func unfollow() {
+        guard let url = subscription?.feedURL else { return }
+        act {
+            try await model.feeds.unsubscribe(showKey)
+            try await model.library.setFeedURL(url, for: showKey)
+        }
+    }
+
+    private func fetchFeedIfMissing() async {
+        guard let feedURL, (try? await model.library.show(showKey)) == nil else { return }
+        fetchingFeed = true
+        await model.change { _ = try await model.feeds.preview(feedURL) }
+        fetchingFeed = false
     }
 
     private func load() async {
@@ -183,23 +235,6 @@ struct ShowView: View {
                 Text("Files you share to Casterr live here, on this iPhone only, until you delete them.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
-        } else if subscription == nil, let feedURL = cachedFeedURL {
-            Section {
-                Button {
-                    subscribing = true
-                    Task {
-                        await model.change { _ = try await model.feeds.subscribe(to: feedURL) }
-                        subscribing = false
-                    }
-                } label: {
-                    Label(subscribing ? "Subscribing…" : "Subscribe", systemImage: "plus.circle.fill")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(subscribing)
-                .listRowBackground(Color.clear)
-                .accessibilityIdentifier("subscribeShow")
-            }
         } else if let subscription {
             Section {
                 Button { editingNewEpisodes = true } label: {
@@ -269,6 +304,7 @@ struct ShowView: View {
                     }
                 }
             }
+            .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
         }
@@ -287,5 +323,24 @@ struct ShowView: View {
         let line = "This feed is playing hide and seek. I'll look again on the next refresh."
         guard let last = show?.lastRefreshSuccess else { return line }
         return "\(line) Last heard from it \(last.formatted(.relative(presentation: .named)))."
+    }
+}
+
+/// A wide capsule button under the show header: filled while it invites an action, soft once it's on.
+private struct ShowPageButton: View {
+    let title: String
+    let symbol: String
+    let on: Bool
+    let action: () -> Void
+
+    var body: some View {
+        let label = Label(title, systemImage: symbol).labelStyle(.titleAndIcon).frame(maxWidth: .infinity)
+        if on {
+            Button(action: action) { label }.buttonStyle(.bordered)
+                .controlSize(.large).buttonBorderShape(.capsule)
+        } else {
+            Button(action: action) { label }.buttonStyle(.borderedProminent)
+                .controlSize(.large).buttonBorderShape(.capsule)
+        }
     }
 }

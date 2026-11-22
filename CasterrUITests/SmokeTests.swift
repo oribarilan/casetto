@@ -16,7 +16,7 @@ final class SmokeTests: XCTestCase {
         let address = app.textFields["feedAddress"]
         address.tap()
         address.typeText(feed)
-        app.navigationBars["Add Show"].buttons["Subscribe"].tap()
+        app.navigationBars["Add Show"].buttons["Follow"].tap()
 
         let show = app.buttons["Planet Money, NPR"]
         XCTAssertTrue(show.waitForExistence(timeout: 30), "show didn't appear after subscribing")

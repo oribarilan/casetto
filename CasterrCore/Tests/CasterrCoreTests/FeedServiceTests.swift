@@ -57,6 +57,15 @@ struct SubscribeTests {
         #expect(try await !library.episodes(of: key).isEmpty)
     }
 
+    @Test func previewSavesEpisodesWithoutFollowing() async throws {
+        let (service, library) = try makeService()
+        let key = try await service.preview(url("https://example.com/show.xml"))
+        #expect(try await !library.isSubscribed(key))
+        #expect(try await !library.episodes(of: key).isEmpty)
+        #expect(try await library.queue().isEmpty)
+        #expect(try await library.inbox().isEmpty)
+    }
+
     @Test func subscribingPutsNothingInTheQueue() async throws {
         let (service, library) = try makeService()
         _ = try await service.subscribe(to: url("https://example.com/show.xml"))

@@ -49,7 +49,7 @@ struct ShowsView: View {
                 Button("Import OPML File", systemImage: "square.and.arrow.down") { importingOPML = true }
                 Divider()
                 ShareLink(item: OPMLExport(library: model.library),
-                          preview: SharePreview("Casterr Subscriptions")) {
+                          preview: SharePreview("Casterr Shows")) {
                     Label("Export OPML File", systemImage: "square.and.arrow.up")
                 }
             }
@@ -117,7 +117,7 @@ private struct OPMLExport: Transferable {
             }
             return OPMLWriter.write(feeds)
         }
-        .suggestedFileName("Casterr Subscriptions.opml")
+        .suggestedFileName("Casterr Shows.opml")
     }
 }
 
@@ -180,7 +180,7 @@ private struct ImportReportView: View {
         NavigationStack {
             List {
                 Section {
-                    LabeledContent("Subscribed", value: "\(report.subscribed.count)")
+                    LabeledContent("Followed", value: "\(report.subscribed.count)")
                     LabeledContent("Already following", value: "\(report.alreadySubscribed.count)")
                 }
                 if !report.failures.isEmpty {
@@ -223,7 +223,7 @@ private struct AddFeedView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Subscribe") { Task { await subscribe() } }
+                    Button("Follow") { Task { await subscribe() } }
                         .disabled(address.isEmpty || working)
                 }
             }

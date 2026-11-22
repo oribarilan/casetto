@@ -66,8 +66,9 @@ One word per idea, in everything people read in the app:
 | **Skip** | A show's new episodes never enter your Inbox or Queue. | archive |
 | **Dismiss** | Close one of Cassy's cards or tips. Never used for episodes. | remove |
 | **Delete** | Bookmarks and shared files only, because they really are deleted. | remove |
+| **Follow** | Add a show, so its new episodes come in. Unfollow stops them. As in Apple Podcasts. | subscribe |
 
-"Archive" is a term inside the code and specs only.
+"Archive" and "subscribe" are terms inside the code and specs only.
 
 ## Player
 

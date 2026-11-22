@@ -128,7 +128,7 @@ private struct RuleCardRow: View {
                     Spacer()
                     Menu {
                         if card.kind == .ignored {
-                            Button("Unsubscribe", systemImage: "minus.circle", role: .destructive) {
+                            Button("Unfollow", systemImage: "minus.circle", role: .destructive) {
                                 act { try await model.feeds.unsubscribe(card.show) }
                             }
                         }

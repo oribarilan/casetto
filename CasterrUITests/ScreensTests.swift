@@ -19,7 +19,7 @@ final class ScreensTests: XCTestCase {
         app.buttons["Find Shows"].tap()
         XCTAssertTrue(waitForTopShows())
 
-        // Subscribe by RSS URL: error messages, then success.
+        // Follow by RSS URL: error messages, then success.
         subscribe(to: "https://example.com/")
         XCTAssertTrue(app.staticTexts["That address isn't a podcast feed."].waitForExistence(timeout: 20))
         snapshot("2 Not a Podcast")
@@ -60,10 +60,21 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Played"].waitForExistence(timeout: 5))
         snapshot("4 Show Page")
 
-        // Unsubscribe keeps queued episodes.
-        app.navigationBars.buttons["More"].tap()
-        app.buttons["Unsubscribe"].tap()
-        app.buttons.matching(identifier: "Unsubscribe").element(boundBy: 0).tap()
+        // Star from the page sends new episodes to the Queue.
+        let star = app.buttons["starShow"]
+        XCTAssertEqual(star.label, "Star")
+        star.tap()
+        XCTAssertTrue(app.buttons["Starred"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Go to the end of your Queue"].waitForExistence(timeout: 5))
+
+        // Unfollow asks first, keeps queued episodes, and leaves the page with Follow.
+        let follow = app.buttons["followShow"]
+        XCTAssertEqual(follow.label, "Following")
+        follow.tap()
+        app.buttons.matching(identifier: "Unfollow").element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["Follow"].waitForExistence(timeout: 5), "the page lost Follow after unfollowing")
+        XCTAssertFalse(app.buttons["newEpisodesRow"].exists)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(waitForTopShows())
         app.tabBars.buttons["Queue"].tap()
 
@@ -531,7 +542,7 @@ final class ScreensTests: XCTestCase {
         sharedShow.tap()
         let episode = app.buttons.matching(identifier: "episode").firstMatch
         XCTAssertTrue(episode.waitForExistence(timeout: 5))
-        XCTAssertFalse(app.navigationBars.buttons["More"].exists, "the built-in show offers Unsubscribe")
+        XCTAssertFalse(app.buttons["followShow"].exists, "the built-in show offers Follow")
         XCTAssertFalse(app.navigationBars.buttons["Share Show"].exists, "the built-in show offers Share Show")
         episode.press(forDuration: 1.2)
         XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 5))
@@ -547,7 +558,7 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Silence. Lovely, but let's fix that."].waitForExistence(timeout: 5))
     }
 
-    /// A shared Apple Podcasts episode plays next; its show's page offers Subscribe until you do.
+    /// A shared Apple Podcasts episode plays next; its show's page offers Follow until you do.
     @MainActor
     func testSharedLinkAndSubscribe() throws {
         continueAfterFailure = false
@@ -564,13 +575,14 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(showName.waitForExistence(timeout: 10))
         showName.tap()
 
-        let subscribe = app.buttons["subscribeShow"]
-        XCTAssertTrue(subscribe.waitForExistence(timeout: 10), "no Subscribe on an unfollowed show")
-        XCTAssertFalse(app.navigationBars.buttons["More"].exists, "an unfollowed show offers Unsubscribe")
+        let follow = app.buttons["followShow"]
+        XCTAssertTrue(follow.waitForExistence(timeout: 10), "no Follow on an unfollowed show")
+        XCTAssertEqual(follow.label, "Follow")
+        XCTAssertTrue(app.buttons["starShow"].exists)
         snapshot("24 Unfollowed Show")
-        subscribe.tap()
-        XCTAssertTrue(app.buttons["newEpisodesRow"].waitForExistence(timeout: 30), "subscribing didn't show the settings")
-        XCTAssertTrue(app.navigationBars.buttons["More"].exists)
+        follow.tap()
+        XCTAssertTrue(app.buttons["newEpisodesRow"].waitForExistence(timeout: 30), "following didn't show the settings")
+        XCTAssertEqual(follow.label, "Following")
     }
 
     /// The first follow with + shows a one-time tip on that show's star.
@@ -614,6 +626,12 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Find Shows"].waitForExistence(timeout: 5))
         XCTAssertTrue(waitForTopShows())
         snapshot("25 Find Shows Sheet")
+        // A row opens the show's page without following it.
+        app.buttons.matching(identifier: "directoryShow").firstMatch.tap()
+        XCTAssertTrue(app.buttons.matching(identifier: "episode").firstMatch.waitForExistence(timeout: 30), "no episodes on a Find Shows page")
+        XCTAssertEqual(app.buttons["followShow"].label, "Follow")
+        snapshot("25b Show From Find Shows")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         app.navigationBars["Find Shows"].buttons["Done"].tap()
         XCTAssertTrue(app.navigationBars["Find Shows"].waitForNonExistence(timeout: 5))
 
@@ -743,7 +761,7 @@ final class ScreensTests: XCTestCase {
         let field = app.textFields["feedAddress"]
         field.tap()
         field.typeText(address)
-        app.navigationBars["Add Show"].buttons["Subscribe"].tap()
+        app.navigationBars["Add Show"].buttons["Follow"].tap()
     }
 
     @MainActor

@@ -115,14 +115,22 @@ struct DiscoverView: View {
         let level = key.flatMap { levels[$0] }
         let busy = working.contains(show.id)
         return HStack(spacing: 12) {
-            ArtworkView(url: show.artworkURL, title: show.title, size: 48)
-            VStack(alignment: .leading) {
-                Text(show.title).lineLimit(2)
-                if let author = show.author {
-                    Text(author).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            // The art and title open the show's page; the star and + act in place.
+            NavigationLink(value: Route.directoryShow(show.feedURL)) {
+                HStack(spacing: 12) {
+                    ArtworkView(url: show.artworkURL, title: show.title, size: 48)
+                    VStack(alignment: .leading) {
+                        Text(show.title).lineLimit(2)
+                        if let author = show.author {
+                            Text(author).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .contentShape(.rect)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .foregroundStyle(.primary)
+            .accessibilityIdentifier("directoryShow")
             Button(level == .autoQueue ? "Unstar" : "Star", systemImage: level == .autoQueue ? "star.fill" : "star") {
                 // Starring before the tip shows means the listener already knows the star.
                 CassyTip.markShown("star")
@@ -131,7 +139,7 @@ struct DiscoverView: View {
             }
             .accessibilityIdentifier("starButton")
             .cassyTipTarget("star.\(show.id)")
-            Button(level == nil ? "Subscribe" : "Unsubscribe",
+            Button(level == nil ? "Follow" : "Unfollow",
                    systemImage: level == nil ? "plus.circle" : "checkmark.circle.fill") {
                 act(show) {
                     try await toggleSubscription(show, level: level)
@@ -252,6 +260,7 @@ struct FindShowsView: View {
     var body: some View {
         NavigationStack {
             DiscoverView(query: query, inOnboarding: inOnboarding)
+                .routes()
                 .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search podcasts")
                 .navigationTitle("Find Shows")
                 .navigationBarTitleDisplayMode(.large)
