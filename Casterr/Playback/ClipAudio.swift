@@ -43,9 +43,11 @@ enum ClipFetcher {
                 audio = try await fetch(url, window: window)
             } catch let problem as ClipProblem {
                 throw problem
-            } catch is URLError {
+            } catch let error as URLError {
+                log.error("Clip fetch failed: \(error.localizedDescription, privacy: .public)")
                 throw .offline
             } catch {
+                log.error("Clip fetch failed: \(error.localizedDescription, privacy: .public)")
                 throw .needsDownload
             }
         }
@@ -54,6 +56,7 @@ enum ClipFetcher {
             log.debug("Bars ready in \(Date.now.timeIntervalSince(started), format: .fixed(precision: 2)) s from the \(url.isFileURL ? "file" : "stream")")
             return span
         } catch {
+            log.error("Clip decode failed: \(error.localizedDescription, privacy: .public)")
             if audio.isTemporary { try? FileManager.default.removeItem(at: audio.file) }
             throw .needsDownload
         }
@@ -68,18 +71,30 @@ enum ClipFetcher {
         // and holds the ID3 header.
         let (head, response) = try await get(url, bytes: 0...9)
         guard isMP3(url, response), let total = totalBytes(response),
-              let tagSize = MP3Header.id3TagSize(head) else { throw ClipProblem.needsDownload }
+              let tagSize = MP3Header.id3TagSize(head) else {
+            log.error("Can't clip this stream: type \(response.mimeType ?? "none", privacy: .public), range \(response.value(forHTTPHeaderField: "Content-Range") ?? "none", privacy: .public)")
+            throw ClipProblem.needsDownload
+        }
         let (frame, _) = try await get(url, bytes: tagSize...(tagSize + 511))
         guard MP3Header.isVariableBitrate(frame) == false,
-              let range = window.byteRange(totalBytes: total, id3TagSize: tagSize) else { throw ClipProblem.needsDownload }
+              let range = window.byteRange(totalBytes: total, id3TagSize: tagSize) else {
+            log.error("Can't clip this stream: variable bitrate, or no byte range for the window")
+            throw ClipProblem.needsDownload
+        }
         let (chunk, _) = try await get(url, bytes: range)
+        // The part starts mid-frame; decode from its first real frame, a few milliseconds in.
+        guard let first = MP3Header.firstFrame(in: chunk, like: frame) else {
+            log.error("Can't clip this stream: no frame like the first one in \(range.lowerBound)-\(range.upperBound)")
+            throw ClipProblem.needsDownload
+        }
         let file = FileManager.default.temporaryDirectory.appending(path: "clip-\(UUID().uuidString).mp3")
-        try chunk.write(to: file)
+        try chunk.dropFirst(first.offset).write(to: file)
         log.debug("""
-            Fetched \(chunk.count) bytes (\(range.lowerBound)-\(range.upperBound) of \(total), tag \(tagSize)) \
-            in \(Date.now.timeIntervalSince(started), format: .fixed(precision: 2)) s
+            Fetched \(chunk.count) bytes (\(range.lowerBound)-\(range.upperBound) of \(total), tag \(tagSize)), \
+            first frame at \(first.offset), in \(Date.now.timeIntervalSince(started), format: .fixed(precision: 2)) s
             """)
-        return ClipAudio(file: file, start: window.fetchSpan.lowerBound, isTemporary: true)
+        let skipped = Double(first.offset * 8) / Double(first.bitrate)
+        return ClipAudio(file: file, start: window.fetchSpan.lowerBound + skipped, isTemporary: true)
     }
 
     /// A ranged GET that must come back as 206 Partial Content.
@@ -88,7 +103,10 @@ enum ClipFetcher {
         request.setValue("bytes=\(bytes.lowerBound)-\(bytes.upperBound)", forHTTPHeaderField: "Range")
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 206 else { throw ClipProblem.needsDownload }
+        guard let http = response as? HTTPURLResponse, http.statusCode == 206 else {
+            log.error("Ranged request for \(bytes.lowerBound)-\(bytes.upperBound) got status \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+            throw ClipProblem.needsDownload
+        }
         return (data, http)
     }
 

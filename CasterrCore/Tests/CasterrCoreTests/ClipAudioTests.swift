@@ -63,6 +63,36 @@ struct MP3HeaderTests {
         #expect(MP3Header.isVariableBitrate(Data(repeating: 0, count: 64)) == nil)
     }
 
+    // Built like ATP 718's failing part: an MPEG-2 header at 9 that's really audio data, then 64 kbps
+    // MPEG-1 frames from 140. The episode's first frame, the reference, is the same format unpadded.
+    private let reference = Data([0xFF, 0xFB, 0x50, 0xC4] + [UInt8](repeating: 0, count: 60))
+    private let paddedFrame = [0xFF, 0xFB, 0x52, 0xC4] + [UInt8](repeating: 0, count: 205) // 209 bytes
+
+    @Test func skipsBytesThatOnlyLookLikeAFrame() {
+        var lead = [UInt8](repeating: 0x11, count: 140)
+        lead.replaceSubrange(9..<13, with: [0xFF, 0xF3, 0x52, 0x7A])
+        let part = Data(lead + paddedFrame + paddedFrame + paddedFrame)
+        let first = MP3Header.firstFrame(in: part, like: reference)
+        #expect(first?.offset == 140)
+        #expect(first?.bitrate == 64_000)
+    }
+
+    @Test func aLoneLookalikeWithoutASecondFrameIsSkipped() {
+        // The same format, but nothing where its frame would end.
+        let part = Data([0x11, 0xFF, 0xFB, 0x50, 0xC4] + [UInt8](repeating: 0x11, count: 300) + paddedFrame + paddedFrame)
+        #expect(MP3Header.firstFrame(in: part, like: reference)?.offset == 305)
+    }
+
+    @Test func aPartThatStartsOnAFrameKeepsEveryByte() {
+        let part = Data(paddedFrame + paddedFrame)
+        #expect(MP3Header.firstFrame(in: part, like: reference)?.offset == 0)
+    }
+
+    @Test func noMatchingFrameIsNil() {
+        #expect(MP3Header.firstFrame(in: Data(repeating: 0x11, count: 1000), like: reference) == nil)
+        #expect(MP3Header.firstFrame(in: Data(paddedFrame + paddedFrame), like: Data(repeating: 0, count: 64)) == nil)
+    }
+
     private func frame(_ header: [UInt8], marker: String?, at offset: Int) -> Data {
         var bytes = header + [UInt8](repeating: 0, count: 60)
         if let marker { bytes.replaceSubrange(offset ..< offset + 4, with: Array(marker.utf8)) }
