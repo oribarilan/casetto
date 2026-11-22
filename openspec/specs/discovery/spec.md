@@ -32,15 +32,19 @@ The system SHALL search the directory by name through the iTunes Search API, in 
 - **THEN** the grid of their shows stays as it is, with no directory shows
 
 ### Requirement: Subscribe and star from the directory
-Each directory show SHALL offer Subscribe, which starts the show at the Inbox level, and Star, which subscribes at the Auto-queue level. Tapping Star again MUST return the show to the Inbox level. Tapping a subscribed show's Subscribe button again MUST unsubscribe.
+Each directory show SHALL offer Follow, which starts the show at the Inbox level, and Star, which follows it at the Auto-queue level. Tapping Star again MUST return the show to the Inbox level. Tapping a followed show's Follow button again MUST unfollow. Tapping the rest of the row MUST open the show's page.
 
 #### Scenario: Star a show
 - **WHEN** the listener stars a show they don't follow
-- **THEN** the system subscribes to it at the Auto-queue level and its newest episode is in the Queue
+- **THEN** the system follows it at the Auto-queue level and its newest episode is in the Queue
 
 #### Scenario: Subscribe without a star
-- **WHEN** the listener subscribes to a show from search
+- **WHEN** the listener follows a show from search with Follow
 - **THEN** its level is Inbox and its newest episode is in the Inbox
+
+#### Scenario: Open a show from Find Shows
+- **WHEN** the listener taps the title of a show they don't follow in Find Shows
+- **THEN** the show's page opens with its episodes, and the show stays unfollowed
 
 ### Requirement: Onboarding
 On first launch the system SHALL show one welcome screen, then a skippable Find Shows screen with a large title, top shows, and search. The welcome screen MUST be the only intro screen; everything else is taught with just-in-time tips. Whenever the listener follows no shows, the Shows tab SHALL show Find Shows without the welcome screen. Only one Cassy SHALL be on screen at a time. After the first star her card SHALL cheer.
@@ -101,7 +105,7 @@ The chart country SHALL start as the phone's region, or the United States when t
 - **THEN** the Israel list goes away and the loading Cassy shows "Flipping through the shelves…" until the United States chart appears
 
 ### Requirement: Find Shows after onboarding
-The Shows tab's + menu SHALL offer Find Shows as its first item. It MUST open the onboarding's Find Shows screen, with the top shows, search, Subscribe and Star, as a sheet without the welcome screen, closed with Done.
+The Shows tab's + menu SHALL offer Find Shows as its first item. It MUST open the onboarding's Find Shows screen, with the top shows, search, Follow and Star, as a sheet without the welcome screen, closed with Done.
 
 #### Scenario: Open from the + menu
 - **WHEN** the listener follows shows and picks Find Shows from the + menu

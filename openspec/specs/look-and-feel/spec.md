@@ -57,7 +57,7 @@ Cassy SHALL appear as a sticker-style cassette in three functional moods: dozing
 - **THEN** its show page shows Cassy dizzy beside the error and when the feed last worked
 
 ### Requirement: Cassy presents rule cards
-Rule cards SHALL show Cassy beside a short question with the show name in accent text and the reason underneath. The card MUST offer one accept button. A small ✕ and a swipe left MUST dismiss the card for 30 days. A "…" menu MUST hold "Never ask about this show" and, on the Ignored card, Unsubscribe.
+Rule cards SHALL show Cassy beside a short question with the show name in accent text and the reason underneath. The card MUST offer one accept button. A small ✕ and a swipe left MUST dismiss the card for 30 days. A "…" menu MUST hold "Never ask about this show" and, on the Ignored card, Unfollow.
 
 #### Scenario: Auto-queue card
 - **WHEN** the Auto-queue card applies to Tape Hiss

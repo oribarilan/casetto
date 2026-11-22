@@ -17,15 +17,19 @@ The system SHALL let the listener bookmark the current episode and position with
 - **THEN** the bookmark still shows its show title, episode title, and position
 
 ### Requirement: Optional note
-The toast SHALL offer Add Note. The listener SHALL be able to add or edit a bookmark's note later in the Bookmarks tab by tapping the note in its row. A bookmark without a note MUST be kept, and its row SHALL say "Add a note".
+The toast SHALL offer Add Note, which MUST open that bookmark in the Bookmarks tab with its note field ready to type, closing Now Playing if it's open. Tapping the rest of the toast MUST open the bookmark there without the keyboard. The listener SHALL be able to add or edit a bookmark's note in the Bookmarks tab by tapping the note in its row. A bookmark without a note MUST be kept, and its row SHALL say "Add a note".
 
 #### Scenario: Add a note from the toast
-- **WHEN** the listener taps Add Note on the toast and saves "great point"
-- **THEN** the bookmark's note is "great point"
+- **WHEN** the listener taps Add Note on the toast in Now Playing, types "great point", and taps Done
+- **THEN** Now Playing closes, the Bookmarks tab shows that bookmark with the keyboard up in its note, and its note is "great point"
 
 #### Scenario: Edit a note in place
 - **WHEN** the listener taps "Add a note" on a bookmark in the Bookmarks tab, types "check this", and taps Done
 - **THEN** the bookmark's note is "check this", with no alert or swipe
+
+#### Scenario: Open from the toast
+- **WHEN** the listener taps the toast's text instead of Add Note
+- **THEN** the Bookmarks tab opens scrolled to that bookmark, with no keyboard
 
 ### Requirement: Bookmarks tab
 The system SHALL list bookmarks in a Bookmarks tab, grouped by episode with the most recently bookmarked episode first, and each group in position order. Each episode SHALL be one card headed by the show art, the episode title, and the show name. Each bookmark's time SHALL be a play button that plays its episode from the bookmark's position when the episode is still known. The listener SHALL be able to delete a bookmark.
