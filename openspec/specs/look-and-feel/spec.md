@@ -31,11 +31,15 @@ Now Playing SHALL use a background color taken from the show's artwork, darkened
 - **THEN** Now Playing has a dark green background with white text
 
 ### Requirement: Idle loops
-When Cassy has no job to show, she SHALL play one of eight idle loops (blink, wink, look around, breathe, reel twitch, hum, yawn, peek) at random, 2 to 5 seconds after appearing and then every 8 to 15 seconds, never the same loop twice in a row. Reduce Motion MUST stop the loops.
+When Cassy has no job to show, she SHALL play one of eight idle loops (blink, wink, look around, breathe, reel twitch, hum, yawn, peek) at random, 0.7 to 1.2 seconds after appearing and then 0.7 to 1.2 seconds after each loop ends, never the same loop twice in a row, so she moves most of the time. Reduce Motion MUST stop the loops.
 
 #### Scenario: Rule card avatar
 - **WHEN** a rule card stays on screen for a minute
-- **THEN** Cassy plays several different loops with pauses between them
+- **THEN** Cassy plays many different loops with pauses of at most 1.2 seconds between them
+
+#### Scenario: Welcome screen
+- **WHEN** the welcome screen appears
+- **THEN** Cassy starts a loop within 1.2 seconds and is moving most of the time she's on screen
 
 ### Requirement: Cassy's moods
 Cassy SHALL appear as a sticker-style cassette in three functional moods: dozing, cheering, and dizzy. Her animations MUST stay still when Reduce Motion is on. Now Playing MUST NOT show Cassy, so the show's artwork leads there.
