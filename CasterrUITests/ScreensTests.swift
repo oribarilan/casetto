@@ -432,7 +432,10 @@ final class ScreensTests: XCTestCase {
         XCTAssertEqual(start, now - 15, accuracy: 1.5, times.label)
         XCTAssertEqual(finish, now + 15, accuracy: 1.5, times.label)
         XCTAssertTrue((29...31).contains(length), times.label)
-        XCTAssertEqual(end.value as? String, "Ends at \(clock(finish.rounded()))")
+        // The label shows tenths, so compare to the second instead of matching rounded text.
+        let endValue = try XCTUnwrap(end.value as? String)
+        XCTAssertTrue(endValue.hasPrefix("Ends at "), endValue)
+        XCTAssertEqual(try XCTUnwrap(seconds(String(endValue.dropFirst(8)))), finish, accuracy: 1, endValue)
         snapshot("27 Clip Editor")
 
         // Preview plays the fetched audio until stopped.
@@ -496,12 +499,6 @@ final class ScreensTests: XCTestCase {
         let fields = clock.split(separator: ":").map { Double($0) }
         guard !fields.isEmpty, !fields.contains(nil) else { return nil }
         return fields.compactMap(\.self).reduce(0) { $0 * 60 + $1 }
-    }
-
-    private func clock(_ seconds: TimeInterval) -> String {
-        let total = Int(seconds)
-        return total >= 3600 ? String(format: "%d:%02d:%02d", total / 3600, total % 3600 / 60, total % 60)
-                             : String(format: "%d:%02d", total / 60, total % 60)
     }
 
     /// A shared audio file arrives in the Queue, plays, and lives on the Shared with Casterr page.

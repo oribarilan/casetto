@@ -48,10 +48,8 @@ struct CassyAnimationTests {
         #expect(picks == [.bounce, .jog])
     }
 
-    @Test func loopsAreShortAndPausesLonger() {
-        for loop in CassyAnimation.idleLoops {
-            #expect(loop.duration! < CassyAnimation.pause.lowerBound)
-        }
-        #expect(CassyAnimation.firstPause.upperBound < CassyAnimation.pause.lowerBound)
+    @Test func pausesBetweenLoopsAreShort() {
+        #expect(CassyAnimation.pause.lowerBound > 0)
+        #expect(CassyAnimation.pause.upperBound <= 1.2)
     }
 }

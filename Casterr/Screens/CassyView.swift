@@ -54,15 +54,13 @@ struct CassyView: View {
 }
 
 extension CassyView {
-    /// Plays a random loop after a short first pause, then one every 8 to 15 seconds, never the same twice in a row.
+    /// Plays random loops with a short pause before each one, never the same twice in a row.
     private func playIdleLoops() async {
         guard job == .idle else { return }
         var generator = SystemRandomNumberGenerator()
         var previous: CassyAnimation?
-        var pause = CassyAnimation.firstPause
         while true {
-            do { try await Task.sleep(for: .seconds(Double.random(in: pause))) } catch { return }
-            pause = CassyAnimation.pause
+            do { try await Task.sleep(for: .seconds(Double.random(in: CassyAnimation.pause))) } catch { return }
             guard !reduceMotion else { continue }
             let next = CassyAnimation.nextIdleLoop(after: previous, using: &generator)
             previous = next

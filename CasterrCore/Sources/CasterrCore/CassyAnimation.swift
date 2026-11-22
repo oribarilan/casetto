@@ -43,11 +43,8 @@ public enum CassyAnimation: String, CaseIterable, Sendable {
 
     public static var idleLoops: [CassyAnimation] { allCases.filter(\.isIdleLoop) }
 
-    /// The quiet time before the next idle loop, in seconds.
-    public static let pause: ClosedRange<Double> = 8...15
-
-    /// The first loop starts sooner, so a freshly shown Cassy doesn't look frozen.
-    public static let firstPause: ClosedRange<Double> = 2...5
+    /// The quiet time before the first idle loop and after each one, in seconds. Short, so she moves most of the time.
+    public static let pause: ClosedRange<Double> = 0.7...1.2
 
     /// A random idle loop that isn't the one just played.
     public static func nextIdleLoop(after previous: CassyAnimation?, using generator: inout some RandomNumberGenerator) -> CassyAnimation {
