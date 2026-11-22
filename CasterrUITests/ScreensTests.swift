@@ -307,24 +307,25 @@ final class ScreensTests: XCTestCase {
         episode.tap()
         XCTAssertTrue(app.buttons["miniPlayer"].waitForExistence(timeout: 15))
 
-        // One tap bookmarks without pausing, and the toast takes a note.
-        app.buttons["Bookmark"].tap()
+        // One tap in Now Playing bookmarks without pausing; Add Note on the toast opens it in Bookmarks, ready to type.
+        app.buttons["miniPlayer"].tap()
+        let bookmark = app.buttons["Bookmark"].firstMatch
+        XCTAssertTrue(bookmark.waitForExistence(timeout: 5))
+        bookmark.tap()
         let toast = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Bookmarked at'")).firstMatch
         XCTAssertTrue(toast.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Pause"].exists)
+        XCTAssertTrue(app.buttons["Pause"].firstMatch.exists)
         snapshot("15 Bookmark Toast")
-        app.buttons["Add Note"].tap()
-        let note = app.textFields["bookmarkNote"]
-        XCTAssertTrue(note.waitForExistence(timeout: 5))
-        note.tap()
-        note.typeText("great point")
-        app.buttons["Save"].tap()
-
-        // The Bookmarks tab lists it with a play button, and it exports alone or with all.
-        app.tabBars.buttons["Bookmarks"].tap()
+        app.buttons["Add Note"].firstMatch.tap()
         let noteField = app.descendants(matching: .any)["bookmarkNoteField"]
         XCTAssertTrue(noteField.waitForExistence(timeout: 5))
-        XCTAssertEqual(noteField.value as? String, "great point")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "no keyboard in the note")
+        XCTAssertFalse(app.buttons["nowPlayingShow"].exists, "Now Playing stayed open")
+        app.typeText("great point\n")
+
+        // The Bookmarks tab lists it with a play button, and it exports alone or with all.
+        let saved = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == 'great point'"), object: noteField)], timeout: 5)
+        XCTAssertEqual(saved, .completed, "note is \(noteField.value ?? "nil")")
         let play = app.buttons["bookmarkPlay"]
         XCTAssertTrue(play.exists && play.label.hasPrefix("Play from"), play.debugDescription)
         XCTAssertTrue(app.buttons["Export"].exists)
@@ -346,6 +347,16 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(noteField.waitForExistence(timeout: 5))
         search.typeText("zzz")
         XCTAssertTrue(noteField.waitForNonExistence(timeout: 5))
+
+        // Tapping the rest of the toast opens Bookmarks without the keyboard.
+        app.buttons["Close"].firstMatch.tap()
+        app.tabBars.buttons["Queue"].tap()
+        app.buttons["Bookmark"].firstMatch.tap()
+        let text = app.buttons["bookmarkToast"]
+        XCTAssertTrue(text.waitForExistence(timeout: 5))
+        text.tap()
+        XCTAssertTrue(noteField.waitForExistence(timeout: 5), "the toast didn't open Bookmarks")
+        XCTAssertFalse(app.keyboards.firstMatch.exists, "the keyboard came up without Add Note")
     }
 
     /// ATP embeds chapters in its MP3s: the pill appears, the list shows time left, and a chapter jumps.

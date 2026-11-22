@@ -29,6 +29,8 @@ final class AppModel {
     private(set) var refreshing = false
     /// The bookmark the toast confirms.
     var lastBookmark: RecentBookmark?
+    /// A bookmark the toast asked to open in the Bookmarks tab.
+    var openingBookmark: OpenBookmark?
     /// Bumped after every change to stored data, so views know to reload.
     private(set) var revision = 0 {
         didSet { Task { await loadUpNext() } }
@@ -260,6 +262,12 @@ final class AppModel {
 struct RecentBookmark: Equatable {
     let id: UUID
     let position: TimeInterval
+}
+
+/// A bookmark to show in the Bookmarks tab, with the keyboard in its note when `editNote`.
+struct OpenBookmark: Equatable {
+    let id: UUID
+    let editNote: Bool
 }
 
 /// The first Queue episode while nothing is playing: new, or partly played.

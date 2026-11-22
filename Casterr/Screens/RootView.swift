@@ -25,6 +25,13 @@ struct RootView: View {
         }
         .bookmarkToast()
         .cassyToast()
+        // The bookmark toast opens its bookmark in the Bookmarks tab, from Now Playing too.
+        .onChange(of: model.openingBookmark) { _, request in
+            guard request != nil else { return }
+            showingNowPlaying = false
+            model.bookmarksPath = []
+            model.tab = .bookmarks
+        }
         .tabViewBottomAccessory(isEnabled: player.episode != nil || model.upNext != nil) {
             if player.episode != nil {
                 MiniPlayer { showingNowPlaying = true }

@@ -12,7 +12,7 @@ struct BookmarkButton: View {
 }
 
 extension View {
-    /// Confirms a new bookmark for 4 seconds and offers Add Note in place.
+    /// Confirms a new bookmark for 4 seconds. Add Note, or a tap on the rest, opens it in the Bookmarks tab.
     func bookmarkToast() -> some View {
         overlay(alignment: .top) { BookmarkToast() }
     }
@@ -20,43 +20,35 @@ extension View {
 
 private struct BookmarkToast: View {
     @Environment(AppModel.self) private var model
-    @State private var editing = false
-    @State private var note = ""
 
     var body: some View {
         if let bookmark = model.lastBookmark {
             HStack {
-                if editing {
-                    TextField("Note", text: $note)
-                        .textFieldStyle(.roundedBorder)
-                        .submitLabel(.done)
-                        .onSubmit { save(bookmark) }
-                        .accessibilityIdentifier("bookmarkNote")
-                    Button("Save") { save(bookmark) }
-                } else {
-                    CassyView(job: .success, size: 36).accessibilityHidden(true)
-                    Text("Bookmarked at \(bookmark.position.clock)")
-                    Spacer()
-                    Button("Add Note") { editing = true }
+                Button { open(bookmark, editNote: false) } label: {
+                    HStack {
+                        CassyView(job: .success, size: 36).accessibilityHidden(true)
+                        Text("Bookmarked at \(bookmark.position.clock)")
+                        Spacer()
+                    }
+                    .contentShape(.rect)
                 }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("bookmarkToast")
+                Button("Add Note") { open(bookmark, editNote: true) }
             }
             .padding()
             .glassEffect(in: .rect(cornerRadius: 16))
             .padding(.horizontal)
             .task(id: bookmark.id) {
-                editing = false
-                note = ""
                 try? await Task.sleep(for: .seconds(4))
-                if !editing { model.lastBookmark = nil }
+                if model.lastBookmark == bookmark { model.lastBookmark = nil }
             }
         }
     }
 
-    private func save(_ bookmark: RecentBookmark) {
-        let text = note
+    private func open(_ bookmark: RecentBookmark, editNote: Bool) {
         model.lastBookmark = nil
-        editing = false
-        Task { await model.change { try await model.library.setNote(text, for: bookmark.id) } }
+        model.openingBookmark = OpenBookmark(id: bookmark.id, editNote: editNote)
     }
 }
 
@@ -65,6 +57,7 @@ private struct BookmarkToast: View {
 struct BookmarksView: View {
     @Environment(AppModel.self) private var model
     @State private var query = ""
+    @State private var searching = false
     @State private var groups: [[BookmarkInfo]] = []
     /// Episodes still in the feed cache, with their show art. A missing episode can't play.
     @State private var known: [EpisodeKey: ShowArt] = [:]
@@ -72,50 +65,71 @@ struct BookmarksView: View {
     @FocusState private var editing: UUID?
 
     var body: some View {
-        List {
-            ForEach(groups, id: \.first!.episodeKey) { group in
-                let canPlay = known[group[0].episodeKey] != nil
-                Section {
-                    header(group)
-                    ForEach(group, id: \.id) { BookmarkRow(bookmark: $0, canPlay: canPlay, editing: $editing) }
-                } footer: {
-                    if !canPlay {
-                        Text(group[0].episodeKey.rawValue.hasPrefix(ShowKey.shared.rawValue + "|")
-                             ? "This shared file isn't on this iPhone, so it can't play."
-                             : "No longer in the feed, so it can't play.")
+        ScrollViewReader { proxy in
+            List {
+                ForEach(groups, id: \.first!.episodeKey) { group in
+                    let canPlay = known[group[0].episodeKey] != nil
+                    Section {
+                        header(group)
+                        ForEach(group, id: \.id) { BookmarkRow(bookmark: $0, canPlay: canPlay, editing: $editing).id($0.id) }
+                    } footer: {
+                        if !canPlay {
+                            Text(group[0].episodeKey.rawValue.hasPrefix(ShowKey.shared.rawValue + "|")
+                                 ? "This shared file isn't on this iPhone, so it can't play."
+                                 : "No longer in the feed, so it can't play.")
+                        }
                     }
                 }
             }
-        }
-        .overlay {
-            if loaded && groups.isEmpty {
-                if query.isEmpty {
-                    CassyEmptyState(job: .asleep, title: "Nothing saved yet",
-                                    message: "Tap the bookmark while you listen and I'll keep the moment.") {}
-                } else {
-                    ContentUnavailableView.search(text: query)
-                }
-            }
-        }
-        .scrollContentBackground(.hidden)
-        .background(Color(.systemGroupedBackground))
-        .searchable(text: $query, prompt: "Search bookmarks")
-        .navigationTitle("Bookmarks")
-        .toolbar {
-            if !groups.isEmpty {
-                ToolbarItem(placement: .topBarTrailing) {
-                    ShareLink(item: MarkdownExport(episodes: groups),
-                              preview: SharePreview(BookmarkMarkdown.fileName(episodes: groups))) {
-                        Label("Export All", systemImage: "square.and.arrow.up")
+            .overlay {
+                if loaded && groups.isEmpty {
+                    if query.isEmpty {
+                        CassyEmptyState(job: .asleep, title: "Nothing saved yet",
+                                        message: "Tap the bookmark while you listen and I'll keep the moment.") {}
+                    } else {
+                        ContentUnavailableView.search(text: query)
                     }
                 }
             }
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("Done") { editing = nil }
+            .scrollContentBackground(.hidden)
+            .background(Color(.systemGroupedBackground))
+            .searchable(text: $query, isPresented: $searching, prompt: "Search bookmarks")
+            .navigationTitle("Bookmarks")
+            .toolbar {
+                if !groups.isEmpty {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        ShareLink(item: MarkdownExport(episodes: groups),
+                                  preview: SharePreview(BookmarkMarkdown.fileName(episodes: groups))) {
+                            Label("Export All", systemImage: "square.and.arrow.up")
+                        }
+                    }
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { editing = nil }
+                }
             }
+            .task(id: "\(model.revision)|\(query)") { await load() }
+            .task(id: model.openingBookmark) { await open(model.openingBookmark, with: proxy) }
         }
-        .task(id: "\(model.revision)|\(query)") { await load() }
+    }
+
+    /// Scrolls to the bookmark the toast asked for, and puts the keyboard in its note when asked.
+    private func open(_ request: OpenBookmark?, with proxy: ScrollViewProxy) async {
+        guard let request else { return }
+        searching = false
+        query = ""
+        // A new bookmark reaches the list a moment later, after the search clears.
+        for _ in 0..<20 where !groups.joined().contains(where: { $0.id == request.id }) {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        withAnimation { proxy.scrollTo(request.id, anchor: .center) }
+        if request.editNote {
+            // Let Now Playing finish closing, or the keyboard won't come up.
+            try? await Task.sleep(for: .milliseconds(450))
+            editing = request.id
+        }
+        model.openingBookmark = nil
     }
 
     private func header(_ group: [BookmarkInfo]) -> some View {
