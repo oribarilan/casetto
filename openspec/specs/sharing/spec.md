@@ -148,7 +148,7 @@ In the clip editor, an edge SHALL snap to the middle of a quiet gap between word
 - **THEN** the edge moves freely and doesn't snap
 
 ### Requirement: Share a clip
-Share in the clip editor SHALL make a square video of the art Now Playing shows, with the Casterr badge, and the clip's audio, and open the share sheet with the video and the episode's text and link as the caption. The clip MUST come from what the player is playing. For a streamed episode, the system MUST fetch only the part it needs; when that can't work, the editor MUST say to download the episode first, and offline it MUST say so.
+Share in the clip editor SHALL make a square video of the art Now Playing shows, with the Casterr badge and the clip's audio, and open the share sheet with the video and the episode's text and link as the caption. The clip MUST come from what the player plays. For a streamed episode, the system MUST fetch only the part it needs and decode it from its first real audio frame; when that can't work, the editor MUST say to download the episode first, and offline it MUST say so.
 
 #### Scenario: Downloaded episode
 - **WHEN** the listener shares a 30-second clip of a downloaded episode
@@ -165,6 +165,10 @@ Share in the clip editor SHALL make a square video of the art Now Playing shows,
 #### Scenario: Offline while streaming
 - **WHEN** the listener opens the editor for a streamed episode with no connection
 - **THEN** the editor says "You're offline. Connect to make a clip of a streamed episode." and offers no Share
+
+#### Scenario: Fetched part starts with a fake frame
+- **WHEN** the fetched part of a streamed MP3 starts with bytes that look like a frame of another format
+- **THEN** the editor skips to the first real frame, shows the bars, and the clip's times match the episode
 
 ### Requirement: Clips play at normal speed
 A clip SHALL play at normal speed, whatever speed the listener uses, and the editor's preview MUST play it the same way.
