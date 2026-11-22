@@ -126,7 +126,8 @@ public struct FeedService: Sendable {
         }
     }
 
-    private func fetchAndParse(_ url: URL) async throws -> ParsedShow {
+    /// Off the main thread: a big feed takes most of a second to parse, which would freeze the screen.
+    @concurrent private func fetchAndParse(_ url: URL) async throws -> ParsedShow {
         let data: Data
         do {
             data = try await fetcher.fetch(url)

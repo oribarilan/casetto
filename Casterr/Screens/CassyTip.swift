@@ -87,7 +87,7 @@ private struct CassyTipLayer: View {
     }
 }
 
-/// The sticker bubble: cream fill, dark outline, hard orange shadow, a tail, and a subtle grey ✕.
+/// The sticker bubble: cream fill, dark outline, hard orange shadow, a tail, and a ✕ in faded ink, readable in dark mode too.
 private struct CassyTipBubble: View {
     let text: String
     let tailX: CGFloat
@@ -108,9 +108,9 @@ private struct CassyTipBubble: View {
             Button("Dismiss tip", systemImage: "xmark", action: close)
                 .labelStyle(.iconOnly)
                 .font(.caption2.weight(.bold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Self.ink.opacity(0.6))
                 .frame(width: 22, height: 22)
-                .background(.gray.opacity(0.15), in: .circle)
+                .background(Self.ink.opacity(0.1), in: .circle)
                 .buttonStyle(.plain)
         }
         .padding(.horizontal, 12)
