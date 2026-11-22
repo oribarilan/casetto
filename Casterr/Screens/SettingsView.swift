@@ -6,8 +6,8 @@ enum SettingsSection: Hashable {
     case inbox, downloads, playback
 }
 
-/// Global defaults only: how long episodes wait in the Inbox, how many Queue episodes stay downloaded,
-/// the default speed, and voice boost. Per-show settings live on the show page and in Now Playing.
+/// Global defaults: how long episodes wait in the Inbox, how many Queue episodes stay downloaded,
+/// the default speed, and voice boost; and Clear Cache. Per-show settings live on the show page and in Now Playing.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(Player.self) private var player
@@ -18,6 +18,8 @@ struct SettingsView: View {
     @State private var speed = 1.0
     @State private var voiceBoost = false
     @State private var highlighted: SettingsSection?
+    /// Bytes of kept show art, other downloaded responses, and saved popular lists.
+    @State private var cacheSize = 0
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -91,6 +93,26 @@ struct SettingsView: View {
                     Text("Voice boost evens out loud and quiet voices. A show can have its own speed and voice boost from Now Playing.")
                 }
                 .id(SettingsSection.playback)
+
+                Section {
+                    LabeledContent("Saved art and popular lists", value: cacheSize.formatted(.byteCount(style: .file)))
+                        .accessibilityIdentifier("cacheSize")
+                    Button("Clear Cache") {
+                        ArtCache.clear()
+                        model.savedCharts.clear()
+                        // iOS empties its download cache in the background, so read the size again as it does.
+                        Task {
+                            for _ in 0..<6 {
+                                try? await Task.sleep(for: .milliseconds(500))
+                                cacheSize = currentCacheSize
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Storage")
+                } footer: {
+                    Text("Show art and popular lists download again when needed. Downloaded episodes, bookmarks, and shared files stay.")
+                }
             }
             .navigationTitle("Settings")
             .task(id: model.revision) { await load() }
@@ -114,5 +136,8 @@ struct SettingsView: View {
         downloads = (try? await model.library.downloadCount()) ?? 3
         speed = ((try? await model.library.globalSpeed())?.value ?? 1.0)
         voiceBoost = (try? await model.library.globalVoiceBoost()) ?? false
+        cacheSize = currentCacheSize
     }
+
+    private var currentCacheSize: Int { URLCache.shared.currentDiskUsage + model.savedCharts.size }
 }

@@ -8,8 +8,6 @@ struct DiscoverView: View {
     let query: String
     /// In onboarding, the cheer also points at Done.
     var inOnboarding = false
-    /// Shows you follow that match the search. They come first, and the directory results leave them out.
-    var followed: [FollowedShow] = []
 
     @State private var results: [DirectoryShow] = []
     @State private var levels: [ShowKey: TriageLevel] = [:]
@@ -18,17 +16,14 @@ struct DiscoverView: View {
     @State private var loading = false
     @State private var topShowsFailed = false
     @State private var attempt = 0
+    /// The other chart (region or United States) is fetched once per visit, so switching is instant.
+    @State private var fetchedOtherChart = false
     /// "us" once the listener picks the United States chart; empty follows the phone's region. Kept on this device.
     @AppStorage("chartCountry") private var chosenCountry = ""
     /// The one-time tip on a star, right after the first follow with +.
     @State private var tip: CassyTip?
 
     private var starred: Bool { levels.values.contains { $0 == .autoQueue || $0 == .playNext } }
-
-    private var directoryResults: [DirectoryShow] {
-        let followedKeys = Set(followed.map(\.key))
-        return results.filter { show in ShowKey(feedURL: show.feedURL).map { !followedKeys.contains($0) } ?? true }
-    }
 
     var body: some View {
         Group {
@@ -51,32 +46,15 @@ struct DiscoverView: View {
                     if (starred && inOnboarding) || query.isEmpty {
                         Section { cassyCard }
                     }
-                    if !followed.isEmpty {
-                        Section("Your shows") {
-                            ForEach(followed, id: \.key) { show in
-                                NavigationLink(value: Route.show(show.key)) {
-                                    HStack(spacing: 12) {
-                                        ArtworkView(url: show.artworkURL, title: show.title, size: 48)
-                                        VStack(alignment: .leading) {
-                                            Text(show.title).lineLimit(2)
-                                            if let author = show.author {
-                                                Text(author).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
                     Section {
                         if let message {
                             Text(message).foregroundStyle(.secondary)
                         }
-                        ForEach(directoryResults, id: \.id) { show in
+                        ForEach(results, id: \.id) { show in
                             row(show)
                         }
                     } header: {
-                        if query.isEmpty { popularHeading } else { Text(followed.isEmpty ? "Results" : "More shows") }
+                        if query.isEmpty { popularHeading } else { Text("Results") }
                     }
                 }
                 .cassyTips($tip)
@@ -202,12 +180,18 @@ struct DiscoverView: View {
 
     private func loadResults() async {
         let term = query.trimmingCharacters(in: .whitespaces)
+        if term.isEmpty {
+            // The saved list shows at once; with none, the loading Cassy shows until the chart arrives.
+            results = model.savedCharts.shows(for: country) ?? []
+            topShowsFailed = false
+            message = nil
+        }
         loading = true
         defer { loading = false }
         do {
             if term.isEmpty {
-                results = try await model.directory.topShows(country: country)
-                topShowsFailed = false
+                results = try await chart(country)
+                await fetchOtherChart()
             } else {
                 // Wait for typing to pause: the search API allows about 20 calls a minute.
                 try await Task.sleep(for: .milliseconds(400))
@@ -216,8 +200,24 @@ struct DiscoverView: View {
             message = results.isEmpty && !term.isEmpty ? "No shows found." : nil
         } catch is CancellationError {
         } catch {
-            if term.isEmpty { topShowsFailed = true } else { message = "I couldn't search right now. Try again in a moment." }
+            // A saved list stays when the fresh chart fails.
+            if term.isEmpty { topShowsFailed = results.isEmpty } else { message = "I couldn't search right now. Try again in a moment." }
         }
+    }
+
+    /// Fetches a chart, saves it, and keeps its art.
+    private func chart(_ country: String) async throws -> [DirectoryShow] {
+        let shows = try await model.directory.topShows(country: country)
+        model.savedCharts.save(shows, for: country)
+        ArtCache.keep(shows.compactMap(\.artworkURL))
+        return shows
+    }
+
+    private func fetchOtherChart() async {
+        let other = country == "us" ? AppleDirectory.deviceCountry : "us"
+        guard !fetchedOtherChart, other != country else { return }
+        fetchedOtherChart = true
+        _ = try? await chart(other)
     }
 
     private func loadLevels() async {
@@ -263,12 +263,4 @@ struct FindShowsView: View {
                 }
         }
     }
-}
-
-/// A show you follow, as the search lists it.
-struct FollowedShow {
-    let key: ShowKey
-    let title: String
-    let author: String?
-    let artworkURL: URL?
 }

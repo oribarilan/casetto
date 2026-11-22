@@ -16,6 +16,7 @@ final class AppModel {
     let sharedStore: SharedStore?
     @ObservationIgnored private(set) lazy var sharedInbox = SharedInbox(model: self, store: sharedStore)
     let directory = AppleDirectory()
+    let savedCharts = SavedCharts()
     var tab: AppTab = .queue
     /// Each tab's navigation lives here, so it survives the tab content being rebuilt
     /// (iOS rebuilds it when the bottom bar appears) and a toast can open the Inbox.

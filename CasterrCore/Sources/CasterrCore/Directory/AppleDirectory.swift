@@ -1,7 +1,7 @@
 import Foundation
 
 /// A show from a podcast directory, with the feed address needed to subscribe.
-public struct DirectoryShow: Equatable, Hashable, Sendable {
+public struct DirectoryShow: Equatable, Hashable, Sendable, Codable {
     public var id: String
     public var title: String
     public var author: String?

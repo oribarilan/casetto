@@ -2,31 +2,34 @@ import CasterrCore
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The shows you follow, search, Find Shows, adding by URL, and OPML import and export.
-/// When you follow nothing, or the search is open with nothing typed, it shows the top shows instead.
+/// The shows you follow, a search of them, Find Shows, adding by URL, and OPML import and export.
+/// When you follow nothing, it shows Find Shows instead, and its search covers the directory.
 struct ShowsView: View {
     @Environment(AppModel.self) private var model
     @State private var shows: [Row] = []
     @State private var loaded = false
     @State private var query = ""
-    @State private var searching = false
     @State private var findingShows = false
     @State private var addingFeed = false
     @State private var importingOPML = false
     @State private var importReport: OPMLImportReport?
     @State private var importError: String?
 
+    /// Your shows that match the search: every word in the title or author.
+    private var matching: [Row] {
+        query.isEmpty ? shows : shows.filter { ShowSearch.matches(query, title: $0.title, author: $0.author) }
+    }
+
     var body: some View {
         Group {
-            if searching || !query.isEmpty || (loaded && shows.isEmpty) {
-                // An empty search shows the top shows. While typing, your matching shows come first, then more from the directory.
-                DiscoverView(query: query, followed: query.isEmpty ? [] : shows.filter {
-                    ShowSearch.matches(query, title: $0.title, author: $0.author)
-                }.map { FollowedShow(key: $0.key, title: $0.title, author: $0.author, artworkURL: $0.artworkURL) })
+            if loaded && shows.isEmpty {
+                DiscoverView(query: query)
+            } else if !query.isEmpty && matching.isEmpty {
+                ContentUnavailableView.search(text: query)
             } else {
                 ScrollView {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: 3), spacing: 16) {
-                        ForEach(shows, id: \.key) { show in
+                        ForEach(matching, id: \.key) { show in
                             NavigationLink(value: Route.show(show.key)) { ShowTile(show: show) }
                                 .buttonStyle(.plain)
                         }
@@ -36,7 +39,7 @@ struct ShowsView: View {
                 .background(Color(.systemGroupedBackground))
             }
         }
-        .searchable(text: $query, isPresented: $searching, prompt: "Search shows")
+        .searchable(text: $query, prompt: "Search shows")
         .navigationTitle("Shows")
         .toolbar {
             Menu("Add", systemImage: "plus") {

@@ -32,12 +32,12 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(show.waitForExistence(timeout: 30))
         snapshot("3 Shows")
 
-        // Search lists your matching shows first, then more from the directory.
+        // Search covers only your shows.
         let search = app.searchFields["Search shows"]
         search.tap()
         search.typeText("planet")
-        XCTAssertTrue(app.staticTexts["Your shows"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["More shows"].waitForExistence(timeout: 20))
+        XCTAssertTrue(show.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["More shows"].exists)
         snapshot("3b Search")
         app.buttons["Close"].tap()
 
@@ -597,7 +597,7 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(tip.waitForNonExistence(timeout: 5))
     }
 
-    /// After onboarding: Find Shows in the + menu, and the top shows in an empty search.
+    /// After onboarding: Find Shows in the + menu, and a Shows search that covers only your shows.
     @MainActor
     func testFindMoreShows() throws {
         continueAfterFailure = false
@@ -617,10 +617,38 @@ final class ScreensTests: XCTestCase {
         app.navigationBars["Find Shows"].buttons["Done"].tap()
         XCTAssertTrue(app.navigationBars["Find Shows"].waitForNonExistence(timeout: 5))
 
-        app.searchFields["Search shows"].tap()
-        XCTAssertTrue(waitForTopShows(), "an empty search doesn't show the top shows")
-        XCTAssertTrue(app.buttons.matching(identifier: "starButton").firstMatch.waitForExistence(timeout: 5))
-        snapshot("26 Empty Search")
+        let search = app.searchFields["Search shows"]
+        search.tap()
+        search.typeText("planet")
+        XCTAssertTrue(app.buttons["Planet Money, NPR"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons.matching(identifier: "starButton").firstMatch.waitForExistence(timeout: 3), "directory shows in the Shows search")
+        snapshot("26 Search Your Shows")
+        search.typeText("zzz")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'No Results'")).firstMatch.waitForExistence(timeout: 5))
+    }
+
+    /// Clear Cache in Settings empties the kept art and popular lists.
+    @MainActor
+    func testClearCache() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launch()
+        // Find Shows keeps both charts and their art.
+        app.tabBars.buttons["Shows"].tap()
+        XCTAssertTrue(waitForTopShows())
+
+        app.tabBars.buttons["Queue"].tap()
+        app.navigationBars.buttons["Settings"].tap()
+        let size = app.descendants(matching: .any)["cacheSize"]
+        XCTAssertTrue(size.waitForExistence(timeout: 5))
+        let shown = { "\(size.label) \(size.value as? String ?? "")" }
+        let before = shown()
+        app.buttons["Clear Cache"].tap()
+        // The size drops as iOS empties its download cache in the background.
+        for _ in 0..<5 where shown() == before { _ = size.waitForNonExistence(timeout: 1) }
+        XCTAssertNotEqual(shown(), before)
+        snapshot("28 Clear Cache")
     }
 
     /// Outside the United States, the heading switches the chart to the United States, and the choice is kept.
@@ -646,7 +674,11 @@ final class ScreensTests: XCTestCase {
         app.tabBars.buttons["Shows"].tap()
         XCTAssertTrue(waitForTopShows())
         XCTAssertTrue(app.buttons["chartCountry"].label.hasPrefix("Popular now · United States"), "the choice wasn't kept")
+
+        // Both charts are saved now, so switching shows the other one at once, with no loading.
         pickChart("Israel")
+        XCTAssertFalse(app.staticTexts["Flipping through the shelves…"].exists, "switching to a saved chart showed loading")
+        XCTAssertTrue(app.buttons.matching(identifier: "starButton").firstMatch.waitForExistence(timeout: 1))
     }
 
     @MainActor
