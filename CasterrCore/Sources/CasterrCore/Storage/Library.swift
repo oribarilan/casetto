@@ -171,6 +171,16 @@ public actor Library {
         try modelContext.save()
     }
 
+    /// Nil when the show follows the global voice boost setting.
+    public func voiceBoostOverride(_ showKey: ShowKey) throws -> Bool? {
+        try subscription(showKey)?.voiceBoostOverride
+    }
+
+    public func setVoiceBoostOverride(_ showKey: ShowKey, to isOn: Bool?) throws {
+        try subscription(showKey)?.voiceBoostOverride = isOn
+        try modelContext.save()
+    }
+
     public func setLevel(_ showKey: ShowKey, to level: TriageLevel) throws {
         try subscription(showKey)?.level = level.rawValue
         try modelContext.save()
@@ -515,6 +525,18 @@ public actor Library {
             global: try globalSpeed(),
             override: try speedOverride(showKey)
         )
+    }
+
+    public func globalVoiceBoost() throws -> Bool {
+        try settings().voiceBoost
+    }
+
+    public func setGlobalVoiceBoost(_ isOn: Bool) throws {
+        try changeSettings { $0.voiceBoost = isOn }
+    }
+
+    public func effectiveVoiceBoost(for showKey: ShowKey) throws -> Bool {
+        try voiceBoostOverride(showKey) ?? globalVoiceBoost()
     }
 
     public func globalExpiry() throws -> InboxExpiry {

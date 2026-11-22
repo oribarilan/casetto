@@ -48,6 +48,8 @@ import SwiftData
     var showKey: String = ""
     var feedURL: URL?
     var speedOverride: Double?
+    /// Nil follows the global voice boost setting.
+    var voiceBoostOverride: Bool?
     var subscribedAt: Date = Date.distantPast
     var level: String = TriageLevel.inbox.rawValue
     /// Days, with 0 for never. Nil follows the global setting.
@@ -83,6 +85,7 @@ import SwiftData
 
 @Model final class UserSettings {
     var speed: Double = 1.0
+    var voiceBoost: Bool = false
     /// Days, with 0 for never.
     var expiryDays: Int = 14
     /// How many Queue episodes to keep downloaded, with 0 for Off.

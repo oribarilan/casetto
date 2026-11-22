@@ -53,9 +53,34 @@ final class SmokeTests: XCTestCase {
         expectation(for: NSPredicate(format: "label != %@", atTwo), evaluatedWith: elapsed)
         waitForExpectations(timeout: 15)
 
+        // Voice boost for this show applies right away, then follows the default again.
+        let boost = app.buttons["voiceBoost"]
+        XCTAssertEqual(boost.value as? String, "Off, your default")
+        boost.tap()
+        app.buttons["On for this show"].tap()
+        let onForShow = NSPredicate(format: "value == 'On, for this show'")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: onForShow, object: boost)], timeout: 5), .completed,
+                       "voice boost says \(boost.value ?? "nil")")
+        boost.tap()
+        app.buttons["Use my default (Off)"].tap()
+        let followsDefault = NSPredicate(format: "value == 'Off, your default'")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: followsDefault, object: boost)], timeout: 5), .completed,
+                       "voice boost says \(boost.value ?? "nil")")
+
         // The played episode is playing at the top of the Queue.
         app.swipeDown(velocity: .fast)
         app.tabBars.buttons["Queue"].tap()
         XCTAssertTrue(app.staticTexts["Playing"].waitForExistence(timeout: 10))
+
+        // Turning voice boost on in Settings reaches a show that follows the default.
+        app.navigationBars.buttons["Settings"].tap()
+        let boostDefault = app.switches["voiceBoostDefault"]
+        XCTAssertTrue(boostDefault.waitForExistence(timeout: 5))
+        boostDefault.switches.firstMatch.tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["miniPlayer"].tap()
+        let boostOnByDefault = NSPredicate(format: "value == 'On, your default'")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: boostOnByDefault, object: boost)], timeout: 5), .completed,
+                       "voice boost says \(boost.value ?? "nil")")
     }
 }

@@ -2,7 +2,7 @@
 
 ## Context
 
-Back a Beat added `LoudnessTap`: an `MTAudioProcessingTap` attached to each item's audio track after the item is ready, before the speed change (PreEffects), keeping recent loudness readings in a fixed ring buffer. Its callbacks run on a real-time audio thread, so they never allocate or touch actors. An audio track takes one tap, so voice boost must live in the same tap.
+Back a Beat added `LoudnessTap`: an `MTAudioProcessingTap` attached to each item's audio track after the item is ready, after the speed change (PostEffects), keeping recent loudness readings in a fixed ring buffer keyed by episode time. A tap before the speed change froze the player's clock after speed changes, with or without an audio unit, which is why voice boost was parked once (fixed in `fix-speed-change-freeze`). Its callbacks run on a real-time audio thread, so they never allocate or touch actors. An audio track takes one tap, so voice boost must live in the same tap.
 
 Speed already has the shape voice boost needs: `UserSettings.speed` is the global default, `Subscription.speedOverride` is an optional per-show value, `Library.effectiveSpeed(for:)` combines them, and `Player.reloadSpeed()` reapplies after a change. User data follows the CloudKit rules (every property optional or defaulted), and sync merges whole records.
 
@@ -20,7 +20,7 @@ The sound was settled by ear on real clips, rendered offline with the same Apple
 
 ## Decisions
 
-**Apple's dynamics processor inside the tap.** The tap sets up `kAudioUnitSubType_DynamicsProcessor` in its prepare callback, for the tap's processing format, and tears it down in unprepare. The process callback fetches the source audio, measures loudness, and then, when boost is on, renders the dynamics processor over the same buffers. The values are constants next to the tap: threshold −38 dB, headroom 3 dB, attack 3 ms, release 300 ms, overall gain +24 dB, expansion ratio 1 (off).
+**Apple's dynamics processor inside the tap.** Each tap makes one `kAudioUnitSubType_DynamicsProcessor` when it is created, on the main thread. The prepare callback only sets the unit's format and initializes it, and unprepare uninitializes it, so the audio thread never creates an audio unit. The process callback fetches the source audio, measures loudness, and then, when boost is on, renders the dynamics processor over the same buffers. The unit's input callback hands it the audio the tap already fetched. The values are constants next to the tap: threshold −38 dB, headroom 3 dB, attack 3 ms, release 300 ms, overall gain +24 dB, expansion ratio 1 (off).
 - Rejected: our own leveler in `CasterrCore`. It would be unit-testable, but we'd own the sound quality, and a homemade leveler tends to make background noise rise and fall. Apple's unit already sounded right to the listener.
 - Rejected: our own audio pipeline (`AVAudioEngine`). It would allow audio effects natively, but it's a rewrite of playback and streaming.
 - Rejected: iOS's Enhance Dialogue. iOS turns it on only for movie playback on some hardware, and the listener controls it in Control Center, not per show.
@@ -48,5 +48,5 @@ The sound was settled by ear on real clips, rendered offline with the same Apple
 - [The dynamics processor refuses the tap's format on some streams] → Those episodes play unboosted, and the debug log says so. Back a Beat is unaffected.
 - [The tap gets no audio for some streams, as reported for HLS] → No boost and no Back a Beat on those, which is today's behavior.
 - [Turning boost on jumps the level by several dB at once] → The spec asks for an immediate switch. A short fade can come later if it bothers the listener.
-- [Rendering an audio unit on the tap's thread] → The dynamics processor is real-time safe. Setup and teardown happen in prepare and unprepare, not in process.
+- [Rendering an audio unit on the tap's thread] → The dynamics processor is real-time safe. The unit is made with the tap and only initialized in prepare, never in process.
 - [+24 dB gain on an already loud show] → In testing on וויקלי סינק, only 4 samples reached full scale, which is inaudible.

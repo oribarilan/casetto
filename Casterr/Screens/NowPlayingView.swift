@@ -49,6 +49,8 @@ struct NowPlayingView: View {
                 }
                 .accessibilityIdentifier("speed")
                 Spacer()
+                VoiceBoostMenu()
+                Spacer()
                 BookmarkButton().roundControl()
                 Spacer()
                 SleepTimerMenu()
@@ -280,6 +282,59 @@ private struct SleepTimerMenu: View {
     private var timerValue: String {
         if let end = player.sleepTimerEndsAt { return "Pauses at \(end.formatted(date: .omitted, time: .shortened))" }
         return player.sleepTimer == .endOfEpisode ? "Pauses at the end of the episode" : "Off"
+    }
+}
+
+/// A waveform, white while boost is on. The menu sets this show's choice or follows the default from Settings.
+private struct VoiceBoostMenu: View {
+    @Environment(AppModel.self) private var model
+    @Environment(Player.self) private var player
+    /// Nil follows the default.
+    @State private var choice: Bool?
+    @State private var global = false
+
+    var body: some View {
+        Menu {
+            Section("Voice boost: evens out loud and quiet voices") {
+                item("On for this show", isChosen: choice == true) { save(true) }
+                item("Off for this show", isChosen: choice == false) { save(false) }
+                item("Use my default (\(global ? "On" : "Off"))", isChosen: choice == nil) { save(nil) }
+            }
+        } label: {
+            Image(systemName: "waveform").roundControl(on: player.voiceBoost)
+        }
+        .accessibilityIdentifier("voiceBoost")
+        .accessibilityLabel("Voice boost")
+        .accessibilityValue("\(player.voiceBoost ? "On" : "Off"), \(choice == nil ? "your default" : "for this show")")
+        .task(id: "\(player.episode?.showKey.rawValue ?? "")\(model.revision)") { await load() }
+    }
+
+    @ViewBuilder private func item(_ title: String, isChosen: Bool, action: @escaping () -> Void) -> some View {
+        if isChosen {
+            Button(title, systemImage: "checkmark", action: action)
+        } else {
+            Button(title, action: action)
+        }
+    }
+
+    private func load() async {
+        global = (try? await model.library.globalVoiceBoost()) ?? false
+        if let show = player.episode?.showKey {
+            choice = try? await model.library.voiceBoostOverride(show)
+        }
+    }
+
+    /// Applies right away, so there's no Done button.
+    private func save(_ isOn: Bool?) {
+        guard isOn != choice, let show = player.episode?.showKey else { return }
+        choice = isOn
+        let library = model.library
+        Task {
+            await model.change {
+                try await library.setVoiceBoostOverride(show, to: isOn)
+                try await player.reloadVoiceBoost()
+            }
+        }
     }
 }
 

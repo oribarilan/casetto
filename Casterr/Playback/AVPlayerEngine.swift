@@ -15,10 +15,12 @@ final class AVPlayerEngine: AudioEngine {
     private var statusObservation: NSKeyValueObservation?
     private var notificationTasks: [Task<Void, Never>] = []
     private var playRequest = 0
-    private var tap: LoudnessTap?
+    private var tap: AudioTap?
+    /// Remembered so each new item's tap starts boosted or not.
+    private var voiceBoost = false
     /// Remembered so each new item's tap knows how much of the episode each played frame covers.
     private var rate = 1.0
-    private let log = Logger(subsystem: "com.oribarilan.Casterr", category: "backABeat")
+    private let log = Logger(subsystem: "com.oribarilan.Casterr", category: "audioTap")
     private let chapterLog = Logger(subsystem: "com.oribarilan.Casterr", category: "chapters")
 
     init() {
@@ -68,9 +70,25 @@ final class AVPlayerEngine: AudioEngine {
         return readings
     }
 
+    func setVoiceBoost(_ isOn: Bool) {
+        voiceBoost = isOn
+        tap?.setVoiceBoost(isOn)
+        guard isOn else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            guard let self, let tap = self.tap else { return }
+            if tap.canBoost {
+                self.log.debug("Voice boost compression \(tap.compressionAmount) dB")
+            } else {
+                self.log.debug("Voice boost can't use this audio format; it plays unboosted")
+            }
+        }
+    }
+
     private func attachTap(to item: AVPlayerItem) {
         guard item === player.currentItem, item.audioMix == nil else { return }
-        let tap = LoudnessTap()
+        let tap = AudioTap()
+        tap.setVoiceBoost(voiceBoost)
         tap.setRate(rate)
         self.tap = tap
         Task {

@@ -17,6 +17,8 @@ public protocol AudioEngine: AnyObject {
     func seek(to position: TimeInterval)
     /// What the engine heard between two media times, oldest first. Empty when it has nothing.
     func loudness(from start: TimeInterval, to end: TimeInterval) -> [Loudness]
+    /// Evens out loud and quiet voices from now on, including in episodes loaded later.
+    func setVoiceBoost(_ isOn: Bool)
 }
 
 public enum SleepTimer: Equatable, Sendable {
@@ -39,6 +41,7 @@ public final class Player {
     public private(set) var speed: PlaybackSpeed = .normal
     /// From the audio file, or else from the show notes. Empty when the episode has none.
     public private(set) var chapters: [Chapter] = []
+    public private(set) var voiceBoost = false
     public private(set) var sleepTimer: SleepTimer?
     /// When a duration timer pauses playback. Nil with no timer or the end-of-episode timer.
     public private(set) var sleepTimerEndsAt: Date?
@@ -163,6 +166,17 @@ public final class Player {
         setSpeed(try await library.effectiveSpeed(for: episode.showKey))
     }
 
+    /// Re-reads the effective voice boost after the global setting or a show's choice changed.
+    public func reloadVoiceBoost() async throws {
+        guard let episode else { return }
+        setVoiceBoost(try await library.effectiveVoiceBoost(for: episode.showKey))
+    }
+
+    private func setVoiceBoost(_ isOn: Bool) {
+        voiceBoost = isOn
+        engine.setVoiceBoost(isOn)
+    }
+
     /// Saves the current position. The app also calls this on interruption and when going to the background.
     public func saveProgress() async throws {
         guard let episode else { return }
@@ -197,6 +211,7 @@ public final class Player {
         duration = info.duration
         speed = try await library.effectiveSpeed(for: info.showKey)
         chapters = ShowNotesChapters.parse(info.summary ?? "", duration: info.duration)
+        setVoiceBoost(try await library.effectiveVoiceBoost(for: info.showKey))
         let url = localFile(info.key, info.audioURL) ?? info.audioURL
         loadedURL = url
         engine.load(url, at: position)

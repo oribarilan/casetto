@@ -37,6 +37,10 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 - [ ] With headphones, pause a talk show mid-sentence about 10 times (Pause button, headphones, lock screen, and once with a phone call) and resume each time. Playback restarts at a pause between phrases, not inside a word, a few seconds back. Do it once on a downloaded episode and once on a streamed one, and once at 1.5x.
 - [ ] At 2x, pause mid-sentence and resume a few times: Back a Beat still restarts between phrases. Then drag the speed slider from 1.0x to 2.0x and back while playing: the elapsed time keeps moving and never freezes.
 
+## Voice boost
+
+- [ ] With headphones, play a show with a quiet guest or caller (for example וויקלי סינק) and switch voice boost on and off from Now Playing while it plays: the quiet voice gets close to the loud one, the switch is immediate, and nothing distorts. Do it once streamed and once downloaded. With boost on, change speed from 1x to 2x and back: the elapsed time keeps moving. Pause and resume with boost on: Back a Beat still restarts between phrases.
+
 ## Chapters
 
 - [ ] Play an ATP or Connected episode (chapters in the file), streamed and downloaded: the pill shows the chapter and fills as it plays, the list marks played chapters and shows the time left in the playing one, a tap jumps there, and a chapter with its own picture shows it in place of the show art. Then play a וויקלי סינק episode (chapters from the show notes): the Hebrew titles line up on the right and jumping works.

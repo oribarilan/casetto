@@ -13,6 +13,7 @@ private final class FakeEngine: AudioEngine {
     private(set) var rate: Double?
     private(set) var seekedTo: TimeInterval?
     var heard: [Loudness] = []
+    private(set) var voiceBoost = false
 
     func load(_ url: URL, at position: TimeInterval) { loaded = (url, position) }
     func play(rate: Double) { self.rate = rate }
@@ -21,6 +22,7 @@ private final class FakeEngine: AudioEngine {
     func loudness(from start: TimeInterval, to end: TimeInterval) -> [Loudness] {
         heard.filter { $0.time >= start && $0.time < end }
     }
+    func setVoiceBoost(_ isOn: Bool) { voiceBoost = isOn }
 }
 
 private let show = ShowKey(feedURL: URL(string: "https://example.com/feed")!)!
@@ -145,6 +147,37 @@ struct PlayerTests {
         #expect(h.player.isPlaying && h.player.episode?.key == h.episodes[0].key)
         h.player.unload(h.episodes[0].key)
         #expect(!h.player.isPlaying && h.player.episode == nil && h.engine.rate == nil)
+    }
+
+    @Test func newEpisodeGetsItsShowsVoiceBoost() async throws {
+        let h = try await Harness()
+        try await h.library.setGlobalVoiceBoost(true)
+        try await h.player.play(h.episodes[0].key)
+        #expect(h.player.voiceBoost && h.engine.voiceBoost)
+    }
+
+    @Test func voiceBoostChangeReachesThePlayingEpisode() async throws {
+        let h = try await Harness()
+        try await h.player.play(h.episodes[0].key)
+        #expect(!h.engine.voiceBoost)
+        try await h.library.setVoiceBoostOverride(show, to: true)
+        try await h.player.reloadVoiceBoost()
+        #expect(h.player.voiceBoost && h.engine.voiceBoost)
+        #expect(h.player.isPlaying)
+    }
+
+    @Test func anotherShowsEpisodeGetsItsOwnVoiceBoost() async throws {
+        let h = try await Harness()
+        let other = ShowKey(feedURL: URL(string: "https://example.com/other")!)!
+        try await h.library.addSubscription(other, feedURL: URL(string: "https://example.com/other")!)
+        try await h.library.saveFeed(try FeedParser.parse(fixture("podcast.xml")), for: other)
+        let otherEpisode = try #require(try await h.library.episodes(of: other).first)
+        try await h.library.setVoiceBoostOverride(show, to: true)
+
+        try await h.player.play(h.episodes[0].key)
+        #expect(h.engine.voiceBoost)
+        try await h.player.play(otherEpisode.key)
+        #expect(!h.player.voiceBoost && !h.engine.voiceBoost)
     }
 
     @Test func pauseSavesProgress() async throws {

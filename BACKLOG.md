@@ -32,6 +32,3 @@ Next: on a phone with the model downloaded, measure transcription and essence ti
 
 Shorten long pauses while an episode plays. It waits because Apple's player (AVPlayer) can't drop audio: the audio tap must return as much sound as it receives. Two ways to try later. One is to raise the speed briefly while a pause plays; first test on the simulator how far ahead of the speaker the tap hears the sound, because a late speed change clips words. The other is our own audio pipeline (AVAudioEngine), which can really cut pauses but is a big rewrite and makes streaming harder.
 
-## Voice boost (parked 2026-11-21)
-
-Evens out loud and quiet voices, with a default in Settings and a per-show choice from a waveform menu in Now Playing. The approved proposal, the sound settings the listener chose by ear, and the code are in `openspec/changes/add-voice-boost/`, with the code saved as `parked.patch`. It waits because Apple's dynamics processor inside the audio tap freezes the player's clock after a speed change. The next try is our own leveler in `CasterrCore`, tuned against the approved sound and run through the smoke test's speed changes many times.

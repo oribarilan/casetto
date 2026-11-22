@@ -158,6 +158,33 @@ struct SettingsStoreTests {
         #expect(try await library.speedOverride(show) == nil)
         #expect(try await library.effectiveSpeed(for: show) == PlaybackSpeed(1.5))
     }
+
+    @Test func voiceBoostIsOffByDefault() async throws {
+        let library = try Library.open(inMemory: true)
+        try await library.addSubscription(show, feedURL: feedURL)
+        #expect(try await library.globalVoiceBoost() == false)
+        #expect(try await library.effectiveVoiceBoost(for: show) == false)
+    }
+
+    @Test func showsFollowTheVoiceBoostDefaultUnlessTheyChoose() async throws {
+        let library = try Library.open(inMemory: true)
+        try await library.addSubscription(show, feedURL: feedURL)
+        try await library.setGlobalVoiceBoost(true)
+        #expect(try await library.voiceBoostOverride(show) == nil)
+        #expect(try await library.effectiveVoiceBoost(for: show) == true)
+
+        try await library.setVoiceBoostOverride(show, to: false)
+        #expect(try await library.voiceBoostOverride(show) == false)
+        #expect(try await library.effectiveVoiceBoost(for: show) == false)
+
+        try await library.setGlobalVoiceBoost(false)
+        try await library.setVoiceBoostOverride(show, to: true)
+        #expect(try await library.effectiveVoiceBoost(for: show) == true)
+
+        try await library.setVoiceBoostOverride(show, to: nil)
+        #expect(try await library.voiceBoostOverride(show) == nil)
+        #expect(try await library.effectiveVoiceBoost(for: show) == false)
+    }
 }
 
 struct FeedCacheStoreTests {

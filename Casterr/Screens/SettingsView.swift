@@ -7,7 +7,7 @@ enum SettingsSection: Hashable {
 }
 
 /// Global defaults only: how long episodes wait in the Inbox, how many Queue episodes stay downloaded,
-/// and the default speed. Per-show settings live on the show page and in Now Playing.
+/// the default speed, and voice boost. Per-show settings live on the show page and in Now Playing.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(Player.self) private var player
@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var expiry: InboxExpiry = .standard
     @State private var downloads = 3
     @State private var speed = 1.0
+    @State private var voiceBoost = false
     @State private var highlighted: SettingsSection?
 
     var body: some View {
@@ -73,10 +74,21 @@ struct SettingsView: View {
                         }
                     }
                     .listRowBackground(rowBackground(.playback))
+                    Toggle("Voice boost", isOn: Binding(get: { voiceBoost }, set: { isOn in
+                        voiceBoost = isOn
+                        Task {
+                            await model.change {
+                                try await model.library.setGlobalVoiceBoost(isOn)
+                                try await player.reloadVoiceBoost()
+                            }
+                        }
+                    }))
+                    .accessibilityIdentifier("voiceBoostDefault")
+                    .listRowBackground(rowBackground(.playback))
                 } header: {
                     Text("Playback")
                 } footer: {
-                    Text("A show can have its own speed from Now Playing.")
+                    Text("Voice boost evens out loud and quiet voices. A show can have its own speed and voice boost from Now Playing.")
                 }
                 .id(SettingsSection.playback)
             }
@@ -101,5 +113,6 @@ struct SettingsView: View {
         expiry = (try? await model.library.globalExpiry()) ?? .standard
         downloads = (try? await model.library.downloadCount()) ?? 3
         speed = ((try? await model.library.globalSpeed())?.value ?? 1.0)
+        voiceBoost = (try? await model.library.globalVoiceBoost()) ?? false
     }
 }
