@@ -26,9 +26,9 @@ public struct SharedNote: Codable, Equatable, Sendable {
 /// The folder in the App Group where the extension drops shared items and the app picks them up.
 /// Each item is a folder holding `item.json` (written last) and, for a file, the file itself.
 public struct SharedDrop: Sendable {
-    public static let appGroup = "group.com.oribarilan.Casterr"
+    public static let appGroup = "group.sh.oribi.Casterr"
     /// The Darwin notification the extension posts so a running app picks items up right away.
-    public static let notification = "com.oribarilan.Casterr.shared"
+    public static let notification = "sh.oribi.Casterr.shared"
 
     public let inbox: URL
 

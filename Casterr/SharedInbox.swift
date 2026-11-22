@@ -10,7 +10,7 @@ final class SharedInbox {
     private let model: AppModel
     private let store: SharedStore?
     private var picking = false
-    private static let log = Logger(subsystem: "com.oribarilan.Casterr", category: "sharing")
+    private static let log = Logger(subsystem: "sh.oribi.Casterr", category: "sharing")
 
     init(model: AppModel, store: SharedStore?) {
         self.model = model

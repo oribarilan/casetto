@@ -40,7 +40,7 @@ final class AppModel {
     /// The one model for the phone and the car screen. UI tests launch with an empty in-memory library.
     static let shared = try! AppModel(inMemory: ProcessInfo.processInfo.arguments.contains("-uiTesting"))
     static let refreshTaskID = "casterr.refresh"
-    private static let log = Logger(subsystem: "com.oribarilan.Casterr", category: "refresh")
+    private static let log = Logger(subsystem: "sh.oribi.Casterr", category: "refresh")
 
     init(inMemory: Bool = false) throws {
         library = try Library.open(inMemory: inMemory)

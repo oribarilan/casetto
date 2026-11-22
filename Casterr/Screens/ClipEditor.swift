@@ -32,7 +32,7 @@ struct ClipEditor: View {
     @State private var previewStop: Task<Void, Never>?
     @State private var exporting = false
     @State private var sharing: ClipShare?
-    private static let log = Logger(subsystem: "com.oribarilan.Casterr", category: "clips")
+    private static let log = Logger(subsystem: "sh.oribi.Casterr", category: "clips")
 
     enum Phase {
         case loading
@@ -414,7 +414,7 @@ private struct ActivityView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIActivityViewController {
         let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
         // Sharing a clip back into Casterr would only import it as a shared file.
-        controller.excludedActivityTypes = [UIActivity.ActivityType("com.oribarilan.Casterr.Share")]
+        controller.excludedActivityTypes = [UIActivity.ActivityType("sh.oribi.Casterr.Share")]
         controller.completionWithItemsHandler = { _, _, _, _ in completion() }
         return controller
     }

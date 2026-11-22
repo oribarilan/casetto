@@ -30,7 +30,7 @@ enum ClipProblem: Error {
 enum ClipFetcher {
     static let barCount = 120
     private static let sampleRate = 44_100.0
-    private static let log = Logger(subsystem: "com.oribarilan.Casterr", category: "clips")
+    private static let log = Logger(subsystem: "sh.oribi.Casterr", category: "clips")
 
     static func span(of url: URL, window: ClipWindow) async throws(ClipProblem) -> ClipSpan {
         guard window.duration > 0 else { throw .needsDownload }
@@ -186,7 +186,7 @@ enum ClipFetcher {
 /// Cuts a clip and writes it as a square video of one still frame.
 enum ClipVideo {
     static let side = 1080
-    private static let log = Logger(subsystem: "com.oribarilan.Casterr", category: "clips")
+    private static let log = Logger(subsystem: "sh.oribi.Casterr", category: "clips")
 
     /// A temporary `.mp4` of `frame` with the clip's audio at normal speed.
     static func make(_ clip: ClosedRange<TimeInterval>, of audio: ClipAudio, frame: CGImage) async throws -> URL {

@@ -6,7 +6,7 @@
 	<true/>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.com.oribarilan.Casterr</string>
+		<string>group.sh.oribi.Casterr</string>
 	</array>
 </dict>
 </plist>

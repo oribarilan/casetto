@@ -24,8 +24,8 @@ final class AVPlayerEngine: AudioEngine {
     private var voiceBoost = false
     /// Remembered so each new item's tap knows how much of the episode each played frame covers.
     private var rate = 1.0
-    private let log = Logger(subsystem: "com.oribarilan.Casterr", category: "audioTap")
-    private let chapterLog = Logger(subsystem: "com.oribarilan.Casterr", category: "chapters")
+    private let log = Logger(subsystem: "sh.oribi.Casterr", category: "audioTap")
+    private let chapterLog = Logger(subsystem: "sh.oribi.Casterr", category: "chapters")
 
     init() {
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)

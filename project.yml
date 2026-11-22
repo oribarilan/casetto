@@ -1,6 +1,6 @@
 name: Casterr
 options:
-  bundleIdPrefix: com.oribarilan
+  bundleIdPrefix: sh.oribi
   deploymentTarget:
     iOS: "27.0"
 packages:
@@ -54,7 +54,7 @@ targets:
         MARKETING_VERSION: "0.1"
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
-        PRODUCT_BUNDLE_IDENTIFIER: com.oribarilan.Casterr.Share
+        PRODUCT_BUNDLE_IDENTIFIER: sh.oribi.Casterr.Share
         CODE_SIGN_ENTITLEMENTS: CasterrShare/CasterrShare.entitlements
     info:
       path: CasterrShare/Info.plist
