@@ -19,11 +19,6 @@ struct QueueView: View {
 
     var body: some View {
         List {
-            if model.refreshing {
-                CassyView(job: .loading, size: 64)
-                    .frame(maxWidth: .infinity)
-                    .listRowBackground(Color.clear)
-            }
             if inboxCount > 0 {
                 NavigationLink(value: Route.inbox) {
                     Label("Inbox · \(inboxCount) new", systemImage: "tray")
@@ -72,6 +67,8 @@ struct QueueView: View {
                 }
             }
         }
+        // While shows refresh, a thin line under the bar fills as each one is checked. Nothing in the list moves.
+        .overlay(alignment: .top) { RefreshLine(progress: model.refreshProgress) }
         // The same grey background whether the Queue is empty or full.
         .scrollContentBackground(.hidden)
         .background(Color(.systemGroupedBackground))
@@ -127,3 +124,33 @@ struct QueueView: View {
         loaded = true
     }
 }
+
+/// A thin tangerine line that fills from 0 to 1, then fades out when `progress` goes back to nil.
+private struct RefreshLine: View {
+    let progress: Double?
+    @State private var shown: Double = 0
+
+    var body: some View {
+        Rectangle()
+            .fill(Color.tangerine)
+            .frame(height: 2)
+            .scaleEffect(x: shown, anchor: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .opacity(progress == nil ? 0 : 1)
+            .animation(.easeOut(duration: 0.4), value: progress == nil)
+            .onChange(of: progress) { old, new in
+                if old == nil, let new {
+                    shown = new  // A new refresh starts where it is, while the line is still hidden.
+                } else {
+                    // Fill to each report, and to the end as the line fades out.
+                    withAnimation(.easeOut(duration: 0.3)) { shown = new ?? 1 }
+                }
+            }
+            .allowsHitTesting(false)
+            .accessibilityElement()
+            .accessibilityLabel("Checking for new episodes")
+            .accessibilityValue(progress.map { "\(Int($0 * 100)) percent" } ?? "")
+            .accessibilityHidden(progress == nil)
+    }
+}
+

@@ -27,6 +27,8 @@ final class AppModel {
     var cassyToast: CassyMessage?
     /// True while feeds refresh, so the Queue can show Cassy loading.
     private(set) var refreshing = false
+    /// How much of a refresh is done, from 0 to 1, while one runs. Nil otherwise.
+    private(set) var refreshProgress: Double?
     /// The bookmark the toast confirms.
     var lastBookmark: RecentBookmark?
     /// A bookmark the toast asked to open in the Bookmarks tab.
@@ -77,8 +79,18 @@ final class AppModel {
     /// Refreshes, then, when `announce` is on and something moved, Cassy sums it up. Tapping her opens the Inbox.
     func refresh(announce: Bool = true) async {
         refreshing = true
-        defer { refreshing = false }
-        let summary = try? await feeds.refreshAll()
+        refreshProgress = 0
+        defer {
+            refreshing = false
+            refreshProgress = nil
+        }
+        let summary = try? await feeds.refreshAll { done, total in
+            Task { @MainActor [weak self] in
+                guard let self, let current = refreshProgress else { return }
+                // Reports can arrive out of order; the line only moves forward.
+                refreshProgress = max(current, total == 0 ? 1 : Double(done) / Double(total))
+            }
+        }
         try? await library.mergeDuplicates()
         revision += 1
         if announce, let line = summary?.sentence {

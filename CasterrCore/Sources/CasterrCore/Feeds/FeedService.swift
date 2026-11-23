@@ -105,10 +105,14 @@ public struct FeedService: Sendable {
 
     /// Refreshes every subscribed feed and triages its new episodes, then expires the Inbox.
     /// A failing feed records its error and doesn't stop the others. Returns what moved.
+    /// `progress` hears how many shows are checked out of how many, starting at 0.
     @discardableResult
-    public func refreshAll() async throws -> RefreshSummary {
+    public func refreshAll(
+        progress: @escaping @Sendable (_ done: Int, _ total: Int) -> Void = { _, _ in }
+    ) async throws -> RefreshSummary {
         let subscriptions = try await library.subscriptions()
-        let results = await forEach(subscriptions) { subscription in
+        progress(0, subscriptions.count)
+        let results = await forEach(subscriptions, onEach: { progress($0, subscriptions.count) }) { subscription in
             await refresh(subscription)
         }
         var summary = results.reduce(RefreshSummary(), +)
@@ -151,18 +155,23 @@ public struct FeedService: Sendable {
     }
 
     /// Runs `work` for each item with at most `maxConcurrentFetches` at a time.
+    /// `onEach` hears the number of items done after each one finishes.
     private func forEach<Item: Sendable, Output: Sendable>(
-        _ items: [Item], _ work: @escaping @Sendable (Item) async -> Output
+        _ items: [Item], onEach: (Int) -> Void = { _ in }, _ work: @escaping @Sendable (Item) async -> Output
     ) async -> [Output] {
         await withTaskGroup(of: Output.self) { group in
             var outputs: [Output] = []
             for (index, item) in items.enumerated() {
                 if index >= Self.maxConcurrentFetches, let output = await group.next() {
                     outputs.append(output)
+                    onEach(outputs.count)
                 }
                 group.addTask { await work(item) }
             }
-            for await output in group { outputs.append(output) }
+            for await output in group {
+                outputs.append(output)
+                onEach(outputs.count)
+            }
             return outputs
         }
     }

@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import Testing
 @testable import CasterrCore
 
@@ -164,6 +165,18 @@ struct RefreshTests {
         let bad = try #require(try await library.show(failing))
         #expect(bad.lastRefreshError == "Couldn't reach the feed")
         #expect(bad.lastRefreshSuccess != nil)
+    }
+
+    @Test func reportsProgressAsEachShowIsChecked() async throws {
+        let (service, _) = try makeService()
+        _ = try await service.subscribe(to: url("https://example.com/good.xml"))
+        _ = try await service.subscribe(to: url("https://example.com/show.xml"))
+        let reports = Mutex<[Int]>([])
+        try await service.refreshAll { done, total in
+            #expect(total == 2)
+            reports.withLock { $0.append(done) }
+        }
+        #expect(reports.withLock { $0 } == [0, 1, 2])
     }
 
     @Test func feedMoveUpdatesTheURLAndKeepsTheKey() async throws {
