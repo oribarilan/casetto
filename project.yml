@@ -29,6 +29,8 @@ targets:
     info:
       path: Casterr/Info.plist
       properties:
+        # Only standard encryption (HTTPS), so App Store Connect doesn't ask on every upload.
+        ITSAppUsesNonExemptEncryption: false
         UIBackgroundModes: [audio, fetch, remote-notification]
         BGTaskSchedulerPermittedIdentifiers: [casterr.refresh]
         UILaunchScreen: {}
