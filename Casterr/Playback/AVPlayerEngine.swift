@@ -37,12 +37,13 @@ final class AVPlayerEngine: AudioEngine {
     }
 
     func load(_ url: URL, at position: TimeInterval) {
-        let item = AVPlayerItem(url: url)
+        // A downloaded file opens with precise timing, so seeks land where they report (VBR MP3s can drift otherwise).
+        let item = AVPlayerItem(asset: AVURLAsset(url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: url.isFileURL]))
         item.audioTimePitchAlgorithm = .timeDomain
         observe(item)
         seekTarget = nil
         player.replaceCurrentItem(with: item)
-        if position > 0 { seek(to: position) }
+        if position > 0 { seek(to: position, exact: false) }
     }
 
     /// Activates the audio session off the main thread, then plays, unless a newer play or pause came first.
@@ -65,12 +66,13 @@ final class AVPlayerEngine: AudioEngine {
         reportTime(player.currentTime())
     }
 
-    func seek(to position: TimeInterval) {
+    func seek(to position: TimeInterval, exact: Bool) {
         let target = CMTime(seconds: position, preferredTimescale: 600)
         seekRequest += 1
         let request = seekRequest
         seekTarget = target
-        player.seek(to: target) { [weak self] _ in
+        let tolerance = exact ? CMTime.zero : CMTime.positiveInfinity
+        player.seek(to: target, toleranceBefore: tolerance, toleranceAfter: tolerance) { [weak self] _ in
             Task { @MainActor in
                 guard let self, self.seekRequest == request else { return }
                 self.seekTarget = nil

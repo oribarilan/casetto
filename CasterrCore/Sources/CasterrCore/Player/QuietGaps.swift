@@ -1,35 +1,57 @@
 import Foundation
 
-/// Quiet gaps between words: runs of at least `BackABeat.shortestGap` below `BackABeat.quietShare` of the median level.
+/// Quiet gaps between words: runs of at least `BackABeat.shortestGap` below `BackABeat.quietShare` of a reference
+/// level, the loud part of the readings.
 public enum QuietGaps {
+    /// One stretch of quiet readings, from the first reading's start to the last reading's end.
+    public struct Run: Equatable, Sendable {
+        public let start: TimeInterval
+        public let end: TimeInterval
+        public var middle: TimeInterval { (start + end) / 2 }
+        public var length: TimeInterval { end - start }
+    }
+
+    /// Readings this close count as one run, so a single dropped 10 ms slice doesn't split a gap.
+    static let contiguity = Loudness.slice * 2.5
+    /// The share of readings below the reference level: the 90th percentile stays on speech even when
+    /// pauses fill most of the stretch, where the median would sit at the quiet level.
+    static let referencePercentile = 0.9
+
     /// The clip editor judges quiet against this much audio around each reading, so a loud stretch doesn't hide
     /// gaps in a quiet one.
     public static let editorNeighborhood: TimeInterval = 2
 
     /// The middle of each gap, in time order. With a `neighborhood`, each reading is judged against the median of
-    /// the readings within half of it on either side; without one, against the median of all readings.
+    /// the readings within half of it on either side; without one, against the loud part of all readings.
     public static func find(in readings: [Loudness], neighborhood: TimeInterval? = nil) -> [TimeInterval] {
+        runs(in: readings, neighborhood: neighborhood).filter(isGap).map(\.middle)
+    }
+
+    /// A run long enough to be a pause between phrases rather than a silence inside a word.
+    static func isGap(_ run: Run) -> Bool { run.length >= BackABeat.shortestGap - 0.0001 }
+
+    /// Every quiet run, however short, in time order.
+    static func runs(in readings: [Loudness], neighborhood: TimeInterval? = nil) -> [Run] {
         let sorted = readings.sorted { $0.time < $1.time }
-        let medians: [Float]
+        let references: [Float]
         if let neighborhood {
-            medians = movingMedians(sorted, reach: neighborhood / 2)
+            references = movingMedians(sorted, reach: neighborhood / 2)
         } else {
-            guard let median = median(sorted.map(\.level)) else { return [] }
-            medians = Array(repeating: median, count: sorted.count)
+            guard let reference = percentile(sorted.map(\.level), referencePercentile) else { return [] }
+            references = Array(repeating: reference, count: sorted.count)
         }
 
-        var middles: [TimeInterval] = []
+        var runs: [Run] = []
         var runStart: Loudness?
         var previous: Loudness?
         func closeRun() {
             guard let first = runStart, let last = previous else { return }
-            let end = last.time + Loudness.slice
-            if end - first.time >= BackABeat.shortestGap - 0.0001 { middles.append((first.time + end) / 2) }
+            runs.append(Run(start: first.time, end: last.time + Loudness.slice))
             runStart = nil
         }
-        for (reading, median) in zip(sorted, medians) {
-            let contiguous = previous.map { reading.time - $0.time < Loudness.slice * 1.5 } ?? false
-            if median > 0 && reading.level < median * BackABeat.quietShare {
+        for (reading, reference) in zip(sorted, references) {
+            let contiguous = previous.map { reading.time - $0.time < contiguity } ?? false
+            if reference > 0 && reading.level < reference * BackABeat.quietShare {
                 if runStart != nil && !contiguous { closeRun() }
                 if runStart == nil { runStart = reading }
             } else {
@@ -38,12 +60,13 @@ public enum QuietGaps {
             previous = reading
         }
         closeRun()
-        return middles
+        return runs
     }
 
-    private static func median(_ levels: [Float]) -> Float? {
+    private static func percentile(_ levels: [Float], _ share: Double) -> Float? {
         guard !levels.isEmpty else { return nil }
-        return levels.sorted()[levels.count / 2]
+        let sorted = levels.sorted()
+        return sorted[min(sorted.count - 1, Int(Double(sorted.count) * share))]
     }
 
     /// The median level of the readings within `reach` of each reading, from a sliding sorted window.

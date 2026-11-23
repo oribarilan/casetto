@@ -15,7 +15,7 @@ public struct Loudness: Equatable, Sendable {
     }
 }
 
-/// Back a Beat: resume at the latest quiet gap between 5 s and 2 s before the pause point,
+/// Back a Beat: resume in the latest quiet gap that reaches into 2 s to 5 s before where the speech stopped,
 /// so the listener hears the end of the thought they paused in.
 public enum BackABeat {
     /// How far before the pause point to look, nearest edge first.
@@ -24,12 +24,25 @@ public enum BackABeat {
     /// The shortest stretch that counts as a gap. Silences inside words (p, t, k) are shorter;
     /// pauses between phrases are longer. Tuned on three real episodes.
     static let shortestGap: TimeInterval = 0.15
-    /// Quiet means below this share of the stretch's median level (about 14 dB down).
+    /// Quiet means below this share of the stretch's loud level (about 14 dB down).
     static let quietShare: Float = 0.2
+    /// How much audio before the pause point to read: enough to find where the speech stopped when the pause
+    /// fell inside a silence, and a full window before that.
+    public static let lookBack: TimeInterval = 10
 
-    /// The middle of the latest quiet gap, or `pausedAt` when there is none.
+    /// A point in the latest quiet gap that reaches into 2 s to 5 s before where the speech stopped: its middle,
+    /// or the nearest point of it inside that range. `pausedAt` when there is none. Speech stopped at the pause
+    /// point, or where the quiet the pause fell in began; that quiet never counts, so playback goes back further.
     public static func resumePoint(pausedAt: TimeInterval, readings: [Loudness]) -> TimeInterval {
-        let stretch = readings.filter { $0.time >= pausedAt - farthest && $0.time < pausedAt - nearest }
-        return QuietGaps.find(in: stretch).last.map { max(0, $0) } ?? pausedAt
+        let stretch = readings.filter { $0.time >= pausedAt - lookBack && $0.time < pausedAt }
+        var runs = QuietGaps.runs(in: stretch)
+        var speechStopped = pausedAt
+        if let last = runs.last, last.end >= pausedAt - QuietGaps.contiguity {
+            speechStopped = last.start
+            runs.removeLast()
+        }
+        let earliest = speechStopped - farthest, latest = speechStopped - nearest
+        let gap = runs.last { QuietGaps.isGap($0) && $0.end > earliest && $0.start < latest }
+        return gap.map { max(0, min(max($0.middle, earliest), latest)) } ?? pausedAt
     }
 }

@@ -14,11 +14,16 @@ private final class FakeEngine: AudioEngine {
     private(set) var seekedTo: TimeInterval?
     var heard: [Loudness] = []
     private(set) var voiceBoost = false
+    /// When set, `pause()` reports this time, as the app's engine reports `currentTime()` on pause.
+    var timeOnPause: TimeInterval?
 
     func load(_ url: URL, at position: TimeInterval) { loaded = (url, position) }
     func play(rate: Double) { self.rate = rate }
-    func pause() { rate = nil }
-    func seek(to position: TimeInterval) { seekedTo = position }
+    func pause() {
+        rate = nil
+        if let timeOnPause { onTime?(timeOnPause, 3000) }
+    }
+    func seek(to position: TimeInterval, exact: Bool) { seekedTo = position }
     func loudness(from start: TimeInterval, to end: TimeInterval) -> [Loudness] {
         heard.filter { $0.time >= start && $0.time < end }
     }
@@ -460,6 +465,52 @@ struct BackABeatPlayerTests {
         await h.settle()
         #expect(!h.player.isPlaying)
         try await h.player.resume()
+        #expect(abs((h.engine.seekedTo ?? 0) - 1387) < 0.011)
+    }
+
+    // MARK: Edge cases from the "it doesn't go back, or goes forward" report
+
+    @Test func aSecondPauseAfterASeekWhilePausedKeepsItOff() async throws {
+        // Headphones unplugged, the clip preview, or an interruption call pause() again while already paused.
+        let h = try await pausedAfterAGap()
+        h.engine.heard += speech(from: 1792, to: 1800, quiet: [1796.9...1797.09])
+        h.player.seek(to: 1800)
+        try await h.player.pause()
+        try await h.player.resume()
+        #expect(h.engine.seekedTo == 1800, "resumed at \(h.engine.seekedTo ?? -1) after a seek to 1800")
+    }
+
+    @Test func aLateTimeReportAfterThePauseKeepsThePausePoint() async throws {
+        // A periodic time report queued before the pause arrives after the engine reported the exact pause point.
+        let h = try await Harness()
+        try await h.player.play(h.episodes[0].key)
+        h.engine.heard = speech(from: 1382, to: 1390, quiet: [1387.15...1387.34])
+        h.engine.onTime?(1389.1, 3000)
+        h.engine.timeOnPause = 1390
+        try await h.player.pause()
+        h.engine.onTime?(1389.1, 3000)
+        try await h.player.resume()
+        #expect(abs((h.engine.seekedTo ?? 0) - 1387.25) < 0.011, "resumed at \(h.engine.seekedTo ?? -1)")
+    }
+
+    @Test func resumeRightAfterAPauseNeverMovesForward() async throws {
+        let h = try await pausedAfterAGap()
+        try await h.player.resume()
+        try await h.player.pause()
+        try await h.player.resume()
+        #expect((h.engine.seekedTo ?? .infinity) <= 1387.01)
+        #expect(h.player.position <= 1387.01)
+    }
+
+    @Test func pauseAndResumeStartedTogetherStillGoBack() async throws {
+        let h = try await Harness()
+        try await h.player.play(h.episodes[0].key)
+        h.engine.heard = speech(from: 1382, to: 1390, quiet: [1386.9...1387.09])
+        h.engine.onTime?(1390, 3000)
+        let pausing = Task { try await h.player.pause() }
+        let resuming = Task { try await h.player.resume() }
+        try await pausing.value
+        try await resuming.value
         #expect(abs((h.engine.seekedTo ?? 0) - 1387) < 0.011)
     }
 }

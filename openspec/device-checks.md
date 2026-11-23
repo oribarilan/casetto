@@ -37,6 +37,8 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 - [ ] With headphones, pause a talk show mid-sentence about 10 times (Pause button, headphones, lock screen, and once with a phone call) and resume each time. Playback restarts at a pause between phrases, not inside a word, a few seconds back. Do it once on a downloaded episode and once on a streamed one, and once at 1.5x.
 - [ ] At 2x, pause mid-sentence and resume a few times: Back a Beat still restarts between phrases. Then drag the speed slider from 1.0x to 2.0x and back while playing: the elapsed time keeps moving and never freezes.
 
+- [ ] After the Back a Beat fix: pause a few times during a silence between phrases, once a few seconds into a long silence, and once right after moving the slider and unplugging the headphones. Each resume goes back to an earlier gap (or stays put after the slider move), and never lands later than the pause. Do it on a streamed MP3 (for example Planet Money), on a downloaded one, and at 2x.
+
 ## Voice boost
 
 - [ ] With headphones, play a show with a quiet guest or caller (for example וויקלי סינק) and switch voice boost on and off from Now Playing while it plays: the quiet voice gets close to the loud one, the switch is immediate, and nothing distorts. Do it once streamed and once downloaded. With boost on, change speed from 1x to 2x and back: the elapsed time keeps moving. Pause and resume with boost on: Back a Beat still restarts between phrases.

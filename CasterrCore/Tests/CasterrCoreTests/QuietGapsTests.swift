@@ -24,6 +24,23 @@ struct QuietGapsTests {
         // Against one median, the loud stretch makes the whole quiet stretch one gap.
         #expect(!QuietGaps.find(in: readings).contains { abs($0 - 18.1) < 0.5 })
     }
+
+    @Test func oneSkippedReadingInsideAGapKeepsTheGap() {
+        // The tap drops a partial slice when it sees a time jump, which leaves a 20 ms step between readings.
+        let readings = speech(from: 0, to: 10, quiet: [5.0...5.249]).filter { abs($0.time - 5.12) > 0.001 }
+        let gaps = QuietGaps.find(in: readings)
+        #expect(gaps.count == 1, "found \(gaps)")
+    }
+
+    @Test func gapsThatAreMostOfTheReadingsAreStillGaps() {
+        let readings = speech(from: 0, to: 3, quiet: [0.2...0.99, 1.5...2.29])
+        let gaps = QuietGaps.find(in: readings)
+        #expect(gaps.count == 2, "found \(gaps)")
+    }
+
+    @Test func allSilentReadingsHaveNoGapToJudge() {
+        #expect(QuietGaps.find(in: speech(from: 0, to: 3, level: 0)).isEmpty)
+    }
 }
 
 struct ClipSnapTests {

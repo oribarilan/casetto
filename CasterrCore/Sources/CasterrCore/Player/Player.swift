@@ -14,7 +14,8 @@ public protocol AudioEngine: AnyObject {
     func load(_ url: URL, at position: TimeInterval)
     func play(rate: Double)
     func pause()
-    func seek(to position: TimeInterval)
+    /// `exact` lands on the target itself, slower on long streams; otherwise the engine may land nearby.
+    func seek(to position: TimeInterval, exact: Bool)
     /// What the engine heard between two media times, oldest first. Empty when it has nothing.
     func loudness(from start: TimeInterval, to end: TimeInterval) -> [Loudness]
     /// Evens out loud and quiet voices from now on, including in episodes loaded later.
@@ -62,8 +63,9 @@ public final class Player {
     private var sleepTask: Task<Void, Never>?
     /// Where the chapter timer pauses: the next chapter's start. Nil in the last chapter, which ends with the episode.
     private var chapterTimerEnd: TimeInterval?
-    /// Set by a pause; a seek or another episode clears it, which turns off Back a Beat.
-    private var pausedInPlace = false
+    /// Where playing audio paused, kept for Back a Beat. Set only by a pause of playing audio, so a second pause
+    /// changes nothing and a late time report can't move it; a seek or another episode clears it.
+    private var pausePoint: TimeInterval?
 
     public init(
         library: Library,
@@ -97,7 +99,7 @@ public final class Player {
     /// Resumes, or starts Queue item 1 when nothing is loaded.
     public func resume() async throws {
         if episode != nil {
-            if pausedInPlace { backABeat() }
+            if let pausePoint { backABeat(from: pausePoint) }
             engine.play(rate: speed.value)
             isPlaying = true
         } else if let first = try await library.playableQueue().first {
@@ -106,9 +108,10 @@ public final class Player {
     }
 
     public func pause() async throws {
+        let wasPlaying = isPlaying
         engine.pause()
         isPlaying = false
-        pausedInPlace = episode != nil
+        if wasPlaying, episode != nil { pausePoint = position }
         try await saveProgress()
     }
 
@@ -129,7 +132,7 @@ public final class Player {
         guard episode?.key == key else { return }
         engine.pause()
         isPlaying = false
-        pausedInPlace = false
+        pausePoint = nil
         episode = nil
         show = nil
         chapters = []
@@ -146,20 +149,20 @@ public final class Player {
     public func skipForward() { seek(to: position + Self.skipForwardSeconds) }
     public func skipBack() { seek(to: position - Self.skipBackSeconds) }
 
-    public func seek(to target: TimeInterval) {
+    public func seek(to target: TimeInterval, exact: Bool = false) {
         let upper = duration ?? .greatestFiniteMagnitude
         position = min(max(target, 0), upper)
-        pausedInPlace = false
-        engine.seek(to: position)
+        pausePoint = nil
+        engine.seek(to: position, exact: exact)
         // After a seek, "this chapter" is the one playback landed in.
         anchorChapterTimer()
     }
 
-    private func backABeat() {
-        let readings = engine.loudness(from: position - BackABeat.farthest, to: position - BackABeat.nearest)
-        let point = BackABeat.resumePoint(pausedAt: position, readings: readings)
-        if point != position { seek(to: point) }
-        pausedInPlace = false
+    private func backABeat(from pausedAt: TimeInterval) {
+        let readings = engine.loudness(from: pausedAt - BackABeat.lookBack, to: pausedAt)
+        let point = BackABeat.resumePoint(pausedAt: pausedAt, readings: readings)
+        if point != pausedAt { seek(to: point, exact: true) }
+        pausePoint = nil
     }
 
     public func setSpeed(_ newSpeed: PlaybackSpeed) {
@@ -217,7 +220,7 @@ public final class Player {
         episode = info
         show = try await library.show(info.showKey)
         errorMessage = nil
-        pausedInPlace = false
+        pausePoint = nil
         position = try await library.progress(of: key)
         lastSavedPosition = position
         duration = info.duration

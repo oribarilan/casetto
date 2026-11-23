@@ -5,7 +5,7 @@ import MediaToolbox
 import os
 import Synchronization
 
-/// Hears the audio as it plays. It keeps the loudness of the last 8 seconds for Back a Beat and,
+/// Hears the audio as it plays. It keeps the loudness of the last 15 seconds for Back a Beat and,
 /// while voice boost is on, runs the audio through Apple's dynamics processor after measuring it.
 /// It taps the audio track after the speed change. A tap before it froze the player's clock in about one
 /// speed change in three, even with no voice boost. The tap's times are still media times, and `setRate`
@@ -178,9 +178,9 @@ private final class DynamicsUnit: @unchecked Sendable {
     }
 }
 
-/// The last 800 readings (8 seconds), in fixed arrays so the audio thread never allocates.
+/// The last 1500 readings (15 seconds), in fixed arrays so the audio thread never allocates.
 private struct Ring {
-    static let capacity = 800
+    static let capacity = 1500
     private var times = [TimeInterval](repeating: 0, count: capacity)
     private var levels = [Float](repeating: 0, count: capacity)
     private var count = 0
