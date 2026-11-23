@@ -23,7 +23,14 @@ struct DiscoverView: View {
     /// The one-time tip on a star, right after the first follow with +.
     @State private var tip: CassyTip?
 
-    private var starred: Bool { levels.values.contains { $0 == .autoQueue || $0 == .playNext } }
+    /// Shows already starred when this visit began. Only a star given during the visit makes Cassy cheer.
+    @State private var starredBefore: Set<ShowKey>?
+
+    private var anyStarred: Bool { levels.values.contains(where: Self.isStar) }
+    private var starred: Bool {
+        levels.contains { Self.isStar($0.value) && starredBefore?.contains($0.key) == false }
+    }
+    private static func isStar(_ level: TriageLevel) -> Bool { level == .autoQueue || level == .playNext }
 
     var body: some View {
         Group {
@@ -144,7 +151,7 @@ struct DiscoverView: View {
                 act(show) {
                     try await toggleSubscription(show, level: level)
                     // The first follow with + teaches the star, once.
-                    if level == nil, !starred {
+                    if level == nil, !anyStarred {
                         tip = CassyTip.once("star", target: "star.\(show.id)",
                                             text: "Never miss this one? Star it and I'll queue its new episodes.")
                     }
@@ -231,6 +238,9 @@ struct DiscoverView: View {
     private func loadLevels() async {
         let subscriptions = (try? await model.library.subscriptions()) ?? []
         levels = Dictionary(subscriptions.map { ($0.showKey, $0.level) }, uniquingKeysWith: { first, _ in first })
+        if starredBefore == nil {
+            starredBefore = Set(levels.filter { Self.isStar($0.value) }.keys)
+        }
     }
 }
 

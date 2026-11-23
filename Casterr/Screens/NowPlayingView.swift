@@ -78,7 +78,7 @@ struct NowPlayingView: View {
                     Text("Share Episode")
                     Text("from \(player.position.clock)")
                 }
-                Button("Share Clip…") {
+                Button("Share Clip") {
                     clipRequest = ClipRequest(
                         window: ClipWindow(position: player.position, duration: player.duration ?? 0),
                         episode: episode, show: player.show, audioURL: player.loadedURL,

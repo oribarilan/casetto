@@ -44,6 +44,7 @@ struct RootView: View {
                 showToOpen = show
                 showingNowPlaying = false
             }
+            .presentationDragIndicator(.visible)
         }
         .fullScreenCover(isPresented: $showingOnboarding) {
             OnboardingView { hasSeenOnboarding = true; showingOnboarding = false }

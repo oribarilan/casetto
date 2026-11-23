@@ -413,7 +413,7 @@ final class ScreensTests: XCTestCase {
         app.buttons["nowPlayingShare"].tap()
         let shareEpisode = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Share Episode'")).firstMatch
         XCTAssertTrue(shareEpisode.waitForExistence(timeout: 5), "no Share Episode")
-        XCTAssertTrue(app.buttons["Share Clip…"].exists, "no Share Clip")
+        XCTAssertTrue(app.buttons["Share Clip"].exists, "no Share Clip")
         snapshot("25 Share Menu")
         shareEpisode.tap()
         let sheet = app.otherElements["ActivityListView"]
@@ -440,7 +440,7 @@ final class ScreensTests: XCTestCase {
         let now = try XCTUnwrap(seconds(elapsed.label))
         XCTAssertGreaterThan(now, 600)
         app.buttons["nowPlayingShare"].tap()
-        app.buttons["Share Clip…"].tap()
+        app.buttons["Share Clip"].tap()
 
         let end = app.otherElements["clipEnd"]
         XCTAssertTrue(end.waitForExistence(timeout: 20), "no bars")
@@ -643,6 +643,27 @@ final class ScreensTests: XCTestCase {
         XCTAssertEqual(app.buttons["followShow"].label, "Follow")
         snapshot("25b Show From Find Shows")
         app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        // Cassy cheers for a star given during this visit, and stops when it's taken back.
+        let invite = app.staticTexts["Let's add some shows!"]
+        let cheer = app.staticTexts["Nice pick!"]
+        XCTAssertTrue(invite.waitForExistence(timeout: 5))
+        let star = app.buttons.matching(identifier: "starButton").firstMatch
+        star.tap()
+        XCTAssertTrue(cheer.waitForExistence(timeout: 30), "no cheer for a star")
+        star.tap()
+        XCTAssertTrue(invite.waitForExistence(timeout: 30), "still cheering after unstarring")
+        star.tap()
+        XCTAssertTrue(cheer.waitForExistence(timeout: 30))
+        app.navigationBars["Find Shows"].buttons["Done"].tap()
+        XCTAssertTrue(app.navigationBars["Find Shows"].waitForNonExistence(timeout: 5))
+
+        // On the next visit, a star from before doesn't count.
+        app.navigationBars["Shows"].buttons["Add"].tap()
+        app.buttons["Find Shows"].tap()
+        XCTAssertTrue(waitForTopShows())
+        XCTAssertTrue(invite.waitForExistence(timeout: 5), "a star from an earlier visit made Cassy cheer")
+        XCTAssertFalse(cheer.exists)
         app.navigationBars["Find Shows"].buttons["Done"].tap()
         XCTAssertTrue(app.navigationBars["Find Shows"].waitForNonExistence(timeout: 5))
 
