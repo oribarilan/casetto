@@ -60,3 +60,7 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 ## Stars
 
 - [ ] Star and unstar shows from Find Shows and a show page, then change a starred show's New episodes setting: it stays starred and stays at the top of the Shows tab under Starred. With VoiceOver, an episode of a starred show in the Queue starts with "Starred".
+
+## Refresh progress
+
+- [ ] With all your shows, open the app from closed and pull to refresh on the Queue: the thin line under the title fills in steps as shows are checked, fills to the end, and fades out, and the list never moves. With VoiceOver, the line reads "Checking for new episodes" with a percentage.
