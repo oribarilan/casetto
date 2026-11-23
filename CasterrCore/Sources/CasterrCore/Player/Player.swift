@@ -96,9 +96,17 @@ public final class Player {
         try await start(key)
     }
 
+    /// Loads the episode paused at its saved position, as the listener left it, without playing it. Loading isn't
+    /// a play: the first press of play is, and Back a Beat stays off because nothing paused here.
+    public func load(_ key: EpisodeKey) async throws {
+        try await prepare(key)
+        isPlaying = false
+    }
+
     /// Resumes, or starts Queue item 1 when nothing is loaded.
     public func resume() async throws {
-        if episode != nil {
+        if let episode {
+            try await library.recordPlayStart(episode.key)
             if let pausePoint { backABeat(from: pausePoint) }
             engine.play(rate: speed.value)
             isPlaying = true
@@ -215,8 +223,16 @@ public final class Player {
     // MARK: Engine events
 
     private func start(_ key: EpisodeKey) async throws {
-        guard let info = try await library.episode(key) else { return }
+        guard try await prepare(key) else { return }
         try await library.recordPlayStart(key)
+        engine.play(rate: speed.value)
+        isPlaying = true
+    }
+
+    /// Loads the episode at its saved position with its show's speed, chapters, and voice boost, ready to play.
+    @discardableResult
+    private func prepare(_ key: EpisodeKey) async throws -> Bool {
+        guard let info = try await library.episode(key) else { return false }
         episode = info
         show = try await library.show(info.showKey)
         errorMessage = nil
@@ -230,8 +246,7 @@ public final class Player {
         let url = localFile(info.key, info.audioURL) ?? info.audioURL
         loadedURL = url
         engine.load(url, at: position)
-        engine.play(rate: speed.value)
-        isPlaying = true
+        return true
     }
 
     private func timeChanged(_ newPosition: TimeInterval, _ newDuration: TimeInterval?) {

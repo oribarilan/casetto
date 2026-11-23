@@ -99,7 +99,6 @@ private struct MiniPlayer: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("miniPlayer")
-            BookmarkButton()
             Button(player.isPlaying ? "Pause" : "Play", systemImage: player.isPlaying ? "pause.fill" : "play.fill") {
                 Task { try? await player.togglePlayPause() }
             }
@@ -110,8 +109,8 @@ private struct MiniPlayer: View {
     }
 }
 
-/// The bar while nothing plays: what the Queue would start, and a play button. It says "Up next"
-/// for a new episode and "Continue" for a started one, so starting is never mistaken for resuming.
+/// The bar while nothing is loaded: the new episode the Queue would start, and a play button. A started episode is
+/// loaded instead, so the mini player shows it.
 private struct UpNextBar: View {
     @Environment(AppModel.self) private var model
     @Environment(Player.self) private var player

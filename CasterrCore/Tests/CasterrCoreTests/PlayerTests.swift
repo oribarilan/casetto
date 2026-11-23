@@ -514,3 +514,40 @@ struct BackABeatPlayerTests {
         #expect(abs((h.engine.seekedTo ?? 0) - 1387) < 0.011)
     }
 }
+
+/// Loading an episode paused, as the app does at launch for the episode the listener was in the middle of.
+@MainActor
+struct LoadPausedTests {
+    @Test func loadsAtTheSavedPositionWithoutPlaying() async throws {
+        let h = try await Harness()
+        let key = h.episodes[0].key
+        try await h.library.setProgress(key, to: 600)
+        try await h.player.load(key)
+        #expect(h.player.episode?.key == key)
+        #expect(h.player.isPlaying == false)
+        #expect(h.player.position == 600)
+        #expect(h.engine.loaded?.position == 600)
+        #expect(h.engine.rate == nil)
+    }
+
+    @Test func loadingIsNotAPlay() async throws {
+        let h = try await Harness()
+        let key = h.episodes[0].key
+        try await h.library.setProgress(key, to: 600)
+        try await h.player.load(key)
+        #expect(try await h.library.firstPlayedAt(of: key) == nil)
+    }
+
+    @Test func playAfterLoadingResumesWithoutGoingBack() async throws {
+        let h = try await Harness()
+        let key = h.episodes[0].key
+        try await h.library.setProgress(key, to: 600)
+        h.engine.heard = speech(from: 590, to: 600, quiet: [596.9...597.09])
+        try await h.player.load(key)
+        try await h.player.resume()
+        #expect(h.player.isPlaying)
+        #expect(h.engine.seekedTo == nil)
+        #expect(try await h.library.firstPlayedAt(of: key) != nil)
+    }
+}
+

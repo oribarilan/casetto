@@ -85,7 +85,7 @@ One word per idea, in everything people read in the app:
 
 ## Capture
 
-One tap in Now Playing or on the mini player bookmarks the current episode and timestamp without pausing. A toast confirms it and offers Add Note. Notes are optional and editable later, in place in the Bookmarks tab. The Bookmarks tab searches notes, episode titles, and show titles. Each episode's bookmarks share as one Markdown file through the share sheet, ready for Obsidian, Notes, or any notes app. Export All shares every listed bookmark as one file. A bookmark keeps the show title, episode title, and audio URL, so it survives the episode disappearing from the feed.
+One tap in Now Playing bookmarks the current episode and timestamp without pausing. A toast confirms it and offers Add Note. Notes are optional and editable later, in place in the Bookmarks tab. The Bookmarks tab searches notes, episode titles, and show titles. Each episode's bookmarks share as one Markdown file through the share sheet, ready for Obsidian, Notes, or any notes app. Export All shares every listed bookmark as one file. A bookmark keeps the show title, episode title, and audio URL, so it survives the episode disappearing from the feed.
 
 ## Sharing to Casterr
 

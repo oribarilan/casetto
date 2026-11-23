@@ -170,9 +170,14 @@ final class AppModel {
             upNext = nil
             return
         }
+        // A started episode is loaded, paused where the listener left it, so the bar is the mini player.
+        if ((try? await library.progress(of: key)) ?? 0) > 0 {
+            upNext = nil
+            if player.episode == nil { try? await player.load(key) }
+            return
+        }
         let show = try? await library.show(episode.showKey)
-        let progress = (try? await library.progress(of: key)) ?? 0
-        upNext = UpNext(episode: episode, showTitle: show?.title ?? "", artworkURL: show?.artworkURL, progress: progress)
+        upNext = UpNext(episode: episode, showTitle: show?.title ?? "", artworkURL: show?.artworkURL)
     }
 
     /// What the episode's row says about its download, the same on every screen.
@@ -328,17 +333,10 @@ struct OpenBookmark: Equatable {
     let editNote: Bool
 }
 
-/// The first Queue episode while nothing is playing: new, or partly played.
+/// The first Queue episode while nothing is loaded and it was never started.
 struct UpNext: Equatable {
     let episode: EpisodeInfo
     let showTitle: String
     let artworkURL: URL?
-    let progress: TimeInterval
-
-    /// "Up next · from your Queue" for a new episode, "Continue · 25 min left" for a started one.
-    var caption: String {
-        guard progress > 0 else { return "Up next · from your Queue" }
-        guard let duration = episode.duration, duration > progress else { return "Continue" }
-        return "Continue · \(max(1, Int((duration - progress) / 60))) min left"
-    }
+    let caption = "Up next · from your Queue"
 }

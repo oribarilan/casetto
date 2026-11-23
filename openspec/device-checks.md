@@ -71,3 +71,8 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 ## Download progress
 
 - [ ] Open the app on cellular with Keep downloaded at 3 and new episodes at the top of the Queue: those rows say "Waiting for Wi-Fi". Join Wi-Fi: they change to "Downloading N%", the number rises, and then they say "Downloaded". The same words show for those episodes in the Inbox and on their show pages.
+
+## Restoring the paused episode
+
+- [ ] Play an episode for a minute, force quit Casterr, and reopen it: the mini player shows that episode paused (with no bookmark button), tapping it opens Now Playing at the same spot, and play resumes there without jumping back. Queue a brand-new episode at the top instead: the bar says "Up next · from your Queue" and opens the Queue.
+

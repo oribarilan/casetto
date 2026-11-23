@@ -380,8 +380,11 @@ final class ScreensTests: XCTestCase {
         // Tapping the rest of the toast opens Bookmarks without the keyboard.
         app.buttons["Close"].firstMatch.tap()
         app.tabBars.buttons["Queue"].tap()
+        // The mini player has no bookmark button, so bookmark from Now Playing again.
+        XCTAssertFalse(app.buttons["Bookmark"].exists, "a bookmark button on the mini player")
+        app.buttons["miniPlayer"].tap()
         app.buttons["Bookmark"].firstMatch.tap()
-        let text = app.buttons["bookmarkToast"]
+        let text = app.buttons["bookmarkToast"].firstMatch
         XCTAssertTrue(text.waitForExistence(timeout: 5))
         text.tap()
         XCTAssertTrue(noteField.waitForExistence(timeout: 5), "the toast didn't open Bookmarks")
