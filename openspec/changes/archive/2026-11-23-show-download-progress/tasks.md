@@ -6,7 +6,7 @@
 
 ## 2. Rows
 
-- [ ] 2.1 Replace `downloaded` with a download state in `EpisodeRow`: "Downloaded", "Downloading 45%" (whole percents, rounded down; no number without a size), "Waiting for Wi-Fi". Pass it from the Queue, Inbox and show page. Verify in the simulator with a download running
+- [x] 2.1 Replace `downloaded` with a download state in `EpisodeRow`: "Downloaded", "Downloading 45%" (whole percents, rounded down; no number without a size), "Waiting for Wi-Fi". Pass it from the Queue, Inbox and show page. Verify in the simulator with a download running
 - [x] 2.2 Remove the backlog entry "Download status in the Queue"
 
 ## 3. Tests

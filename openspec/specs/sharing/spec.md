@@ -88,19 +88,19 @@ Shared files SHALL exist only on the device they were shared to. Other devices M
 - **THEN** the bookmark and its note show on the iPad with its play button disabled
 
 ### Requirement: Share an episode
-The system SHALL let the listener share an episode from Now Playing and from the action line of episode rows in the Queue, the Inbox and show pages. It MUST send "Episode – Show" and a link: the episode's own web page from its feed, or else its audio link. From Now Playing it MUST add the current time as text, such as "from 12:34". The share sheet MUST show the show's art.
+The system SHALL let the listener share an episode from Now Playing and from the action line of episode rows in the Queue, the Inbox and show pages. It MUST send "Episode – Show", with no time, and the episode's Podlink link, built from the show's feed address and the episode's GUID; an episode with no GUID links to the show on Podlink. The share sheet MUST show the show's art.
 
 #### Scenario: Episode with its own page
 - **WHEN** the listener shares ATP episode 718 from its row
-- **THEN** the message is "718: The Warp Zone – Accidental Tech Podcast" with the link `https://atp.fm/718`
+- **THEN** the message is "718: The Warp Zone – Accidental Tech Podcast" with a `https://pod.link/…/episode/…` link to that episode
 
 #### Scenario: Feed without episode pages
 - **WHEN** every episode in a feed links to the same show page, and the listener shares one
-- **THEN** the message carries the episode's audio link instead
+- **THEN** the message still carries that episode's own Podlink link
 
 #### Scenario: From Now Playing
 - **WHEN** the listener shares from Now Playing at 12:34
-- **THEN** the message ends with "from 12:34"
+- **THEN** the message is "Episode – Show" with no time
 
 #### Scenario: Shared file
 - **WHEN** the listener opens the action line of a file on the Shared with Casterr page
@@ -110,12 +110,16 @@ The system SHALL let the listener share an episode from Now Playing and from the
 - **WHEN** the listener taps Share in a Queue row's action line
 - **THEN** the share sheet opens with "Episode – Show" and its link
 
+#### Scenario: Episode with no GUID
+- **WHEN** the listener shares an episode whose feed item has no GUID
+- **THEN** the link is the show's Podlink page
+
 ### Requirement: Share a show
-The show page SHALL let the listener share the show: its name and its web page from the feed, or else its feed address. The built-in Shared with Casterr show MUST NOT offer it.
+The show page SHALL let the listener share the show: its name and its Podlink page, built from its feed address. The built-in Shared with Casterr show MUST NOT offer it.
 
 #### Scenario: Show with a web page
 - **WHEN** the listener shares Planet Money from its page
-- **THEN** the message is "Planet Money" with the show's web page
+- **THEN** the message is "Planet Money" with a `https://pod.link/…` link to the show
 
 ### Requirement: Clip editor
 "Share Clip" in Now Playing SHALL open an editor that shows the two minutes around the current time as loudness bars, with a clip framed from 15 seconds before now to 15 seconds after, kept within the episode. The listener MUST be able to drag either edge, for a clip of 5 to 60 seconds, and preview it at normal speed, as it will be sent. Previewing MUST pause the episode.
@@ -152,11 +156,11 @@ In the clip editor, an edge SHALL snap to the middle of a quiet gap between word
 - **THEN** the edge moves freely and doesn't snap
 
 ### Requirement: Share a clip
-Share in the clip editor SHALL make a square video of the art Now Playing shows, with the Casterr badge and the clip's audio, and open the share sheet with the video and the episode's text and link as the caption. The clip MUST come from what the player plays. For a streamed episode, the system MUST fetch only the part it needs and decode it from its first real audio frame; when that can't work, the editor MUST say to download the episode first, and offline it MUST say so.
+Share in the clip editor SHALL make a square video of the art Now Playing shows, sharp at full size, with the Casterr badge and the clip's audio, and open the share sheet with the video, "Episode – Show" and the Podlink link. The clip MUST come from what the player plays. A streamed episode MUST fetch only the part it needs, decoded from its first real audio frame; when that can't work, the editor MUST say to download the episode first, and offline it MUST say so.
 
 #### Scenario: Downloaded episode
 - **WHEN** the listener shares a 30-second clip of a downloaded episode
-- **THEN** a square video with the show's art, the "Clipped with Casterr" badge, and that audio opens in the share sheet, with the text and link
+- **THEN** a square video with the show's sharp art, the "Clipped with Casterr" badge, and that audio opens in the share sheet, with "Episode – Show" and the episode's Podlink link
 
 #### Scenario: Streamed episode
 - **WHEN** the listener opens the editor while streaming an MP3 episode

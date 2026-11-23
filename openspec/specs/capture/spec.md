@@ -6,7 +6,7 @@ Saves moments while listening, without interrupting playback, and takes them out
 ## Requirements
 
 ### Requirement: Bookmark without pausing
-The system SHALL let the listener bookmark the current episode and position with one tap in Now Playing or on the mini player. Playback MUST continue. A bookmark MUST keep the show title, episode title, and audio address.
+The system SHALL let the listener bookmark the current episode and position with one tap in Now Playing. The mini player MUST NOT have a bookmark button. Playback MUST continue. A bookmark MUST keep the show title, episode title, and audio address.
 
 #### Scenario: Bookmark while playing
 - **WHEN** the listener taps the bookmark button at 12:34
@@ -15,6 +15,10 @@ The system SHALL let the listener bookmark the current episode and position with
 #### Scenario: Episode leaves the feed
 - **WHEN** a bookmarked episode is no longer in its feed, or the listener unsubscribes from its show
 - **THEN** the bookmark still shows its show title, episode title, and position
+
+#### Scenario: Mini player
+- **WHEN** an episode is loaded and the listener looks at the mini player
+- **THEN** it shows the art, the titles, and play or pause, and no bookmark button
 
 ### Requirement: Optional note
 The toast SHALL offer Add Note, which MUST open that bookmark in the Bookmarks tab with its note field ready to type, closing Now Playing if it's open. Tapping the rest of the toast MUST open the bookmark there without the keyboard. The listener SHALL be able to add or edit a bookmark's note in the Bookmarks tab by tapping the note in its row. A bookmark without a note MUST be kept, and its row SHALL say "Add a note".
