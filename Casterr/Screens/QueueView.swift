@@ -54,14 +54,14 @@ struct QueueView: View {
                     CassyEmptyState(job: .idle, title: inboxTitle,
                                     message: "Have a look and queue what you want to hear.") {
                         Button("Open Inbox") { model.queuePath = [.inbox] }
-                            .buttonStyle(.borderedProminent)
+                            .filledButton()
                             .buttonBorderShape(.capsule)
                     }
                 } else {
                     CassyEmptyState(job: .asleep, title: "Silence. Lovely, but let's fix that.",
                                     message: "Star the shows you never miss and I'll queue their new episodes right here.") {
                         Button("Find Shows") { model.tab = .shows }
-                            .buttonStyle(.borderedProminent)
+                            .filledButton()
                             .buttonBorderShape(.capsule)
                     }
                 }

@@ -339,7 +339,7 @@ private struct ShowPageButton: View {
             Button(action: action) { label }.buttonStyle(.bordered)
                 .controlSize(.large).buttonBorderShape(.capsule)
         } else {
-            Button(action: action) { label }.buttonStyle(.borderedProminent)
+            Button(action: action) { label }.filledButton()
                 .controlSize(.large).buttonBorderShape(.capsule)
         }
     }

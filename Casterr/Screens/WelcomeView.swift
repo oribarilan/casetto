@@ -33,7 +33,7 @@ struct WelcomeView: View {
                     .font(.headline)
                     .frame(maxWidth: .infinity, minHeight: 36)
             }
-            .buttonStyle(.borderedProminent)
+            .filledButton()
             .buttonBorderShape(.capsule)
             .controlSize(.large)
             .padding(.horizontal, 28)

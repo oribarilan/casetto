@@ -21,6 +21,13 @@ extension Color {
     })
 }
 
+extension View {
+    /// A filled tangerine button with dark brown text: white on tangerine is only 3:1, too faint to read.
+    func filledButton() -> some View {
+        buttonStyle(.borderedProminent).foregroundStyle(Color(red: 0.227, green: 0.078, blue: 0.02))
+    }
+}
+
 @MainActor
 enum Theme {
     /// Heavy rounded navigation titles, and an image cache big enough that lists don't re-download art.

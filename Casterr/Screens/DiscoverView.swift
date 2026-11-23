@@ -37,7 +37,7 @@ struct DiscoverView: View {
                 CassyEmptyState(job: .error, title: "I couldn't load the top shows.",
                                 message: "Search still works. Try a show you love.") {
                     Button("Try Again") { attempt += 1 }
-                        .buttonStyle(.borderedProminent)
+                        .filledButton()
                         .buttonBorderShape(.capsule)
                 }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

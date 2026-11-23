@@ -123,7 +123,7 @@ private struct RuleCardRow: View {
                 .padding(.trailing, 24)
                 HStack {
                     Button(card.kind == .autoQueue ? "Queue them" : "Skip them") { act(accept) }
-                        .buttonStyle(.borderedProminent)
+                        .filledButton()
                         .controlSize(.small)
                     Spacer()
                     Menu {
