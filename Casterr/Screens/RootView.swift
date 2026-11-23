@@ -99,13 +99,49 @@ private struct MiniPlayer: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("miniPlayer")
-            Button(player.isPlaying ? "Pause" : "Play", systemImage: player.isPlaying ? "pause.fill" : "play.fill") {
+            Button {
                 Task { try? await player.togglePlayPause() }
+            } label: {
+                if player.isPlaying {
+                    PauseMeter()
+                } else {
+                    Image(systemName: "play.fill").font(.title2)
+                }
             }
-            .labelStyle(.iconOnly)
-            .font(.title2)
+            .frame(width: 30, height: 30)
+            .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
         }
         .padding(.horizontal)
+    }
+}
+
+/// The pause icon's two bars, each filling with tangerine from the bottom as loud as the voice is now (left) and a
+/// tenth of a second ago (right). With Reduce Motion it's the plain pause icon.
+private struct PauseMeter: View {
+    @Environment(Player.self) private var player
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        // About ten updates a second, each easing out (fast start, slow finish), so the fill glides with the voice.
+        TimelineView(.animation(minimumInterval: 0.1, paused: reduceMotion)) { _ in
+            let levels = reduceMotion ? (now: 0.0, before: 0.0) : player.levels()
+            HStack(spacing: 5) {
+                bar(levels.now)
+                bar(levels.before)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func bar(_ level: Double) -> some View {
+        RoundedRectangle(cornerRadius: 2)
+            .fill(Color(.label))
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(Color.tangerine).frame(height: 19 * level)
+                    .animation(.easeOut(duration: 0.25), value: level)
+            }
+            .clipShape(.rect(cornerRadius: 2))
+            .frame(width: 6, height: 19)
     }
 }
 

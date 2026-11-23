@@ -551,3 +551,27 @@ struct LoadPausedTests {
     }
 }
 
+/// How loud it is right now, for the mini player's pause meter.
+@MainActor
+struct LevelTests {
+    @Test func loudSpeechIsNearTheTopAndSilenceIsZero() async throws {
+        let h = try await Harness()
+        try await h.player.play(h.episodes[0].key)
+        h.engine.onTime?(100, 3000)
+        h.engine.heard = speech(from: 95, to: 100)
+        #expect(h.player.levels().now > 0.6)
+        h.engine.heard = speech(from: 95, to: 100, quiet: [99.6...99.99])
+        #expect(h.player.levels().now < 0.2)
+    }
+
+    @Test func pausedOrSilentIsZero() async throws {
+        let h = try await Harness()
+        try await h.player.play(h.episodes[0].key)
+        h.engine.onTime?(100, 3000)
+        #expect(h.player.levels().now == 0)
+        h.engine.heard = speech(from: 95, to: 100)
+        try await h.player.pause()
+        #expect(h.player.levels() == (0, 0))
+    }
+}
+

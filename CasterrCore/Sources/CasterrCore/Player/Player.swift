@@ -173,6 +173,22 @@ public final class Player {
         pausePoint = nil
     }
 
+    /// How loud the audio is over the last quarter second, and over the same quarter second a tenth of a second
+    /// earlier, each 0 to 1 against the loudest moment of the last 3 seconds. Quarter seconds follow words rather
+    /// than every syllable; the slight lag makes the mini player's two bars ripple instead of moving as one.
+    /// Both are 0 while paused.
+    public func levels() -> (now: Double, before: Double) {
+        guard isPlaying else { return (0, 0) }
+        let readings = engine.loudness(from: position - 5, to: position + 5)
+        guard let latest = readings.last?.time,
+              let peak = readings.filter({ $0.time > latest - 3 }).map(\.level).max(), peak > 0 else { return (0, 0) }
+        func mean(_ from: TimeInterval, _ to: TimeInterval) -> Double {
+            let slice = readings.filter { $0.time > latest - from && $0.time <= latest - to }.map(\.level)
+            return slice.isEmpty ? 0 : Double(min(1, slice.reduce(0, +) / Float(slice.count) / peak))
+        }
+        return (mean(0.25, -1), mean(0.35, 0.1))
+    }
+
     public func setSpeed(_ newSpeed: PlaybackSpeed) {
         speed = newSpeed
         if isPlaying { engine.play(rate: speed.value) }
