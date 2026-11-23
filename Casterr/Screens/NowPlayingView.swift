@@ -81,13 +81,12 @@ struct NowPlayingView: View {
         .sheet(item: $clipRequest) { ClipEditor(request: $0) }
     }
 
-    /// Share Episode, from now, and Share Clip. Files shared to Casterr have no link, so they get neither.
+    /// Share Episode and Share Clip. Files shared to Casterr have no link, so they get neither.
     @ViewBuilder private var shareMenu: some View {
         if let episode = player.episode, episode.showKey != .shared {
             Menu {
-                ArtShareLink(share: ShareText.episode(episode, show: player.show, at: player.position), art: showArt) {
+                ArtShareLink(share: ShareText.episode(episode, show: player.show), art: showArt) {
                     Text("Share Episode")
-                    Text("from \(player.position.clock)")
                 }
                 Button("Share Clip") {
                     clipRequest = ClipRequest(

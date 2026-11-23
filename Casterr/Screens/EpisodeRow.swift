@@ -137,7 +137,7 @@ struct EpisodeRow: View {
 
     @ViewBuilder private func actionButton(_ action: RowAction) -> some View {
                 if action.isShare {
-                    ArtShareLink(share: ShareText.episode(episode, showTitle: art?.title, at: nil),
+                    ArtShareLink(share: ShareText.episode(episode, showTitle: art?.title, feedURL: art?.feedURL),
                                  art: art?.artworkURL.flatMap { ArtCache.kept($0, pixels: 52 * scale) }) { actionLabel(action) }
                         .buttonStyle(.borderless)
                 } else {

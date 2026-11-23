@@ -44,14 +44,6 @@ To do, not started. Today every build is version 0.1 (1), and nothing tells the 
 
 Before building, decide how a release is cut (who bumps the version, and when) and what What's New shows, then write an OpenSpec proposal.
 
-## Sharing fixes (logged 2026-11-22)
-
-Found on the phone:
-
-- The share should show only the show name and the episode name.
-- The artwork in a shared clip is very low quality.
-- Share Episode should share the whole episode with the show name, the episode name, and an Apple Podcasts link or something like it.
-
 ## Waveform in clips (logged 2026-11-22)
 
 A shared clip video has no waveform today. Add one.

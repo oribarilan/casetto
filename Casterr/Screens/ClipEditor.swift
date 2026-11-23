@@ -241,7 +241,7 @@ struct ClipEditor: View {
         exporting = true
         let renderer = ImageRenderer(content: ClipFrame(art: art, side: CGFloat(ClipVideo.side)))
         renderer.scale = 1
-        let caption = ShareText.episode(request.episode, show: request.show, at: clip.lowerBound)
+        let caption = ShareText.episode(request.episode, show: request.show)
         Task {
             defer { exporting = false }
             guard let frame = renderer.cgImage else { return }
@@ -370,7 +370,7 @@ struct ClipFrame: View {
         let scale = side / CGFloat(ClipVideo.side)
         Group {
             if let art {
-                Image(uiImage: art).resizable().scaledToFill()
+                Image(uiImage: art).resizable().interpolation(.high).scaledToFill()
             } else {
                 Color.tangerine.overlay { CassyView(job: .idle, size: side * 0.6) }
             }

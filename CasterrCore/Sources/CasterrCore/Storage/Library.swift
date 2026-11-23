@@ -37,13 +37,18 @@ public struct ShowInfo: Equatable, Sendable {
     public var lastRefreshError: String?
     /// The show's page from its feed.
     public var webPage: URL?
+    /// The show's current feed address: it follows the feed when it moves.
+    public var feedURL: URL?
 }
 
 public struct ShowArt: Equatable, Sendable {
     public var title: String
     public var artworkURL: URL?
+    /// The show's current feed address, for share links.
+    public var feedURL: URL?
 
-    public init(title: String, artworkURL: URL?) {
+    public init(title: String, artworkURL: URL?, feedURL: URL? = nil) {
+        self.feedURL = feedURL
         self.title = title
         self.artworkURL = artworkURL
     }
@@ -717,8 +722,17 @@ public actor Library {
 
     /// Every show's title and artwork address, in one fetch, for drawing art in lists.
     public func showArt() throws -> [ShowKey: ShowArt] {
-        Dictionary(try modelContext.fetch(FetchDescriptor<ShowRecord>()).map {
-            (ShowKey(rawValue: $0.key), ShowArt(title: $0.title, artworkURL: $0.artworkURL))
+        let feeds = try currentFeeds()
+        return Dictionary(try modelContext.fetch(FetchDescriptor<ShowRecord>()).map {
+            let key = ShowKey(rawValue: $0.key)
+            return (key, ShowArt(title: $0.title, artworkURL: $0.artworkURL, feedURL: feeds[key] ?? $0.feedURL))
+        }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// Each followed show's current feed address.
+    private func currentFeeds() throws -> [ShowKey: URL] {
+        Dictionary(try modelContext.fetch(FetchDescriptor<Subscription>()).compactMap { record in
+            record.feedURL.map { (ShowKey(rawValue: record.showKey), $0) }
         }, uniquingKeysWith: { first, _ in first })
     }
 
@@ -727,7 +741,8 @@ public actor Library {
         return try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == raw })).first
             .map { ShowInfo(
                 key: showKey, title: $0.title, author: $0.author, artworkURL: $0.artworkURL, summary: $0.summary,
-                lastRefreshSuccess: $0.lastRefreshSuccess, lastRefreshError: $0.lastRefreshError, webPage: $0.webPage
+                lastRefreshSuccess: $0.lastRefreshSuccess, lastRefreshError: $0.lastRefreshError, webPage: $0.webPage,
+                feedURL: try subscription(showKey)?.feedURL ?? $0.feedURL
             ) }
     }
 

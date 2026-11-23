@@ -199,7 +199,7 @@ struct ShowView: View {
     private func episodeRow(_ episode: EpisodeInfo) -> some View {
         let place = places[episode.key]
         let played = place == Place.archive(.played)
-        let art: ShowArt? = show.map { ShowArt(title: $0.title, artworkURL: $0.artworkURL) }
+        let art: ShowArt? = show.map { ShowArt(title: $0.title, artworkURL: $0.artworkURL, feedURL: $0.feedURL ?? feedURL) }
         return EpisodeRow(episode: episode, identifier: "episode",
                           statuses: caption(place).map { [$0] } ?? [], move: moves[episode.key],
                           download: model.downloadState(episode), played: played,

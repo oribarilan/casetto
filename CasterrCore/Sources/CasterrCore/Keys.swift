@@ -49,6 +49,11 @@ public struct EpisodeKey: Hashable, Sendable {
 }
 
 extension EpisodeKey {
+    /// The feed item's GUID this key was built from, or nil when it came from the audio URL.
+    public var guid: String? {
+        rawValue.range(of: "|guid:").map { String(rawValue[$0.upperBound...]) }
+    }
+
     public func belongs(to show: ShowKey) -> Bool {
         rawValue.hasPrefix(show.rawValue + "|")
     }

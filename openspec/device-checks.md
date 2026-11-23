@@ -53,6 +53,7 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 
 ## Sharing from Casterr
 
+- [ ] After the sharing fix: share an episode and a clip to Messages and to WhatsApp. The text is just "Episode – Show". The pod.link link opens that episode and lets you pick an app; try a brand-new episode and an older one, and note if a new one takes a while to appear. The clip's art looks sharp in both apps.
 - [ ] Share a clip to WhatsApp: the video plays inline with the art and the badge, and check whether the caption with the link arrives. Make one clip of a streamed episode and one of a downloaded one, and listen that each starts and ends between words and matches what you heard (try an ad-inserting show such as Planet Money). Share Episode to Messages and check its preview, and Share Show. Check the loudness bars make pauses easy to see on a calm show, and tune `LoudnessBars.range` if not.
 
 ## Episode rows
