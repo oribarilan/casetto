@@ -141,9 +141,9 @@ public final class Player {
         loadedURL = nil
     }
 
-    /// Moves to the chapter's start and keeps playing or paused.
+    /// Moves to the chapter's start, exactly (a quick seek can land seconds into it), and keeps playing or paused.
     public func jump(to chapter: Chapter) {
-        seek(to: chapter.start)
+        seek(to: chapter.start, exact: true)
     }
 
     public func skipForward() { seek(to: position + Self.skipForwardSeconds) }
