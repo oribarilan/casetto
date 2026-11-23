@@ -24,11 +24,15 @@ Episode rows in the Queue, Inbox, and show page SHALL show their show's artwork.
 - **THEN** its rows and tile show a tangerine placeholder with the show's first letter
 
 ### Requirement: Now Playing tint
-Now Playing SHALL use a background color taken from the show's artwork, darkened enough for white text to stay readable.
+Now Playing SHALL use a background color taken from the show's artwork, darkened enough for white text to stay readable. Now Playing SHALL show the standard iOS grab handle at its top, so the listener can see it swipes down to close.
 
 #### Scenario: Tinted background
 - **WHEN** an episode with mostly green artwork is playing
 - **THEN** Now Playing has a dark green background with white text
+
+#### Scenario: Grab handle
+- **WHEN** the listener opens Now Playing
+- **THEN** a grab handle shows at the top of the sheet
 
 ### Requirement: Idle loops
 When Cassy has no job to show, she SHALL play one of eight idle loops (blink, wink, look around, breathe, reel twitch, hum, yawn, peek) at random, 0.7 to 1.2 seconds after appearing and then 0.7 to 1.2 seconds after each loop ends, never the same loop twice in a row, so she moves most of the time. Reduce Motion MUST stop the loops.

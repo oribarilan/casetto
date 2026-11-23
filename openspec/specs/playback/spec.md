@@ -81,12 +81,16 @@ Speed SHALL have a global default of 1.0x, which the listener sets in Settings. 
 - **THEN** that show follows the global speed again
 
 #### Scenario: Own speed from Now Playing
-- **WHEN** the listener opens speed in Now Playing, turns off "Use my default", and drags the slider to 1.3x
-- **THEN** the episode plays at 1.3x right away, with no Done button, and other shows keep the default
+- **WHEN** the listener opens speed in Now Playing and drags the slider to 1.3x
+- **THEN** the episode plays at 1.3x right away, with no Done button, "Use my default" turns off by itself, and other shows keep the default
 
 #### Scenario: Follow the default again
 - **WHEN** the listener turns "Use my default" back on
-- **THEN** the show's override is reset, the slider hides, and the episode plays at the default speed
+- **THEN** the show's override is reset, the slider moves to the default speed, and the episode plays at it
+
+#### Scenario: Default speed on purpose
+- **WHEN** the show plays at the default 1.0x and the listener turns "Use my default" off
+- **THEN** the show keeps 1.0x as its own speed, and a later change of the default doesn't move it
 
 ### Requirement: Skip intervals
 The system SHALL provide skip forward by 30 seconds and skip back by 15 seconds. The intervals are the same in the app, on the lock screen, and from headphones, and they are not configurable.
@@ -100,7 +104,7 @@ The system SHALL provide skip forward by 30 seconds and skip back by 15 seconds.
 - **THEN** playback moves to the end of the episode
 
 ### Requirement: Sleep timer
-The system SHALL let the listener set a sleep timer for a fixed duration or for the end of the current episode. When the timer ends, playback MUST pause. While a timer runs, the sleep timer button in Now Playing SHALL show the time left, or "End" for the end of the episode.
+The system SHALL let the listener set a sleep timer for a fixed duration, the end of the current chapter, or the end of the current episode. When the timer ends, playback MUST pause. While a timer runs, the sleep timer button in Now Playing SHALL show the time left, "Chapter" for the end of the chapter, or "End" for the end of the episode.
 
 #### Scenario: Timer for a duration
 - **WHEN** the listener sets a 15-minute sleep timer
@@ -117,6 +121,18 @@ The system SHALL let the listener set a sleep timer for a fixed duration or for 
 #### Scenario: Time left
 - **WHEN** a 30-minute timer has run for 6 minutes
 - **THEN** the sleep timer button shows 24:00 and counts down
+
+#### Scenario: End of chapter
+- **WHEN** the episode has chapters and the listener picks "This chapter" with 3 minutes left in it
+- **THEN** playback pauses when the next chapter starts, and the button shows "Chapter" until then
+
+#### Scenario: Last chapter
+- **WHEN** the listener picks "This chapter" during the episode's last chapter
+- **THEN** playback pauses when the episode ends, and the next Queue item does not start
+
+#### Scenario: Seek to another chapter
+- **WHEN** the chapter timer runs and the listener seeks into a later chapter
+- **THEN** playback pauses at the end of the chapter it landed in
 
 ### Requirement: Saved progress
 The system SHALL save each episode's playback position so that playback resumes where the listener stopped, or up to 5 seconds before it when Back a Beat finds a quiet gap. A crash or force quit MUST lose no more than a few seconds of progress. After a drag on the Now Playing slider, playback and saved progress MUST continue from where the thumb stopped.
@@ -278,16 +294,34 @@ Voice boost SHALL have a global default, off until the listener turns it on in S
 - **THEN** every show without its own choice plays with voice boost, and shows with their own choice are unchanged
 
 ### Requirement: Voice boost in Now Playing
-Now Playing SHALL show a round voice boost button with a waveform symbol, white while boost is on for the playing episode. Tapping it MUST open a menu titled "Voice boost: evens out loud and quiet voices" with "On for this show", "Off for this show", and "Use my default" followed by the default in parentheses. A check MUST mark the current choice. A choice applies right away, with no Done button.
+Now Playing SHALL show a round voice boost button with a waveform symbol, white while boost is on for the playing episode. Tapping it MUST open the voice boost sheet, with On and Off and a "Use my default" switch that shows the default. Picking On or Off MUST set the show's own choice and turn the switch off. Turning the switch on MUST remove the show's own choice. A choice applies right away, with no Done button.
 
 #### Scenario: Turn it on for a show
-- **WHEN** the default is off and the listener chooses "On for this show"
-- **THEN** the episode plays with voice boost right away, the button turns white, and other shows keep the default
+- **WHEN** the default is off and the listener picks On in the sheet
+- **THEN** the episode plays with voice boost right away, "Use my default" turns off, the button turns white, and other shows keep the default
 
 #### Scenario: Follow the default again
-- **WHEN** a show is set to on, the default is off, and the listener chooses "Use my default (Off)"
-- **THEN** the show's own choice is removed, the boost stops, and the button turns back from white
+- **WHEN** a show is set to on, the default is off, and the listener turns "Use my default" on
+- **THEN** the show's own choice is removed, the boost stops, Off is picked, and the button turns back from white
 
 #### Scenario: Menu shows the default
-- **WHEN** the global default is on and the listener opens the menu
-- **THEN** the last item reads "Use my default (On)"
+- **WHEN** the global default is on and the listener opens the voice boost sheet
+- **THEN** the switch reads "Use my default" with "On, from Settings" under it
+
+### Requirement: Now Playing control sheets
+Speed, voice boost and the sleep timer in Now Playing SHALL each open a sheet of the same shape and height: the name and current value on top, a one-line description for voice boost and the sleep timer, then the control. Speed and voice boost SHALL end with a "Use my default" switch showing the default "from Settings", with no footer text. Every change MUST apply right away, with no Done button.
+
+#### Scenario: Same shape
+- **WHEN** the listener opens the speed sheet, then the voice boost sheet, then the sleep timer sheet
+- **THEN** each has its name and value on top and the same height
+
+### Requirement: Sleep timer sheet
+The sleep timer sheet SHALL offer 15, 30, 45 and 60 minutes, "This chapter" with the minutes left in the chapter, and "End of episode" with the minutes left in the episode. "This chapter" MUST show only when the episode has chapters. While a timer runs, its choice MUST be marked, the value on top MUST show the time left, and a Turn Off button MUST show. Picking a choice MUST start it, replacing any running timer, and close the sheet.
+
+#### Scenario: No chapters
+- **WHEN** the listener opens the sleep timer sheet on an episode without chapters
+- **THEN** it offers the four durations and "End of episode", without "This chapter"
+
+#### Scenario: Turn off
+- **WHEN** a 30-minute timer runs and the listener taps Turn Off
+- **THEN** the timer stops and the button under the play controls loses its time

@@ -33,16 +33,6 @@ Next: on a phone with the model downloaded, measure transcription and essence ti
 Shorten long pauses while an episode plays. It waits because Apple's player (AVPlayer) can't drop audio: the audio tap must return as much sound as it receives. Two ways to try later. One is to raise the speed briefly while a pause plays; first test on the simulator how far ahead of the speaker the tap hears the sound, because a late speed change clips words. The other is our own audio pipeline (AVAudioEngine), which can really cut pauses but is a big rewrite and makes streaming harder.
 
 
-## Speed sheet redesign (logged 2026-11-22)
-
-The Now Playing speed sheet (`SpeedSheet` in `NowPlayingView.swift`) is misleading. Today the slider shows only after "Use my default" is turned off, so the listener has to flip a switch before they can change the speed. What they want instead:
-
-- The speed control is always there. Moving it away from the default turns "Use my default" off by itself.
-- Turning "Use my default" on jumps the speed back to the default.
-- At the default speed, the switch can be turned on or off freely.
-
-Before building, show the listener a few designs that solve this, as images with a key on each option.
-
 ## Versions, changelog and What's New (logged 2026-11-22)
 
 To do, not started. Today every build is version 0.1 (1), and nothing tells the listener what changed.
@@ -60,21 +50,11 @@ Found on the phone:
 
 - The share should show only the show name and the episode name.
 - The artwork in a shared clip is very low quality.
-- "Share Clip…" should lose its three dots: "Share Clip".
 - Share Episode should share the whole episode with the show name, the episode name, and an Apple Podcasts link or something like it.
 
 ## Waveform in clips (logged 2026-11-22)
 
 A shared clip video has no waveform today. Add one.
-
-## Handle on Now Playing (logged 2026-11-22)
-
-The Now Playing sheet shows no grab handle. Nobody chose that: it's a plain full-height sheet, and iOS shows the handle by default only on sheets that stop at more than one height. Swiping down still closes it. Showing the handle is one line in `RootView.swift`: `.presentationDragIndicator(.visible)` on the Now Playing sheet.
-
-## Speed, voice boost and sleep timer controls (logged 2026-11-22)
-
-- The three Now Playing controls (speed, voice boost, sleep timer) don't look or work alike. Make them uniform.
-- When the episode has chapters, the sleep timer offers "After current chapter (3 min)", with the time left in the chapter.
 
 ## Download status in the Queue (logged 2026-11-22)
 
@@ -83,10 +63,6 @@ Show each Queue episode's download status and progress in the Queue view.
 ## Cassy's entrance and exit while the Queue loads (logged 2026-11-22)
 
 While the Queue loads, Cassy pops in and then vanishes. Explore a nicer animation for her appearing and disappearing.
-
-## Find Shows card reacts to this visit (logged 2026-11-22)
-
-Cassy's card in Find Shows should react to what the listener does during this visit. Today it says "Nice pick!" whenever any followed show is starred, so once you've ever starred a show it always cheers (`starred` in `DiscoverView.swift` checks every subscription).
 
 ## Download space next to Keep downloaded (logged 2026-11-22)
 

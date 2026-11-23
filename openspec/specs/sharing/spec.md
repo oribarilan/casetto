@@ -114,7 +114,7 @@ The show page SHALL let the listener share the show: its name and its web page f
 - **THEN** the message is "Planet Money" with the show's web page
 
 ### Requirement: Clip editor
-"Share Clip…" in Now Playing SHALL open an editor that shows the two minutes around the current time as loudness bars, with a clip framed from 15 seconds before now to 15 seconds after, kept within the episode. The listener MUST be able to drag either edge, for a clip of 5 to 60 seconds, and preview it at normal speed, as it will be sent. Previewing MUST pause the episode.
+"Share Clip" in Now Playing SHALL open an editor that shows the two minutes around the current time as loudness bars, with a clip framed from 15 seconds before now to 15 seconds after, kept within the episode. The listener MUST be able to drag either edge, for a clip of 5 to 60 seconds, and preview it at normal speed, as it will be sent. Previewing MUST pause the episode.
 
 #### Scenario: Opens around now
 - **WHEN** the listener opens the editor at 12:19

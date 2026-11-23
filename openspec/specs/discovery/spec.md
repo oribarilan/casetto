@@ -47,7 +47,7 @@ Each directory show SHALL offer Follow, which starts the show at the Inbox level
 - **THEN** the show's page opens with its episodes, and the show stays unfollowed
 
 ### Requirement: Onboarding
-On first launch the system SHALL show one welcome screen, then a skippable Find Shows screen with a large title, top shows, and search. The welcome screen MUST be the only intro screen; everything else is taught with just-in-time tips. Whenever the listener follows no shows, the Shows tab SHALL show Find Shows without the welcome screen. Only one Cassy SHALL be on screen at a time. After the first star her card SHALL cheer.
+On first launch the system SHALL show one welcome screen, then a skippable Find Shows screen with a large title, top shows, and search. The welcome screen MUST be the only intro screen; everything else is taught with just-in-time tips. Whenever the listener follows no shows, the Shows tab SHALL show Find Shows without the welcome screen. Only one Cassy SHALL be on screen at a time. Her card SHALL cheer after the listener stars a show during the current visit to Find Shows, and only then.
 
 #### Scenario: First launch
 - **WHEN** the app launches for the first time
@@ -69,6 +69,14 @@ On first launch the system SHALL show one welcome screen, then a skippable Find 
 #### Scenario: Unsubscribed from everything
 - **WHEN** the listener follows no shows and opens the Shows tab
 - **THEN** it shows the top shows and search, without the welcome screen
+
+#### Scenario: Starred before this visit
+- **WHEN** the listener starred a show earlier, then opens Find Shows from the + menu
+- **THEN** the card says "Let's add some shows!", not "Nice pick!"
+
+#### Scenario: Star taken back
+- **WHEN** the listener stars a show in Find Shows, then unstars it during the same visit
+- **THEN** the card goes back to "Let's add some shows!"
 
 ### Requirement: Just-in-time tips
 The system SHALL teach a control with a one-time tip at the moment the listener first needs it, instead of up-front tutorials. A tip SHALL be a sticker bubble from Cassy that points at the control, with a subtle grey ✕. It MUST close on its ✕ or any other tap, and MUST show at most once per install.
