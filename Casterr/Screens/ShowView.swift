@@ -154,21 +154,33 @@ struct ShowView: View {
         fetchingFeed = false
     }
 
+    /// Reads everything first and sets it together, so the page appears whole instead of filling in.
     private func load() async {
         let library = model.library
-        show = try? await library.show(showKey)
-        episodes = (try? await library.episodes(of: showKey)) ?? []
-        var loaded: [EpisodeKey: Place] = [:]
-        for episode in episodes {
-            if let place = try? await library.place(of: episode.key) { loaded[episode.key] = place }
-        }
-        places = loaded
-        moves = await model.moves(of: episodes.map(\.key))
-        progress = await model.progress(of: episodes.map(\.key))
-        queueTop = Array(((try? await library.playableQueue()) ?? []).prefix(2))
-        subscription = try? await library.subscriptions().first { $0.showKey == showKey }
-        cachedFeedURL = try? await library.cachedFeedURL(of: showKey)
-        globalExpiry = (try? await library.globalExpiry()) ?? .standard
+        let loadedShow = try? await library.show(showKey)
+        let loadedEpisodes = (try? await library.episodes(of: showKey)) ?? []
+        let keys = loadedEpisodes.map(\.key)
+        // One read for every episode: a long back catalog would otherwise hold the page back.
+        let snapshots = (try? await library.snapshots(of: keys)) ?? [:]
+        let loadedPlaces = snapshots.compactMapValues(\.place)
+        let loadedMoves = snapshots.compactMapValues(\.move)
+        let loadedProgress = snapshots.compactMapValues { $0.progress > 0 ? $0.progress : nil }
+        let loadedQueueTop = Array(((try? await library.playableQueue()) ?? []).prefix(2))
+        let loadedSubscription = try? await library.subscriptions().first { $0.showKey == showKey }
+        let loadedFeedURL = try? await library.cachedFeedURL(of: showKey)
+        let loadedExpiry = (try? await library.globalExpiry()) ?? .standard
+
+        show = loadedShow
+        episodes = loadedEpisodes
+        places = loadedPlaces
+        moves = loadedMoves
+        progress = loadedProgress
+        queueTop = loadedQueueTop
+        subscription = loadedSubscription
+        cachedFeedURL = loadedFeedURL
+        globalExpiry = loadedExpiry
+
+        // The share preview's art can come later: nothing on the page moves for it.
         if showArt == nil, let url = show?.artworkURL, let (data, _) = try? await URLSession.shared.data(from: url) {
             showArt = UIImage(data: data)
         }

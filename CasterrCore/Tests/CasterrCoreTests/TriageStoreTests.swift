@@ -253,6 +253,19 @@ struct ExpiryStoreTests {
     }
 }
 
+struct SnapshotTests {
+    @Test func snapshotsMatchTheOneByOneReads() async throws {
+        let library = try await subscribed()
+        try await library.addToQueue(episode(1))
+        try await library.setProgress(episode(1), to: 90)
+        try await library.markPlayed(episode(2))
+        let snapshots = try await library.snapshots(of: [episode(1), episode(2), episode(3)])
+        #expect(snapshots[episode(1)] == EpisodeSnapshot(place: .queue, move: LastMove(reason: .listener), progress: 90))
+        #expect(snapshots[episode(2)]?.place == .archive(.played))
+        #expect(snapshots[episode(3)] == EpisodeSnapshot(place: .inbox, move: LastMove(reason: .arrived), progress: 0))
+    }
+}
+
 struct MoveRecordTests {
     @Test func listenerActionsRecordListenerMoves() async throws {
         let clock = TestClock()

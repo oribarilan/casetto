@@ -12,6 +12,13 @@ public struct SubscriptionInfo: Equatable, Sendable {
     public var starred = false
 }
 
+/// What an episode row shows about the listener's state of one episode.
+public struct EpisodeSnapshot: Equatable, Sendable {
+    public var place: Place?
+    public var move: LastMove?
+    public var progress: TimeInterval
+}
+
 public struct ShowInfo: Equatable, Sendable {
     public var key: ShowKey
     public var title: String
@@ -346,6 +353,21 @@ public actor Library {
     }
 
     // MARK: Latest move
+
+    /// Each episode's place, latest move, and progress, read in one fetch, for long lists like a show page.
+    /// Episodes the listener never touched are left out.
+    public func snapshots(of keys: [EpisodeKey]) throws -> [EpisodeKey: EpisodeSnapshot] {
+        let wanted = Set(keys.map(\.rawValue))
+        var snapshots: [EpisodeKey: EpisodeSnapshot] = [:]
+        for state in try modelContext.fetch(FetchDescriptor<EpisodeState>()) where wanted.contains(state.episodeKey) {
+            snapshots[EpisodeKey(rawValue: state.episodeKey)] = EpisodeSnapshot(
+                place: try? Place(storedPlace: state.place, archiveReason: state.archiveReason),
+                move: state.moveReason.flatMap(MoveReason.init(stored:)).map(LastMove.init(reason:)),
+                progress: state.progressSeconds
+            )
+        }
+        return snapshots
+    }
 
     public func lastMove(of key: EpisodeKey) throws -> LastMove? {
         guard let state = try state(key), let raw = state.moveReason, let reason = MoveReason(stored: raw) else { return nil }
