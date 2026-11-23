@@ -28,13 +28,14 @@ struct ShowsView: View {
                 ContentUnavailableView.search(text: query)
             } else {
                 ScrollView {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: 3), spacing: 16) {
-                        ForEach(matching, id: \.key) { show in
-                            NavigationLink(value: Route.show(show.key)) { ShowTile(show: show) }
-                                .buttonStyle(.plain)
-                        }
+                    // Starred shows get their own section, except while searching or when none is starred.
+                    let starred = query.isEmpty ? matching.filter(\.starred) : []
+                    if starred.isEmpty {
+                        grid(matching)
+                    } else {
+                        section("Starred", starred)
+                        section("More Shows", matching.filter { !$0.starred })
                     }
-                    .padding(.horizontal)
                 }
                 .background(Color(.systemGroupedBackground))
             }
@@ -67,6 +68,28 @@ struct ShowsView: View {
         .task(id: model.revision) { await load() }
     }
 
+    private func grid(_ rows: [Row]) -> some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: 3), spacing: 16) {
+            ForEach(rows, id: \.key) { show in
+                NavigationLink(value: Route.show(show.key)) { ShowTile(show: show) }
+                    .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    @ViewBuilder private func section(_ title: String, _ rows: [Row]) -> some View {
+        if !rows.isEmpty {
+            Text(title)
+                .font(.title3.weight(.bold))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+                .padding(.top, 8)
+                .accessibilityAddTraits(.isHeader)
+            grid(rows)
+        }
+    }
+
     private func load() async {
         let library = model.library
         let subscriptions = (try? await library.subscriptions()) ?? []
@@ -76,7 +99,7 @@ struct ShowsView: View {
             loaded.append(Row(key: subscription.showKey,
                               title: show?.title ?? subscription.feedURL.absoluteString,
                               author: show?.author, artworkURL: show?.artworkURL,
-                              starred: subscription.level == .autoQueue || subscription.level == .playNext,
+                              starred: subscription.starred,
                               failing: show?.lastRefreshError != nil))
         }
         shows = loaded.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
@@ -126,12 +149,11 @@ private struct Row {
     let title: String
     let author: String?
     let artworkURL: URL?
-    /// Auto-queue or Play Next.
     let starred: Bool
     let failing: Bool
 }
 
-/// A show in the grid: artwork, title, and badges for starred shows and failing feeds.
+/// A show in the grid: artwork, title, and a badge for a failing feed. Starred shows sit in their own section.
 private struct ShowTile: View {
     let show: Row
 
@@ -140,11 +162,7 @@ private struct ShowTile: View {
             GeometryReader { geometry in
                 ArtworkView(url: show.artworkURL, title: show.title, size: geometry.size.width)
                     .overlay(alignment: .topTrailing) {
-                        HStack(spacing: 4) {
-                            if show.failing { badge("exclamationmark", .yellow, .black) }
-                            if show.starred { badge("star.fill", .tangerine, .white) }
-                        }
-                        .padding(5)
+                        if show.failing { badge("exclamationmark", .yellow, .black).padding(5) }
                     }
             }
             .aspectRatio(1, contentMode: .fit)

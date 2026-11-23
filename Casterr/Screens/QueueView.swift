@@ -12,6 +12,7 @@ struct QueueView: View {
     @State private var inboxEpisodes = 0
     @State private var art: [ShowKey: ShowArt] = [:]
     @State private var progress: [EpisodeKey: TimeInterval] = [:]
+    @State private var starredShows: Set<ShowKey> = []
     /// The row whose action line is open.
     @State private var openRow: EpisodeKey?
     @State private var loaded = false
@@ -31,7 +32,7 @@ struct QueueView: View {
             ForEach(Array(items.enumerated()), id: \.element.key) { index, episode in
                 let state = index == 0 ? firstState(episode) : nil
                 EpisodeRow(episode: episode, identifier: "queueItem",
-                           label: state?.caption, move: moves[episode.key],
+                           label: state?.caption, move: moves[episode.key], starred: starredShows.contains(episode.showKey),
                            downloaded: model.isDownloaded(episode), progress: progress[episode.key] ?? 0,
                            art: art[episode.showKey],
                            captionSymbol: state?.symbol, animateSymbol: state?.caption == "Playing",
@@ -120,6 +121,7 @@ struct QueueView: View {
         art = (try? await model.library.showArt()) ?? [:]
         moves = await model.moves(of: keys)
         progress = await model.progress(of: keys)
+        starredShows = Set(((try? await model.library.subscriptions()) ?? []).filter(\.starred).map(\.showKey))
         inboxEpisodes = (try? await model.library.inboxCount()) ?? 0
         inboxCount = inboxEpisodes + ((try? await model.library.ruleCards().count) ?? 0)
         loaded = true

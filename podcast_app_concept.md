@@ -43,7 +43,7 @@ The mascot is **Cassy**, a cassette tape whose two reels are her eyes. She is dr
 | Inbox | Wait in the Inbox, then expire |
 | Skip | Never go to your Inbox or Queue; they stay on the show page |
 
-New subscriptions start at Inbox. In onboarding you star the shows you never miss, and those start at Auto-queue. Play next episodes stack above anything you queued yourself.
+New subscriptions start at Inbox. A star marks a favorite: starred shows sit in their own section at the top of the Shows tab, and their episodes carry a small gray star in the Queue and Inbox. Starring a show whose episodes go to the Inbox sets it to Auto-queue, as onboarding suggests for the shows you never miss; after that the star and the level are separate, so a starred show can use any level, and unstarring keeps the level. Play next episodes stack above anything you queued yourself.
 
 **Inbox episodes expire.** After 14 days, an untouched episode moves to the show's archive. The choices are 1, 3, 7, 14, or 30 days, or never. You set your default from the Inbox; a show follows it unless you turn off "Use my default" in that show's settings and pick its own value.
 

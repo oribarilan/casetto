@@ -269,3 +269,42 @@ struct MoveRecordTests {
         #expect(try await library.lastMove(of: episode(1)) == nil)
     }
 }
+
+struct StarStoreTests {
+    private func level(_ library: Library) async throws -> (TriageLevel, Bool)? {
+        try await library.subscriptions().first.map { ($0.level, $0.starred) }
+    }
+
+    @Test func newSubscriptionIsNotStarred() async throws {
+        let library = try await subscribed()
+        #expect(try await level(library)! == (.inbox, false))
+    }
+
+    @Test func starringAnInboxShowQueuesItsNewEpisodes() async throws {
+        let library = try await subscribed()
+        try await library.setStarred(showA, true)
+        #expect(try await level(library)! == (.autoQueue, true))
+    }
+
+    @Test(arguments: [TriageLevel.playNext, .skip])
+    func starringKeepsOtherSettings(level start: TriageLevel) async throws {
+        let library = try await subscribed()
+        try await library.setLevel(showA, to: start)
+        try await library.setStarred(showA, true)
+        #expect(try await level(library)! == (start, true))
+    }
+
+    @Test func aStarredShowKeepsItsStarWhenTheSettingChanges() async throws {
+        let library = try await subscribed()
+        try await library.setStarred(showA, true)
+        try await library.setLevel(showA, to: .inbox)
+        #expect(try await level(library)! == (.inbox, true))
+    }
+
+    @Test func unstarringKeepsTheSetting() async throws {
+        let library = try await subscribed()
+        try await library.setStarred(showA, true)
+        try await library.setStarred(showA, false)
+        #expect(try await level(library)! == (.autoQueue, false))
+    }
+}

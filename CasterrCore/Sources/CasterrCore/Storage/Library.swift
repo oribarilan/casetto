@@ -8,6 +8,8 @@ public struct SubscriptionInfo: Equatable, Sendable {
     public var level: TriageLevel = .inbox
     /// Nil follows the global setting.
     public var expiryOverride: InboxExpiry?
+    /// A favorite, separate from `level`.
+    public var starred = false
 }
 
 public struct ShowInfo: Equatable, Sendable {
@@ -136,7 +138,8 @@ public actor Library {
                     feedURL: feedURL,
                     speedOverride: record.speedOverride.map(PlaybackSpeed.init),
                     level: TriageLevel(rawValue: record.level) ?? .inbox,
-                    expiryOverride: record.expiryDaysOverride.map(InboxExpiry.init(storedDays:))
+                    expiryOverride: record.expiryDaysOverride.map(InboxExpiry.init(storedDays:)),
+                    starred: record.starred
                 )
             }
     }
@@ -183,6 +186,17 @@ public actor Library {
 
     public func setLevel(_ showKey: ShowKey, to level: TriageLevel) throws {
         try subscription(showKey)?.level = level.rawValue
+        try modelContext.save()
+    }
+
+    /// Starring a show whose new episodes go to the Inbox sends them to the Queue; other levels stay.
+    /// Unstarring removes only the star.
+    public func setStarred(_ showKey: ShowKey, _ starred: Bool) throws {
+        guard let subscription = try subscription(showKey) else { return }
+        subscription.starred = starred
+        if starred, subscription.level == TriageLevel.inbox.rawValue {
+            subscription.level = TriageLevel.autoQueue.rawValue
+        }
         try modelContext.save()
     }
 

@@ -66,12 +66,15 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Played"].waitForExistence(timeout: 5))
         snapshot("4 Show Page")
 
-        // Star from the page sends new episodes to the Queue.
+        // Star from the page sends an Inbox show's new episodes to the Queue; unstarring keeps that.
         let star = app.buttons["starShow"]
         XCTAssertEqual(star.label, "Star")
         star.tap()
         XCTAssertTrue(app.buttons["Starred"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Go to the end of your Queue"].waitForExistence(timeout: 5))
+        star.tap()
+        XCTAssertTrue(star.wait(for: \.label, toEqual: "Star", timeout: 5), "still starred")
+        XCTAssertTrue(app.staticTexts["Go to the end of your Queue"].exists, "unstarring changed the setting")
 
         // Unfollow asks first, keeps queued episodes, and leaves the page with Follow.
         let follow = app.buttons["followShow"]
@@ -299,9 +302,16 @@ final class ScreensTests: XCTestCase {
         app.buttons["Close"].tap()
         app.buttons["Done"].tap()
 
-        XCTAssertTrue(app.buttons.matching(identifier: "queueItem").firstMatch.waitForExistence(timeout: 10))
+        // A starred show's episodes carry a star, and the show sits under Starred.
+        let queued = app.buttons.matching(identifier: "queueItem").firstMatch
+        XCTAssertTrue(queued.waitForExistence(timeout: 10))
+        XCTAssertTrue(queued.label.hasPrefix("Starred"), queued.label)
+        snapshot("14a Starred Queue")
         app.tabBars.buttons["Shows"].tap()
         XCTAssertTrue(app.buttons["Planet Money, NPR"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Starred"].exists, "no Starred section")
+        XCTAssertFalse(app.staticTexts["More Shows"].exists, "an empty More Shows section")
+        snapshot("14b Starred Section")
 
         // OPML export sits in the Add menu.
         app.navigationBars["Shows"].buttons["Add"].tap()

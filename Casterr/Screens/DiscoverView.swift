@@ -1,7 +1,8 @@
 import CasterrCore
 import SwiftUI
 
-/// Top shows, or search results while there is a query. Subscribe starts a show at Inbox; Star at Auto-queue.
+/// Top shows, or search results while there is a query. Follow starts a show at Inbox; Star follows it starred,
+/// with new episodes going to the Queue.
 /// One Cassy at a time: big while loading or failing, otherwise in the card above the list.
 struct DiscoverView: View {
     @Environment(AppModel.self) private var model
@@ -10,7 +11,8 @@ struct DiscoverView: View {
     var inOnboarding = false
 
     @State private var results: [DirectoryShow] = []
-    @State private var levels: [ShowKey: TriageLevel] = [:]
+    /// The shows you follow, and whether each is starred.
+    @State private var followed: [ShowKey: Bool] = [:]
     @State private var working: Set<String> = []
     @State private var message: String?
     @State private var loading = false
@@ -26,11 +28,10 @@ struct DiscoverView: View {
     /// Shows already starred when this visit began. Only a star given during the visit makes Cassy cheer.
     @State private var starredBefore: Set<ShowKey>?
 
-    private var anyStarred: Bool { levels.values.contains(where: Self.isStar) }
+    private var anyStarred: Bool { followed.values.contains(true) }
     private var starred: Bool {
-        levels.contains { Self.isStar($0.value) && starredBefore?.contains($0.key) == false }
+        followed.contains { $0.value && starredBefore?.contains($0.key) == false }
     }
-    private static func isStar(_ level: TriageLevel) -> Bool { level == .autoQueue || level == .playNext }
 
     var body: some View {
         Group {
@@ -119,7 +120,8 @@ struct DiscoverView: View {
 
     private func row(_ show: DirectoryShow) -> some View {
         let key = ShowKey(feedURL: show.feedURL)
-        let level = key.flatMap { levels[$0] }
+        /// Nil when not followed.
+        let isStarred = key.flatMap { followed[$0] }
         let busy = working.contains(show.id)
         return HStack(spacing: 12) {
             // The art and title open the show's page; the star and + act in place.
@@ -138,20 +140,20 @@ struct DiscoverView: View {
             }
             .foregroundStyle(.primary)
             .accessibilityIdentifier("directoryShow")
-            Button(level == .autoQueue ? "Unstar" : "Star", systemImage: level == .autoQueue ? "star.fill" : "star") {
+            Button(isStarred == true ? "Unstar" : "Star", systemImage: isStarred == true ? "star.fill" : "star") {
                 // Starring before the tip shows means the listener already knows the star.
                 CassyTip.markShown("star")
                 tip = nil
-                act(show) { try await star(show, level: level) }
+                act(show) { try await star(show, starred: isStarred) }
             }
             .accessibilityIdentifier("starButton")
             .cassyTipTarget("star.\(show.id)")
-            Button(level == nil ? "Follow" : "Unfollow",
-                   systemImage: level == nil ? "plus.circle" : "checkmark.circle.fill") {
+            Button(isStarred == nil ? "Follow" : "Unfollow",
+                   systemImage: isStarred == nil ? "plus.circle" : "checkmark.circle.fill") {
                 act(show) {
-                    try await toggleSubscription(show, level: level)
+                    try await toggleSubscription(show, following: isStarred != nil)
                     // The first follow with + teaches the star, once.
-                    if level == nil, !anyStarred {
+                    if isStarred == nil, !anyStarred {
                         tip = CassyTip.once("star", target: "star.\(show.id)",
                                             text: "Never miss this one? Star it and I'll queue its new episodes.")
                     }
@@ -174,19 +176,17 @@ struct DiscoverView: View {
         }
     }
 
-    /// Starring subscribes at Auto-queue, so the newest episode goes to the Queue. Unstarring returns to Inbox.
-    private func star(_ show: DirectoryShow, level: TriageLevel?) async throws {
+    /// Starring a show you don't follow follows it at Auto-queue, so its newest episode goes to the Queue.
+    /// Unstarring removes only the star.
+    private func star(_ show: DirectoryShow, starred: Bool?) async throws {
         guard let key = ShowKey(feedURL: show.feedURL) else { return }
-        switch level {
-        case nil: _ = try await model.feeds.subscribe(to: show.feedURL, level: .autoQueue)
-        case .autoQueue: try await model.library.setLevel(key, to: .inbox)
-        default: try await model.library.setLevel(key, to: .autoQueue)
-        }
+        if starred == nil { _ = try await model.feeds.subscribe(to: show.feedURL, level: .autoQueue) }
+        try await model.library.setStarred(key, starred != true)
     }
 
-    private func toggleSubscription(_ show: DirectoryShow, level: TriageLevel?) async throws {
+    private func toggleSubscription(_ show: DirectoryShow, following: Bool) async throws {
         guard let key = ShowKey(feedURL: show.feedURL) else { return }
-        if level == nil {
+        if !following {
             _ = try await model.feeds.subscribe(to: show.feedURL)
         } else {
             try await model.feeds.unsubscribe(key)
@@ -237,9 +237,9 @@ struct DiscoverView: View {
 
     private func loadLevels() async {
         let subscriptions = (try? await model.library.subscriptions()) ?? []
-        levels = Dictionary(subscriptions.map { ($0.showKey, $0.level) }, uniquingKeysWith: { first, _ in first })
+        followed = Dictionary(subscriptions.map { ($0.showKey, $0.starred) }, uniquingKeysWith: { first, _ in first })
         if starredBefore == nil {
-            starredBefore = Set(levels.filter { Self.isStar($0.value) }.keys)
+            starredBefore = Set(followed.filter(\.value).keys)
         }
     }
 }

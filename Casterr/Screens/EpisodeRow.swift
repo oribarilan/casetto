@@ -60,6 +60,8 @@ struct EpisodeRow: View {
     /// Where the episode is, like "Queued" or "Played". Gray. The row adds the move reason and Downloaded.
     var statuses: [String] = []
     var move: LastMove?
+    /// The show is starred: a small gray star starts the status line.
+    var starred = false
     var downloaded = false
     var played = false
     /// Seconds already heard. A started episode shows the minutes left instead of its length.
@@ -183,8 +185,13 @@ struct EpisodeRow: View {
 
     private var details: some View {
         VStack(alignment: .leading, spacing: 4) {
-            if let statusText {
+            if starred || statusText != nil {
                 HStack(spacing: 4) {
+                    if starred {
+                        Image(systemName: "star.fill")
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel("Starred")
+                    }
                     if let captionSymbol {
                         Image(systemName: captionSymbol)
                             .foregroundStyle(.tint)

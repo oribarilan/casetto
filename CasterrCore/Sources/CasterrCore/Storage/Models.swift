@@ -52,6 +52,8 @@ import SwiftData
     var voiceBoostOverride: Bool?
     var subscribedAt: Date = Date.distantPast
     var level: String = TriageLevel.inbox.rawValue
+    /// A favorite, separate from where new episodes go.
+    var starred: Bool = false
     /// Days, with 0 for never. Nil follows the global setting.
     var expiryDaysOverride: Int?
     /// Episodes published after this date, and never placed, are new. Nil until the first triage.

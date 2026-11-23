@@ -105,10 +105,10 @@ struct ShowView: View {
         .task { await fetchFeedIfMissing() }
     }
 
-    /// Follow or Following, and Star or Starred. Star is the Auto-queue level, as in Find Shows.
+    /// Follow or Following, and Star or Starred, as in Find Shows. The star is a favorite, separate from the level.
     @ViewBuilder private var followButtons: some View {
         if !isShared, let url = subscription?.feedURL ?? cachedFeedURL ?? feedURL {
-            let starred = subscription?.level == .autoQueue
+            let starred = subscription?.starred == true
             HStack(spacing: 10) {
                 ShowPageButton(title: subscription == nil ? "Follow" : "Following",
                                symbol: subscription == nil ? "plus" : "checkmark", on: subscription != nil) {
@@ -117,11 +117,8 @@ struct ShowView: View {
                 .accessibilityIdentifier("followShow")
                 ShowPageButton(title: starred ? "Starred" : "Star", symbol: starred ? "star.fill" : "star", on: starred) {
                     act {
-                        switch subscription?.level {
-                        case nil: _ = try await model.feeds.subscribe(to: url, level: .autoQueue)
-                        case .autoQueue: try await model.library.setLevel(showKey, to: .inbox)
-                        default: try await model.library.setLevel(showKey, to: .autoQueue)
-                        }
+                        if subscription == nil { _ = try await model.feeds.subscribe(to: url, level: .autoQueue) }
+                        try await model.library.setStarred(showKey, !starred)
                     }
                 }
                 .accessibilityIdentifier("starShow")

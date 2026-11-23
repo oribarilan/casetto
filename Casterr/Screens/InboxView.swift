@@ -11,6 +11,7 @@ struct InboxView: View {
     @State private var expiry: InboxExpiry = .standard
     @State private var daysLeft: [EpisodeKey: Int] = [:]
     @State private var progress: [EpisodeKey: TimeInterval] = [:]
+    @State private var starredShows: Set<ShowKey> = []
     /// The row whose action line is open.
     @State private var openRow: EpisodeKey?
     /// The one-time tip that teaches the swipes, on the first row.
@@ -71,6 +72,7 @@ struct InboxView: View {
     private var episodeRows: some View {
         ForEach(items, id: \.key) { episode in
             EpisodeRow(episode: episode, identifier: "inboxItem", move: moves[episode.key],
+                       starred: starredShows.contains(episode.showKey),
                        downloaded: model.isDownloaded(episode), progress: progress[episode.key] ?? 0,
                        art: art[episode.showKey], metaNote: countdown(daysLeft[episode.key]),
                        isOpen: openRow == episode.key,
@@ -102,6 +104,7 @@ struct InboxView: View {
         items = await model.episodes(keys)
         moves = await model.moves(of: keys)
         progress = await model.progress(of: keys)
+        starredShows = Set(((try? await model.library.subscriptions()) ?? []).filter(\.starred).map(\.showKey))
         art = (try? await model.library.showArt()) ?? [:]
         expiry = (try? await model.library.globalExpiry()) ?? .standard
         daysLeft = (try? await model.library.inboxDaysLeft()) ?? [:]
