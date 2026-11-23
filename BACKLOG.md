@@ -64,6 +64,8 @@ Show each Queue episode's download status and progress in the Queue view.
 
 While the Queue loads, Cassy pops in and then vanishes. Explore a nicer animation for her appearing and disappearing.
 
+Added 2026-11-23: the loading animation is cute, but it makes the list jumpy when it appears and disappears. Find alternatives with a more subtle transition when loading starts and stops.
+
 ## Download space next to Keep downloaded (logged 2026-11-22)
 
 Show how much space the downloads take where the listener picks Keep downloaded, for example "about 210 MB" under the current choice, estimated by adding up the file sizes the feed lists for the top N Queue episodes. Decided against a separate megabyte cap: two limits need a rule for which wins, and an episode that silently doesn't download would need explaining in the Queue.
