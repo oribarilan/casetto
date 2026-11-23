@@ -17,7 +17,7 @@ Episode rows in the Queue, Inbox, and show page SHALL show their show's artwork.
 
 #### Scenario: Shows grid
 - **WHEN** the listener follows 9 shows
-- **THEN** the Shows tab shows a grid of 9 artwork tiles with titles, marking Auto-queue and Play Next shows with a star and failing feeds with a warning
+- **THEN** the Shows tab shows 9 artwork tiles with titles, starred shows under their own heading, and failing feeds marked with a warning
 
 #### Scenario: No artwork
 - **WHEN** a feed has no artwork

@@ -32,11 +32,11 @@ The system SHALL search the directory by name through the iTunes Search API, in 
 - **THEN** the grid of their shows stays as it is, with no directory shows
 
 ### Requirement: Subscribe and star from the directory
-Each directory show SHALL offer Follow, which starts the show at the Inbox level, and Star, which follows it at the Auto-queue level. Tapping Star again MUST return the show to the Inbox level. Tapping a followed show's Follow button again MUST unfollow. Tapping the rest of the row MUST open the show's page.
+Each directory show SHALL offer Follow, which starts the show at the Inbox level, and Star, which follows it starred, with new episodes going to the Queue. Tapping Star again MUST remove only the star. Tapping a followed show's Follow button again MUST unfollow. Tapping the rest of the row MUST open the show's page.
 
 #### Scenario: Star a show
 - **WHEN** the listener stars a show they don't follow
-- **THEN** the system follows it at the Auto-queue level and its newest episode is in the Queue
+- **THEN** the system follows it starred, at the Auto-queue level, and its newest episode is in the Queue
 
 #### Scenario: Subscribe without a star
 - **WHEN** the listener follows a show from search with Follow

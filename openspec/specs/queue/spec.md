@@ -44,7 +44,7 @@ The system SHALL show the Queue as the home screen, in the first of the app's ta
 - **THEN** the home screen tells the listener that nothing is queued and links to the Shows tab
 
 ### Requirement: Manage Queue order
-The system SHALL let the listener add an episode to the end of the Queue, remove an episode from the Queue by swiping left, and move an episode to any position by long-pressing and dragging, without an Edit button. The system MUST NOT reorder the Queue on its own.
+The system SHALL let the listener add an episode to the end of the Queue, remove an episode from the Queue by swiping left or from its action line, which leaves it removed like a removed Inbox episode, and move an episode to any position by long-pressing and dragging, without an Edit button. The system MUST NOT reorder the Queue on its own.
 
 #### Scenario: Add to end
 - **WHEN** the listener taps "Add to Queue" on an episode
@@ -56,7 +56,7 @@ The system SHALL let the listener add an episode to the end of the Queue, remove
 
 #### Scenario: Remove
 - **WHEN** the listener swipes a Queue episode left and taps Remove
-- **THEN** the episode has no place and keeps its listening progress
+- **THEN** the episode leaves the Queue, keeps its listening progress, and its show page row reads "Removed"
 
 #### Scenario: Order survives restart
 - **WHEN** the app is closed and opened again

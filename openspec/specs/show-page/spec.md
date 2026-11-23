@@ -38,11 +38,15 @@ The page of a show the listener doesn't follow, reached from a shared episode in
 - **THEN** ATP is followed, its page shows the new-episode settings, and the shared episode keeps its place in the Queue
 
 ### Requirement: Follow and Star on the show page
-The show page SHALL show two buttons under the header: Follow, or Following once followed, and Star, or Starred once starred. Star MUST work as in the directory: it follows the show at the Auto-queue level, and tapping Starred returns it to the Inbox level. Tapping Following MUST ask to confirm, then unfollow. The page's menu MUST NOT hold Unfollow.
+The show page SHALL show two buttons under the header: Follow, or Following once followed, and Star, or Starred once starred. Star MUST work as in the directory: it stars the show, following it if needed, and tapping Starred removes only the star. Tapping Following MUST ask to confirm, then unfollow. The page's menu MUST NOT hold Unfollow.
 
 #### Scenario: Star from the show page
 - **WHEN** the listener follows Planet Money at the Inbox level and taps Star on its page
 - **THEN** the button says Starred and the New episodes row says new episodes go to the end of the Queue
+
+#### Scenario: Unstar from the show page
+- **WHEN** the listener taps Starred on a show set to Queue
+- **THEN** the button says Star and the New episodes row still says the end of the Queue
 
 #### Scenario: Unfollow from the show page
 - **WHEN** the listener taps Following on Planet Money's page and confirms Unfollow

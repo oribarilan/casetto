@@ -52,3 +52,11 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 ## Sharing from Casterr
 
 - [ ] Share a clip to WhatsApp: the video plays inline with the art and the badge, and check whether the caption with the link arrives. Make one clip of a streamed episode and one of a downloaded one, and listen that each starts and ends between words and matches what you heard (try an ad-inserting show such as Planet Money). Share Episode to Messages and check its preview, and Share Show. Check the loudness bars make pauses easy to see on a calm show, and tune `LoudnessBars.range` if not.
+
+## Episode rows
+
+- [ ] In the Queue, the Inbox and a show page, tap rows quickly one after another: the action line opens under each, moves smoothly, the buttons spring in, and nothing jumps. With Reduce Motion on, the buttons appear without the bounce. With VoiceOver, a row reads its status words and "Shows actions", and every button in the line is reachable. Share from a line opens the share sheet with the show's art.
+
+## Stars
+
+- [ ] Star and unstar shows from Find Shows and a show page, then change a starred show's New episodes setting: it stays starred and stays at the top of the Shows tab under Starred. With VoiceOver, an episode of a starred show in the Queue starts with "Starred".

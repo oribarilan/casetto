@@ -88,7 +88,7 @@ Shared files SHALL exist only on the device they were shared to. Other devices M
 - **THEN** the bookmark and its note show on the iPad with its play button disabled
 
 ### Requirement: Share an episode
-The system SHALL let the listener share an episode from Now Playing and from episode rows on show pages. It MUST send "Episode – Show" and a link: the episode's own web page from its feed, or else its audio link. From Now Playing it MUST add the current time as text, such as "from 12:34". The share sheet MUST show the show's art.
+The system SHALL let the listener share an episode from Now Playing and from the action line of episode rows in the Queue, the Inbox and show pages. It MUST send "Episode – Show" and a link: the episode's own web page from its feed, or else its audio link. From Now Playing it MUST add the current time as text, such as "from 12:34". The share sheet MUST show the show's art.
 
 #### Scenario: Episode with its own page
 - **WHEN** the listener shares ATP episode 718 from its row
@@ -103,8 +103,12 @@ The system SHALL let the listener share an episode from Now Playing and from epi
 - **THEN** the message ends with "from 12:34"
 
 #### Scenario: Shared file
-- **WHEN** the listener long-presses a file on the Shared with Casterr page
+- **WHEN** the listener opens the action line of a file on the Shared with Casterr page
 - **THEN** no share action is offered
+
+#### Scenario: From the Queue
+- **WHEN** the listener taps Share in a Queue row's action line
+- **THEN** the share sheet opens with "Episode – Show" and its link
 
 ### Requirement: Share a show
 The show page SHALL let the listener share the show: its name and its web page from the feed, or else its feed address. The built-in Shared with Casterr show MUST NOT offer it.
