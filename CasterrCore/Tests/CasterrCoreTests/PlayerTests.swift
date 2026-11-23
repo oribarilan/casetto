@@ -341,6 +341,54 @@ struct SleepTimerTests {
         try await h.player.resume()
         #expect(h.engine.loaded?.url == h.episodes[1].audioURL)
     }
+
+    /// Plays the first episode with chapters at 0, 300 and 900 seconds, from `position`.
+    private func playWithChapters(at position: TimeInterval) async throws -> Harness {
+        let h = try await Harness()
+        try await h.library.addToQueue(h.episodes[0].key)
+        try await h.library.addToQueue(h.episodes[1].key)
+        try await h.player.resume()
+        let url = try #require(h.player.loadedURL)
+        h.engine.onChapters?(url, [Chapter(start: 0, title: "Intro"), Chapter(start: 300, title: "News"),
+                                   Chapter(start: 900, title: "Mail")])
+        h.engine.onTime?(position, 1200)
+        return h
+    }
+
+    @Test func chapterTimerPausesWhenTheNextChapterStarts() async throws {
+        let h = try await playWithChapters(at: 120)
+        h.player.setSleepTimer(.endOfChapter)
+        h.engine.onTime?(299, 1200)
+        await h.settle()
+        #expect(h.player.isPlaying)
+        h.engine.onTime?(300.2, 1200)
+        await h.settle()
+        #expect(!h.player.isPlaying)
+        #expect(h.player.sleepTimer == nil)
+    }
+
+    @Test func chapterTimerInTheLastChapterStopsAtTheEpisodeEnd() async throws {
+        let h = try await playWithChapters(at: 1000)
+        h.player.setSleepTimer(.endOfChapter)
+        h.engine.onEnd?()
+        await h.settle()
+        #expect(!h.player.isPlaying)
+        #expect(h.engine.loaded?.url == h.episodes[0].audioURL)
+        #expect(try await h.library.queue() == [h.episodes[1].key])
+        #expect(h.player.sleepTimer == nil)
+    }
+
+    @Test func chapterTimerFollowsASeekIntoAnotherChapter() async throws {
+        let h = try await playWithChapters(at: 120)
+        h.player.setSleepTimer(.endOfChapter)
+        h.player.seek(to: 400)
+        h.engine.onTime?(400.2, 1200)
+        await h.settle()
+        #expect(h.player.isPlaying, "paused at the old chapter's end after a seek past it")
+        h.engine.onTime?(900.1, 1200)
+        await h.settle()
+        #expect(!h.player.isPlaying)
+    }
 }
 
 @MainActor

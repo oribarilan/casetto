@@ -5,7 +5,7 @@ struct NowPlayingView: View {
     @Environment(Player.self) private var player
     /// Closes Now Playing and opens the show page.
     let openShow: (ShowKey) -> Void
-    @State private var choosingSpeed = false
+    @State private var controlSheet: ControlSheetKind?
     @State private var tint = Color(white: 0.18)
     /// The show's art, for the background tint and the share sheet's preview.
     @State private var showArt: UIImage?
@@ -43,16 +43,21 @@ struct NowPlayingView: View {
             .font(.title)
 
             HStack {
-                Button { choosingSpeed = true } label: {
+                Button { controlSheet = .speed } label: {
                     Text(player.speed.title).roundControl()
                 }
                 .accessibilityIdentifier("speed")
                 Spacer()
-                VoiceBoostMenu()
+                Button { controlSheet = .voiceBoost } label: {
+                    Image(systemName: "waveform").roundControl(on: player.voiceBoost)
+                }
+                .accessibilityIdentifier("voiceBoost")
+                .accessibilityLabel("Voice boost")
+                .accessibilityValue(player.voiceBoost ? "On" : "Off")
                 Spacer()
                 BookmarkButton().roundControl()
                 Spacer()
-                SleepTimerMenu()
+                SleepTimerButton { controlSheet = .sleepTimer }
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 18)
@@ -66,7 +71,13 @@ struct NowPlayingView: View {
         .task(id: player.show?.artworkURL) { await loadTint() }
         .bookmarkToast()
         .cassyToast()
-        .sheet(isPresented: $choosingSpeed) { SpeedSheet() }
+        .sheet(item: $controlSheet) { kind in
+            switch kind {
+            case .speed: SpeedSheet()
+            case .voiceBoost: VoiceBoostSheet()
+            case .sleepTimer: SleepTimerSheet()
+            }
+        }
         .sheet(item: $clipRequest) { ClipEditor(request: $0) }
     }
 
@@ -247,41 +258,110 @@ private extension String {
 }
 
 /// Off: a moon. On: the time left, or "End" for the end of the episode, on a white button.
-private struct SleepTimerMenu: View {
-    @Environment(Player.self) private var player
+private enum ControlSheetKind: Identifiable {
+    case speed, voiceBoost, sleepTimer
+    var id: Self { self }
+}
+
+/// The sheet each control under the play button opens: name and value on top, an optional line under them,
+/// the control, and an optional "Use my default" switch. All three share one height.
+private struct ControlSheet<Control: View>: View {
+    let title: String
+    let value: Text
+    var note: String?
+    /// On while the show follows the default from Settings. Nil for a control without a default.
+    var followsDefault: Binding<Bool>?
+    var defaultValue = ""
+    @ViewBuilder let control: Control
 
     var body: some View {
-        Menu {
-            ForEach([15, 30, 45, 60], id: \.self) { minutes in
-                Button("\(minutes) minutes") { player.setSleepTimer(.duration(.seconds(minutes * 60))) }
-            }
-            Button("End of episode") { player.setSleepTimer(.endOfEpisode) }
-            if player.sleepTimer != nil {
-                Button("Off", role: .destructive) { player.setSleepTimer(nil) }
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "moon.zzz")
-                if let end = player.sleepTimerEndsAt {
-                    Text(timerInterval: Date.now...end, countsDown: true).monospacedDigit()
-                } else if player.sleepTimer == .endOfEpisode {
-                    Text("End")
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(title)
+                    Spacer()
+                    value.monospacedDigit().foregroundStyle(.secondary)
                 }
+                .font(.headline)
+                if let note { Text(note).font(.footnote).foregroundStyle(.secondary) }
             }
-            .roundControl(on: player.sleepTimer != nil)
+            control
+            if let followsDefault {
+                Toggle(isOn: followsDefault) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Use my default")
+                        Text("\(defaultValue), from Settings").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .tint(.tangerine)
+                .accessibilityIdentifier("useMyDefault")
+                .padding(12)
+                .background(.white.opacity(0.08), in: .rect(cornerRadius: 14))
+            }
+            Spacer(minLength: 0)
         }
-        .accessibilityLabel("Sleep timer")
-        .accessibilityValue(timerValue)
-    }
-
-    private var timerValue: String {
-        if let end = player.sleepTimerEndsAt { return "Pauses at \(end.formatted(date: .omitted, time: .shortened))" }
-        return player.sleepTimer == .endOfEpisode ? "Pauses at the end of the episode" : "Off"
+        .padding()
+        .padding(.top, 8)
+        .presentationDetents([.height(330)])
+        .presentationDragIndicator(.visible)
+        // Dark like Now Playing behind it, so white text reads on any show's tint.
+        .presentationBackground {
+            Rectangle().fill(.regularMaterial).environment(\.colorScheme, .dark)
+        }
+        .environment(\.colorScheme, .dark)
+        .tint(.white)
     }
 }
 
-/// A waveform, white while boost is on. The menu sets this show's choice or follows the default from Settings.
-private struct VoiceBoostMenu: View {
+/// This show's speed. The slider is always there; moving it gives the show its own speed.
+private struct SpeedSheet: View {
+    @Environment(AppModel.self) private var model
+    @Environment(Player.self) private var player
+    /// Nil follows the default.
+    @State private var override: PlaybackSpeed?
+    @State private var global = PlaybackSpeed.normal
+
+    var body: some View {
+        let speed = override ?? global
+        ControlSheet(title: "Speed", value: Text(speed.title),
+                     // Turning the default off keeps the default speed as the show's own.
+                     followsDefault: Binding(get: { override == nil }, set: { save($0 ? nil : global) }),
+                     defaultValue: global.title) {
+            Slider(value: Binding(get: { speed.value }, set: { save(PlaybackSpeed($0)) }), in: 1.0...2.0, step: 0.1) {
+                Text("Speed")
+            } minimumValueLabel: {
+                Text("1.0×").font(.caption)
+            } maximumValueLabel: {
+                Text("2.0×").font(.caption)
+            }
+            .accessibilityIdentifier("speedSlider")
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        global = (try? await model.library.globalSpeed()) ?? .normal
+        if let show = player.episode?.showKey {
+            override = try? await model.library.speedOverride(show)
+        }
+    }
+
+    /// Applies right away, so there's no Done button.
+    private func save(_ speed: PlaybackSpeed?) {
+        guard speed != override, let show = player.episode?.showKey else { return }
+        override = speed
+        let library = model.library
+        Task {
+            await model.change {
+                try await library.setSpeedOverride(show, to: speed)
+                try await player.reloadSpeed()
+            }
+        }
+    }
+}
+
+/// This show's voice boost: On or Off as its own choice, or the default from Settings.
+private struct VoiceBoostSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(Player.self) private var player
     /// Nil follows the default.
@@ -289,27 +369,18 @@ private struct VoiceBoostMenu: View {
     @State private var global = false
 
     var body: some View {
-        Menu {
-            Section("Voice boost: evens out loud and quiet voices") {
-                item("On for this show", isChosen: choice == true) { save(true) }
-                item("Off for this show", isChosen: choice == false) { save(false) }
-                item("Use my default (\(global ? "On" : "Off"))", isChosen: choice == nil) { save(nil) }
+        let isOn = choice ?? global
+        ControlSheet(title: "Voice boost", value: Text(isOn ? "On" : "Off"), note: "Evens out loud and quiet voices.",
+                     followsDefault: Binding(get: { choice == nil }, set: { save($0 ? nil : global) }),
+                     defaultValue: global ? "On" : "Off") {
+            Picker("Voice boost", selection: Binding(get: { isOn }, set: { save($0) })) {
+                Text("On").tag(true)
+                Text("Off").tag(false)
             }
-        } label: {
-            Image(systemName: "waveform").roundControl(on: player.voiceBoost)
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("voiceBoostPicker")
         }
-        .accessibilityIdentifier("voiceBoost")
-        .accessibilityLabel("Voice boost")
-        .accessibilityValue("\(player.voiceBoost ? "On" : "Off"), \(choice == nil ? "your default" : "for this show")")
-        .task(id: "\(player.episode?.showKey.rawValue ?? "")\(model.revision)") { await load() }
-    }
-
-    @ViewBuilder private func item(_ title: String, isChosen: Bool, action: @escaping () -> Void) -> some View {
-        if isChosen {
-            Button(title, systemImage: "checkmark", action: action)
-        } else {
-            Button(title, action: action)
-        }
+        .task { await load() }
     }
 
     private func load() async {
@@ -333,68 +404,105 @@ private struct VoiceBoostMenu: View {
     }
 }
 
-/// Sets this show's speed. "Use my default" follows the default speed from Settings.
-private struct SpeedSheet: View {
-    @Environment(AppModel.self) private var model
+/// The moon under the play button, with the time left, "Chapter", or "End" while a timer runs.
+private struct SleepTimerButton: View {
     @Environment(Player.self) private var player
-    /// Nil follows the default.
-    @State private var override: PlaybackSpeed?
-    @State private var global = PlaybackSpeed.normal
+    let action: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Speed for this show").font(.headline)
-                Spacer()
-                Text((override ?? global).title)
-            }
-            Toggle(isOn: Binding(get: { override == nil }, set: { follow in
-                // Turning the default off starts this show at the default, so it can stay there on purpose.
-                save(follow ? nil : global)
-            })) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Use my default")
-                    Text("\(global.title), from Settings").font(.caption).foregroundStyle(.secondary)
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: "moon.zzz")
+                if let end = player.sleepTimerEndsAt {
+                    Text(timerInterval: Date.now...end, countsDown: true).monospacedDigit()
+                } else if player.sleepTimer == .endOfChapter {
+                    Text("Chapter")
+                } else if player.sleepTimer == .endOfEpisode {
+                    Text("End")
                 }
             }
-            .padding(12)
-            .background(.white.opacity(0.08), in: .rect(cornerRadius: 14))
-            if let override {
-                Slider(value: Binding(get: { override.value }, set: { save(PlaybackSpeed($0)) }), in: 1.0...2.0, step: 0.1) {
-                    Text("Speed")
-                } minimumValueLabel: {
-                    Text("1.0×")
-                } maximumValueLabel: {
-                    Text("2.0×")
+            .roundControl(on: player.sleepTimer != nil)
+        }
+        .accessibilityLabel("Sleep timer")
+        .accessibilityValue(timerValue)
+    }
+
+    private var timerValue: String {
+        if let end = player.sleepTimerEndsAt { return "Pauses at \(end.formatted(date: .omitted, time: .shortened))" }
+        switch player.sleepTimer {
+        case .endOfChapter: return "Pauses at the end of the chapter"
+        case .endOfEpisode: return "Pauses at the end of the episode"
+        default: return "Off"
+        }
+    }
+}
+
+/// The sleep timer's choices. Picking one starts it and closes the sheet.
+private struct SleepTimerSheet: View {
+    @Environment(Player.self) private var player
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ControlSheet(title: "Sleep timer", value: value, note: "Pauses the episode for you.") {
+            VStack(spacing: 12) {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                    ForEach([15, 30, 45, 60], id: \.self) { minutes in
+                        choice("\(minutes) min", label: "\(minutes) minutes", timer: .duration(.seconds(minutes * 60)))
+                    }
+                    if !player.chapters.isEmpty {
+                        choice("This chapter", detail: player.chapterProgress.minutesLeft.map { "\($0) min left" },
+                               timer: .endOfChapter)
+                    }
+                    choice("End of episode", detail: episodeMinutesLeft.map { "\($0) min left" }, timer: .endOfEpisode)
                 }
-                .accessibilityIdentifier("speedSlider")
-                Text("\(player.show?.title ?? "This show") plays at \(override.title). Your other shows keep your default.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                if player.sleepTimer != nil {
+                    Button {
+                        player.setSleepTimer(nil)
+                        dismiss()
+                    } label: {
+                        Label("Turn Off", systemImage: "xmark")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background(.white.opacity(0.1), in: .rect(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
-        .padding()
-        .presentationDetents([.height(override == nil ? 150 : 270)])
-        .task { await load() }
     }
 
-    private func load() async {
-        global = (try? await model.library.globalSpeed()) ?? .normal
-        if let show = player.episode?.showKey {
-            override = try? await model.library.speedOverride(show)
+    private var value: Text {
+        if let end = player.sleepTimerEndsAt { return Text(timerInterval: Date.now...end, countsDown: true) }
+        switch player.sleepTimer {
+        case .endOfChapter: return Text("Chapter")
+        case .endOfEpisode: return Text("End")
+        default: return Text("Off")
         }
     }
 
-    /// Applies right away, so there's no Done button.
-    private func save(_ speed: PlaybackSpeed?) {
-        guard speed != override, let show = player.episode?.showKey else { return }
-        override = speed
-        let library = model.library
-        Task {
-            await model.change {
-                try await library.setSpeedOverride(show, to: speed)
-                try await player.reloadSpeed()
+    private var episodeMinutesLeft: Int? {
+        player.duration.map { max(1, Int((($0 - player.position) / 60).rounded(.up))) }
+    }
+
+    private func choice(_ title: String, label: String? = nil, detail: String? = nil, timer: SleepTimer) -> some View {
+        let isOn = player.sleepTimer == timer
+        return Button {
+            player.setSleepTimer(timer)
+            dismiss()
+        } label: {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.subheadline.weight(.semibold))
+                if let detail { Text(detail).font(.caption).foregroundStyle(isOn ? Color.black.opacity(0.6) : .secondary) }
             }
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
+            .foregroundStyle(isOn ? Color.black : .white)
+            .background(isOn ? Color.white : .white.opacity(0.1), in: .rect(cornerRadius: 12))
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label ?? title)
+        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }
 

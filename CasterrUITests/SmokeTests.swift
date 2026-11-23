@@ -37,15 +37,15 @@ final class SmokeTests: XCTestCase {
         expectation(for: advanced, evaluatedWith: elapsed)
         waitForExpectations(timeout: 30)
 
-        // 2x for this show applies right away, then check it still plays.
+        // 2x for this show applies right away and turns "Use my default" off by itself, then check it still plays.
         app.buttons["speed"].tap()
-        let useDefault = app.switches.firstMatch
-        XCTAssertTrue(useDefault.waitForExistence(timeout: 5))
-        useDefault.switches.firstMatch.tap()
         let slider = app.sliders["speedSlider"]
-        XCTAssertTrue(slider.waitForExistence(timeout: 5), "turning off the default didn't show the slider")
+        XCTAssertTrue(slider.waitForExistence(timeout: 5), "no slider in the speed sheet")
+        let useDefault = app.switches["useMyDefault"]
+        XCTAssertEqual(useDefault.value as? String, "1")
         slider.adjust(toNormalizedSliderPosition: 1.0)
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).tap()
+        XCTAssertTrue(waitForValue("0", of: useDefault), "moving the slider left Use my default on")
+        closeSheet()
         let speed = app.buttons["speed"]
         let atDoubleSpeed = speed.wait(for: \.label, toEqual: "2.0×", timeout: 10)
         XCTAssertTrue(atDoubleSpeed, "speed button says \(speed.label)")
@@ -53,19 +53,28 @@ final class SmokeTests: XCTestCase {
         expectation(for: NSPredicate(format: "label != %@", atTwo), evaluatedWith: elapsed)
         waitForExpectations(timeout: 15)
 
+        // Turning "Use my default" back on returns to the default speed.
+        speed.tap()
+        XCTAssertTrue(useDefault.waitForExistence(timeout: 5))
+        useDefault.switches.firstMatch.tap()
+        closeSheet()
+        XCTAssertTrue(speed.wait(for: \.label, toEqual: "1.0×", timeout: 10), "speed button says \(speed.label)")
+
         // Voice boost for this show applies right away, then follows the default again.
         let boost = app.buttons["voiceBoost"]
-        XCTAssertEqual(boost.value as? String, "Off, your default")
+        XCTAssertEqual(boost.value as? String, "Off")
         boost.tap()
-        app.buttons["On for this show"].tap()
-        let onForShow = NSPredicate(format: "value == 'On, for this show'")
-        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: onForShow, object: boost)], timeout: 5), .completed,
-                       "voice boost says \(boost.value ?? "nil")")
+        let picker = app.segmentedControls["voiceBoostPicker"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 5), "no voice boost sheet")
+        picker.buttons["On"].tap()
+        XCTAssertTrue(waitForValue("0", of: useDefault), "picking On left Use my default on")
+        closeSheet()
+        XCTAssertTrue(waitForValue("On", of: boost), "voice boost says \(boost.value ?? "nil")")
         boost.tap()
-        app.buttons["Use my default (Off)"].tap()
-        let followsDefault = NSPredicate(format: "value == 'Off, your default'")
-        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: followsDefault, object: boost)], timeout: 5), .completed,
-                       "voice boost says \(boost.value ?? "nil")")
+        XCTAssertTrue(useDefault.waitForExistence(timeout: 5))
+        useDefault.switches.firstMatch.tap()
+        closeSheet()
+        XCTAssertTrue(waitForValue("Off", of: boost), "voice boost says \(boost.value ?? "nil")")
 
         // The played episode is playing at the top of the Queue.
         app.swipeDown(velocity: .fast)
@@ -79,8 +88,18 @@ final class SmokeTests: XCTestCase {
         boostDefault.switches.firstMatch.tap()
         app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["miniPlayer"].tap()
-        let boostOnByDefault = NSPredicate(format: "value == 'On, your default'")
-        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: boostOnByDefault, object: boost)], timeout: 5), .completed,
-                       "voice boost says \(boost.value ?? "nil")")
+        XCTAssertTrue(waitForValue("On", of: boost), "voice boost says \(boost.value ?? "nil")")
+    }
+
+    /// Closes a control sheet by tapping above it.
+    @MainActor
+    private func closeSheet() {
+        XCUIApplication().coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).tap()
+    }
+
+    @MainActor
+    private func waitForValue(_ value: String, of element: XCUIElement) -> Bool {
+        let matches = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", value), object: element)
+        return XCTWaiter().wait(for: [matches], timeout: 5) == .completed
     }
 }

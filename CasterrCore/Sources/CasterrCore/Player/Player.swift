@@ -23,6 +23,8 @@ public protocol AudioEngine: AnyObject {
 
 public enum SleepTimer: Equatable, Sendable {
     case duration(Duration)
+    /// Pauses when the next chapter starts, or at the episode's end in the last chapter.
+    case endOfChapter
     case endOfEpisode
 }
 
@@ -58,6 +60,8 @@ public final class Player {
     /// What the engine loaded: the downloaded file, or else the stream.
     public private(set) var loadedURL: URL?
     private var sleepTask: Task<Void, Never>?
+    /// Where the chapter timer pauses: the next chapter's start. Nil in the last chapter, which ends with the episode.
+    private var chapterTimerEnd: TimeInterval?
     /// Set by a pause; a seek or another episode clears it, which turns off Back a Beat.
     private var pausedInPlace = false
 
@@ -77,6 +81,7 @@ public final class Player {
         engine.onChapters = { [weak self] url, chapters in
             guard let self, url == self.loadedURL, !chapters.isEmpty else { return }
             self.chapters = chapters
+            self.anchorChapterTimer()
         }
     }
 
@@ -146,6 +151,8 @@ public final class Player {
         position = min(max(target, 0), upper)
         pausedInPlace = false
         engine.seek(to: position)
+        // After a seek, "this chapter" is the one playback landed in.
+        anchorChapterTimer()
     }
 
     private func backABeat() {
@@ -189,12 +196,17 @@ public final class Player {
         sleepTask = nil
         sleepTimer = timer
         sleepTimerEndsAt = nil
+        anchorChapterTimer()
         guard case .duration(let length) = timer else { return }
         sleepTimerEndsAt = .now + TimeInterval(length.components.seconds)
         sleepTask = Task { [sleep] in
             do { try await sleep(length) } catch { return }
             try? await self.sleepTimerFired()
         }
+    }
+
+    private func anchorChapterTimer() {
+        chapterTimerEnd = sleepTimer == .endOfChapter ? chapters.first { $0.start > position }?.start : nil
     }
 
     // MARK: Engine events
@@ -222,6 +234,10 @@ public final class Player {
     private func timeChanged(_ newPosition: TimeInterval, _ newDuration: TimeInterval?) {
         position = newPosition
         if let newDuration { duration = newDuration }
+        if let end = chapterTimerEnd, position >= end {
+            chapterTimerEnd = nil
+            Task { try? await sleepTimerFired() }
+        }
         if abs(position - lastSavedPosition) >= Self.progressSaveInterval {
             Task { try? await saveProgress() }
         }
@@ -235,7 +251,7 @@ public final class Player {
         // Reaching the end always counts as played, even when the duration was never known.
         try? await library.markPlayed(finished.key)
         episode = nil
-        if sleepTimer == .endOfEpisode {
+        if sleepTimer == .endOfEpisode || sleepTimer == .endOfChapter {
             sleepTimer = nil
             return
         }

@@ -123,6 +123,12 @@ final class ScreensTests: XCTestCase {
         expectation(for: counting, evaluatedWith: timer)
         waitForExpectations(timeout: 5)
         snapshot("6 Now Playing")
+        // The sheet marks the running timer and offers Turn Off.
+        timer.tap()
+        XCTAssertTrue(app.buttons["Turn Off"].waitForExistence(timeout: 5), "no Turn Off for a running timer")
+        XCTAssertTrue(app.buttons["15 minutes"].isSelected, "the running timer isn't marked")
+        snapshot("6b Sleep Timer")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).tap()
         app.buttons["speed"].tap()
         XCTAssertTrue(app.switches.firstMatch.waitForExistence(timeout: 5))
         snapshot("7 Speed")
@@ -403,6 +409,17 @@ final class ScreensTests: XCTestCase {
         pill.tap()
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label ENDSWITH 'min left'")).firstMatch.waitForExistence(timeout: 5))
         snapshot("20 Chapters After Jump")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).tap()
+
+        // The sleep timer can stop at the end of this chapter.
+        let timer = app.buttons["Sleep timer"]
+        timer.tap()
+        let thisChapter = app.buttons["This chapter"]
+        XCTAssertTrue(thisChapter.waitForExistence(timeout: 5), "no This chapter for an episode with chapters")
+        snapshot("20b Sleep Timer With Chapters")
+        thisChapter.tap()
+        let untilChapterEnd = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == 'Pauses at the end of the chapter'"), object: timer)
+        XCTAssertEqual(XCTWaiter().wait(for: [untilChapterEnd], timeout: 5), .completed, "sleep timer says \(timer.value ?? "nil")")
     }
 
     /// Now Playing's share menu offers Share Episode and Share Clip, and Share Episode opens the share sheet.
