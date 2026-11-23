@@ -10,6 +10,9 @@ struct InboxView: View {
     @State private var art: [ShowKey: ShowArt] = [:]
     @State private var expiry: InboxExpiry = .standard
     @State private var daysLeft: [EpisodeKey: Int] = [:]
+    @State private var progress: [EpisodeKey: TimeInterval] = [:]
+    /// The row whose action line is open.
+    @State private var openRow: EpisodeKey?
     /// The one-time tip that teaches the swipes, on the first row.
     @State private var tip: CassyTip?
     @State private var loaded = false
@@ -67,8 +70,12 @@ struct InboxView: View {
 
     private var episodeRows: some View {
         ForEach(items, id: \.key) { episode in
-            EpisodeRow(episode: episode, identifier: "inboxItem", move: moves[episode.key], art: art[episode.showKey],
-                       metaNote: countdown(daysLeft[episode.key]))
+            EpisodeRow(episode: episode, identifier: "inboxItem", move: moves[episode.key],
+                       downloaded: model.isDownloaded(episode), progress: progress[episode.key] ?? 0,
+                       art: art[episode.showKey], metaNote: countdown(daysLeft[episode.key]),
+                       isOpen: openRow == episode.key,
+                       toggle: { openRow = openRow == episode.key ? nil : episode.key },
+                       actions: actions(episode))
                 .cassyTipTarget("inboxRow.\(episode.key.rawValue)")
                 .swipeActions(edge: .leading) {
                     Button("Add to Queue", systemImage: "text.badge.plus") {
@@ -84,10 +91,17 @@ struct InboxView: View {
         }
     }
 
+    /// Play Next, Add to Queue, Share, Show, Remove. No Played: Remove covers "not for me", and the line fits six.
+    private func actions(_ episode: EpisodeInfo) -> [RowAction] {
+        [.playNext(episode.key, model), .addToQueue(episode.key, model), .share, .show(episode.showKey, model),
+         .change("Remove", "minus.circle", destructive: true, model) { try await $0.dismiss(episode.key) }]
+    }
+
     private func load() async {
         let keys = (try? await model.library.inbox()) ?? []
         items = await model.episodes(keys)
         moves = await model.moves(of: keys)
+        progress = await model.progress(of: keys)
         art = (try? await model.library.showArt()) ?? [:]
         expiry = (try? await model.library.globalExpiry()) ?? .standard
         daysLeft = (try? await model.library.inboxDaysLeft()) ?? [:]

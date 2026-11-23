@@ -24,7 +24,7 @@ final class SmokeTests: XCTestCase {
 
         let firstEpisode = app.buttons.matching(identifier: "episode").firstMatch
         XCTAssertTrue(firstEpisode.waitForExistence(timeout: 10))
-        firstEpisode.tap()
+        firstEpisode.playFromRow()
 
         // Streaming: elapsed time advances in Now Playing.
         let miniPlayer = app.buttons["miniPlayer"]
@@ -79,7 +79,7 @@ final class SmokeTests: XCTestCase {
         // The played episode is playing at the top of the Queue.
         app.swipeDown(velocity: .fast)
         app.tabBars.buttons["Queue"].tap()
-        XCTAssertTrue(app.staticTexts["Playing"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Playing'")).firstMatch.waitForExistence(timeout: 10))
 
         // Turning voice boost on in Settings reaches a show that follows the default.
         app.navigationBars.buttons["Settings"].tap()

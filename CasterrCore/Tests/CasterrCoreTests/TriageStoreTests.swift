@@ -162,6 +162,14 @@ struct InboxStoreTests {
         #expect(try await library.queue() == [episode(1), episode(3)])
     }
 
+    @Test func listenerPlayNextGoesSecondWithNoUndo() async throws {
+        let library = try await subscribed(episodes: 4)
+        for n in 1...4 { try await library.addToQueue(episode(n)) }
+        try await library.playNextByListener(episode(4))
+        #expect(try await library.queue() == [episode(1), episode(4), episode(2), episode(3)])
+        #expect(try await library.lastMove(of: episode(4)) == LastMove(reason: .listener, canUndo: false))
+    }
+
     @Test func dismissArchivesIt() async throws {
         let library = try await subscribed()
         try await library.dismiss(episode(3))

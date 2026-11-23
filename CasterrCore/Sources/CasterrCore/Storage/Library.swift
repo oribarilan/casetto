@@ -750,6 +750,13 @@ public actor Library {
         try modelContext.save()
     }
 
+    /// The listener's own Play Next: the same spot, but no "Play next" label and no Undo.
+    public func playNextByListener(_ key: EpisodeKey) throws {
+        try playNext(key)
+        try state(key)?.moveReason = MoveReason.listener.stored
+        try modelContext.save()
+    }
+
     /// Remembers where an unfollowed show's feed came from, so Subscribe works later.
     public func setFeedURL(_ url: URL, for showKey: ShowKey) throws {
         let raw = showKey.rawValue

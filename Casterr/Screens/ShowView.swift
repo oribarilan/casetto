@@ -28,6 +28,11 @@ struct ShowView: View {
     @State private var fetchingFeed = false
     /// The show's art, for the share sheet's preview.
     @State private var showArt: UIImage?
+    @State private var progress: [EpisodeKey: TimeInterval] = [:]
+    /// The Queue's first episode, which gets no Play Next.
+    @State private var firstQueued: EpisodeKey?
+    /// The row whose action line is open.
+    @State private var openRow: EpisodeKey?
 
     /// The built-in show for files shared to Casterr: Delete instead of following.
     private var isShared: Bool { showKey == .shared }
@@ -162,6 +167,8 @@ struct ShowView: View {
         }
         places = loaded
         moves = await model.moves(of: episodes.map(\.key))
+        progress = await model.progress(of: episodes.map(\.key))
+        firstQueued = try? await library.playableQueue().first
         subscription = try? await library.subscriptions().first { $0.showKey == showKey }
         cachedFeedURL = try? await library.cachedFeedURL(of: showKey)
         globalExpiry = (try? await library.globalExpiry()) ?? .standard
@@ -185,17 +192,12 @@ struct ShowView: View {
         let played = place == Place.archive(.played)
         let art: ShowArt? = show.map { ShowArt(title: $0.title, artworkURL: $0.artworkURL) }
         return EpisodeRow(episode: episode, identifier: "episode",
-                          caption: caption(place), move: moves[episode.key],
-                          art: art)
-            .contextMenu {
-                if isShared {
-                    Button("Delete", systemImage: "trash", role: .destructive) { delete(episode) }
-                } else {
-                    ArtShareLink(share: ShareText.episode(episode, show: show, at: nil), art: showArt) {
-                        Label("Share Episode", systemImage: "square.and.arrow.up")
-                    }
-                }
-            }
+                          statuses: caption(place).map { [$0] } ?? [], move: moves[episode.key],
+                          downloaded: model.isDownloaded(episode), played: played,
+                          progress: progress[episode.key] ?? 0, art: art,
+                          isOpen: openRow == episode.key,
+                          toggle: { openRow = openRow == episode.key ? nil : episode.key },
+                          actions: actions(episode, place: place))
             .swipeActions(edge: .leading) {
                 if place != .queue {
                     Button("Add to Queue", systemImage: "text.badge.plus") {
@@ -218,6 +220,25 @@ struct ShowView: View {
                     }
                 }
             }
+    }
+
+    /// Play Next, Add to Queue, Played or Unplayed, Share, Remove, and Delete for shared files, when they apply.
+    private func actions(_ episode: EpisodeInfo, place: Place?) -> [RowAction] {
+        let key = episode.key
+        var actions: [RowAction] = []
+        if key != firstQueued { actions.append(.playNext(key, model)) }
+        if place != .queue { actions.append(.addToQueue(key, model)) }
+        actions.append(place == Place.archive(.played) ? .unplayed(key, model) : .played(key, model))
+        actions.append(.share)
+        switch place {
+        case .inbox: actions.append(.change("Remove", "minus.circle", destructive: true, model) { try await $0.dismiss(key) })
+        case .queue: actions.append(.change("Remove", "minus.circle", destructive: true, model) { try await $0.removeFromQueue(key) })
+        default: break
+        }
+        if isShared {
+            actions.append(RowAction(title: "Delete", symbol: "trash", destructive: true) { delete(episode) })
+        }
+        return actions
     }
 
     /// Deletes a shared file and its episode, wherever it is.

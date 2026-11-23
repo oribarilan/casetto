@@ -56,13 +56,15 @@ These two cards are all of M4. The thresholds are constants, tuned from real use
 
 **Undo.** Each episode remembers its latest move: why it happened and when. An automatic move shows its reason and an "Undo" on the episode until the episode moves again, for up to 30 days. Your own moves are one swipe to reverse, so they get no undo button.
 
+**Episode rows.** In the Queue, the Inbox, and on show pages, a tap on an episode opens a line of actions under it, with Play first: Play Next, Add to Queue, Played, Share, Show, and Remove, as each screen needs. The swipes stay as shortcuts. Every row shows its status the same way, in gray words above the title (Queued, In Inbox, Played, Downloaded, or minutes left for a started episode), and only what plays next is orange.
+
 ## Words
 
 One word per idea, in everything people read in the app:
 
 | Word | Means | Not |
 |---|---|---|
-| **Remove** | An episode leaves your Inbox or Queue, because you swiped it or because it waited too long. It stays on its show page. | dismiss, clear, archive, tidy, delete |
+| **Remove** | An episode leaves your Inbox or Queue, because you removed it or because it waited too long. It stays on its show page. | dismiss, clear, archive, tidy, delete |
 | **Skip** | A show's new episodes never enter your Inbox or Queue. | archive |
 | **Dismiss** | Close one of Cassy's cards or tips. Never used for episodes. | remove |
 | **Delete** | Bookmarks and shared files only, because they really are deleted. | remove |
@@ -91,7 +93,7 @@ Casterr appears in other apps' share sheets for audio files (MP3, M4A, and Whats
 
 ## Sharing from Casterr
 
-Now Playing has a share button with Share Episode and Share Clip; show page rows have Share Episode and the show page has Share Show. An episode goes out as "Episode – Show" with its own web page from the feed, or its audio link, and "from 12:34" when shared from Now Playing. A show goes out with its web page or feed address. Share Clip opens a small editor on the two minutes around now, drawn as loudness bars, with a 30-second clip whose edges snap to pauses between words; you drag it to 5 to 60 seconds and can preview it. The clip becomes a square video of the art Now Playing shows, with a "Clipped with Casterr" badge in the top left, at normal speed, sent with the episode's text and link. Streamed MP3s fetch only those two minutes; other streams ask you to download the episode first. Files in Shared with Casterr have no share actions.
+Now Playing has a share button with Share Episode and Share Clip; episode rows have Share in their action line and the show page has Share Show. An episode goes out as "Episode – Show" with its own web page from the feed, or its audio link, and "from 12:34" when shared from Now Playing. A show goes out with its web page or feed address. Share Clip opens a small editor on the two minutes around now, drawn as loudness bars, with a 30-second clip whose edges snap to pauses between words; you drag it to 5 to 60 seconds and can preview it. The clip becomes a square video of the art Now Playing shows, with a "Clipped with Casterr" badge in the top left, at normal speed, sent with the episode's text and link. Streamed MP3s fetch only those two minutes; other streams ask you to download the episode first. Files in Shared with Casterr have no share actions.
 
 ## Onboarding and subscribing
 

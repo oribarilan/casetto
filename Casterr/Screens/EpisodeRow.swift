@@ -1,64 +1,196 @@
 import CasterrCore
 import SwiftUI
 
-/// An episode in a list. Tapping plays it. An automatic move shows its reason and, while allowed, Undo.
+/// One button in a row's action line.
+struct RowAction: Identifiable {
+    let title: String
+    let symbol: String
+    var destructive = false
+    /// Play and Pause: a filled tangerine circle.
+    var filled = false
+    /// Share Episode: the row builds the message and art itself.
+    var isShare = false
+    var run: () -> Void = {}
+    var id: String { title }
+
+    @MainActor static let share = RowAction(title: "Share", symbol: "square.and.arrow.up", isShare: true)
+
+    /// An action that changes the library, then reloads the screens.
+    @MainActor
+    static func change(_ title: String, _ symbol: String, destructive: Bool = false, _ model: AppModel,
+                       _ work: @escaping (Library) async throws -> Void) -> RowAction {
+        RowAction(title: title, symbol: symbol, destructive: destructive) {
+            Task { await model.change { try await work(model.library) } }
+        }
+    }
+
+    @MainActor static func playNext(_ key: EpisodeKey, _ model: AppModel) -> RowAction {
+        change("Play Next", "text.line.first.and.arrowtriangle.forward", model) { try await $0.playNextByListener(key) }
+    }
+
+    @MainActor static func addToQueue(_ key: EpisodeKey, _ model: AppModel) -> RowAction {
+        change("Add to Queue", "text.badge.plus", model) { try await $0.addToQueue(key) }
+    }
+
+    @MainActor static func played(_ key: EpisodeKey, _ model: AppModel) -> RowAction {
+        change("Played", "checkmark.circle", model) { try await $0.markPlayed(key) }
+    }
+
+    @MainActor static func unplayed(_ key: EpisodeKey, _ model: AppModel) -> RowAction {
+        change("Unplayed", "circle", model) { try await $0.markUnplayed(key) }
+    }
+
+    /// Opens the show's page on the Queue's stack, where the Queue and the Inbox live.
+    @MainActor static func show(_ show: ShowKey, _ model: AppModel) -> RowAction {
+        RowAction(title: "Show", symbol: "square.stack") { model.queuePath.append(.show(show)) }
+    }
+}
+
+/// An episode in a list. A tap opens a line of actions under it, with Play (or Pause) first.
+/// The line above the title holds the status words: `label` in orange, the rest in gray.
+/// An automatic move shows its reason and, while allowed, Undo.
 struct EpisodeRow: View {
     @Environment(AppModel.self) private var model
     @Environment(Player.self) private var player
+    @Environment(\.displayScale) private var scale
     let episode: EpisodeInfo
     let identifier: String
-    var caption: String?
+    /// What the first Queue row is doing: Up next, Playing, or Paused. Orange.
+    var label: String?
+    /// Where the episode is, like "Queued" or "Played". Gray. The row adds the move reason and Downloaded.
+    var statuses: [String] = []
     var move: LastMove?
     var downloaded = false
+    var played = false
+    /// Seconds already heard. A started episode shows the minutes left instead of its length.
+    var progress: TimeInterval = 0
     var art: ShowArt?
-    /// A symbol shown before the caption, like the waveform on the playing episode.
+    /// A symbol shown before the label, like the waveform on the playing episode.
     var captionSymbol: String?
     var animateSymbol = false
-    /// A short note at the end of the details line, like "leaves in 2 days".
+    /// A short note at the end of the details line, like "removed in 2 days".
     var metaNote: String?
+    var isOpen = false
+    var toggle: () -> Void = {}
+    /// The actions after Play, in order. Those that don't apply are left out by the screen.
+    var actions: [RowAction] = []
 
     var body: some View {
-        HStack {
-            Button {
-                Task { await model.change { try await player.play(episode.key) } }
-            } label: {
-                HStack(spacing: 12) {
-                    ArtworkView(url: art?.artworkURL, title: art?.title ?? episode.title, size: 52)
-                    details
+        VStack(spacing: 10) {
+            HStack {
+                Button {
+                    withAnimation(.snappy) { toggle() }
+                } label: {
+                    HStack(spacing: 12) {
+                        ArtworkView(url: art?.artworkURL, title: art?.title ?? episode.title, size: 52)
+                        details
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(identifier)
+                .accessibilityHint(isOpen ? "Hides actions" : "Shows actions")
+                if move?.canUndo == true {
+                    Button("Undo") {
+                        Task { await model.change { try await model.library.undo(episode.key) } }
+                    }
+                    .buttonStyle(.borderless)
                 }
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier(identifier)
-            if move?.canUndo == true {
-                Button("Undo") {
-                    Task { await model.change { try await model.library.undo(episode.key) } }
-                }
-                .buttonStyle(.borderless)
+            if isOpen {
+                actionLine.transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }
 
+    private var isLoaded: Bool { player.episode?.key == episode.key }
+
+    private var playAction: RowAction {
+        let pausing = isLoaded && player.isPlaying
+        return RowAction(title: pausing ? "Pause" : "Play", symbol: pausing ? "pause.fill" : "play.fill", filled: true) {
+            Task {
+                await model.change {
+                    if isLoaded { try await player.togglePlayPause() } else { try await player.play(episode.key) }
+                }
+            }
+        }
+    }
+
+    private var actionLine: some View {
+        HStack(alignment: .top, spacing: 0) {
+            ForEach([playAction] + actions.filter { !($0.isShare && episode.showKey == .shared) }) { action in
+                if action.isShare {
+                    ArtShareLink(share: ShareText.episode(episode, showTitle: art?.title, at: nil),
+                                 art: art?.artworkURL.flatMap { ArtCache.kept($0, pixels: 52 * scale) }) { actionLabel(action) }
+                        .buttonStyle(.borderless)
+                } else {
+                    Button {
+                        withAnimation(.snappy) { toggle() }
+                        action.run()
+                    } label: {
+                        actionLabel(action)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityIdentifier(action.filled ? "rowPlay" : action.title)
+                }
+            }
+        }
+    }
+
+    private func actionLabel(_ action: RowAction) -> some View {
+        let filled = action.filled
+        let tint: Color = action.destructive ? .red : .tangerine
+        return VStack(spacing: 4) {
+            Image(systemName: action.symbol)
+                .font(.body.weight(.semibold))
+                .frame(width: 42, height: 42)
+                .foregroundStyle(filled ? Color.onTangerine : tint)
+                .background(filled ? Color.tangerine : Color(.tertiarySystemFill), in: .circle)
+            Text(action.title)
+                .font(.caption2)
+                .foregroundStyle(action.destructive ? Color.red : Color.primary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(action.title)
+    }
+
+    /// "Up next" in orange, then the gray words, joined by " · ".
+    private var statusText: Text? {
+        let gray = statuses + [move?.reason.label, downloaded ? "Downloaded" : nil].compactMap(\.self)
+        let words = (label.map { [Text($0).foregroundStyle(.tint)] } ?? []) + gray.map { Text($0).foregroundStyle(.secondary) }
+        guard let first = words.first else { return nil }
+        return words.dropFirst().reduce(first) { Text("\($0)\(Text(" · ").foregroundStyle(.secondary))\($1)") }
+    }
+
+    private var minutesLeft: Int? {
+        guard progress > 0, !played, let duration = episode.duration, duration > progress else { return nil }
+        return Int(((duration - progress) / 60).rounded(.up))
+    }
+
     private var details: some View {
         VStack(alignment: .leading, spacing: 4) {
-            let captions = [caption, move?.reason.label].compactMap(\.self)
-            if !captions.isEmpty {
+            if let statusText {
                 HStack(spacing: 4) {
                     if let captionSymbol {
                         Image(systemName: captionSymbol)
+                            .foregroundStyle(.tint)
                             .symbolEffect(.variableColor.iterative, isActive: animateSymbol)
                             .accessibilityHidden(true)
                     }
-                    Text(captions.joined(separator: " · "))
+                    statusText
                 }
                 .font(.caption.bold())
-                .foregroundStyle(.tint)
             }
-            Text(episode.title).lineLimit(2)
+            Text(episode.title)
+                .lineLimit(2)
+                .foregroundStyle(played ? .secondary : .primary)
             HStack {
                 if let date = episode.publishDate { Text(date, format: .dateTime.day().month().year()) }
-                if let duration = episode.duration { Text(duration.clock) }
-                if downloaded {
-                    Image(systemName: "arrow.down.circle.fill").accessibilityLabel("Downloaded")
+                if let minutesLeft {
+                    Text("\(minutesLeft) min left")
+                } else if let duration = episode.duration {
+                    Text(duration.clock)
                 }
                 if let metaNote {
                     Text(metaNote).foregroundStyle(Color.tangerineText)

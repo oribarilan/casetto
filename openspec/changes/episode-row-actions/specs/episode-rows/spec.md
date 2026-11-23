@@ -5,7 +5,7 @@ Defines how the episode rows in the Queue, the Inbox and show pages behave: what
 ## ADDED Requirements
 
 ### Requirement: Action line
-A tap on an episode row in the Queue, the Inbox or a show page SHALL open a line of round labeled buttons under the row, with Play first, and MUST NOT start playback. Only one line MAY be open at a time: tapping the same row closes it, tapping another row moves it there, and using an action closes it. The swipes, drag to reorder and Undo MUST keep working.
+A tap on an episode row in the Queue, the Inbox or a show page SHALL open a line of round labeled buttons under the row, with Play first, and MUST NOT start playback. Only one line MAY be open at a time: tapping the same row closes it, tapping another row moves it there, and using any action but Share closes it. The swipes, drag to reorder and Undo MUST keep working.
 
 #### Scenario: Tap opens the line
 - **WHEN** the listener taps the second Queue row

@@ -2,7 +2,7 @@ import CasterrCore
 import SwiftUI
 
 /// Home screen: the Queue in play order. The first item says whether it's playing, paused, or up next.
-/// Long-press to drag an episode into place; swipe left to remove it.
+/// Tap a row for its actions, long-press to drag it into place, swipe left to remove it.
 struct QueueView: View {
     @Environment(AppModel.self) private var model
     @Environment(Player.self) private var player
@@ -11,6 +11,9 @@ struct QueueView: View {
     @State private var inboxCount = 0
     @State private var inboxEpisodes = 0
     @State private var art: [ShowKey: ShowArt] = [:]
+    @State private var progress: [EpisodeKey: TimeInterval] = [:]
+    /// The row whose action line is open.
+    @State private var openRow: EpisodeKey?
     @State private var loaded = false
 
     var body: some View {
@@ -28,15 +31,16 @@ struct QueueView: View {
             ForEach(Array(items.enumerated()), id: \.element.key) { index, episode in
                 let state = index == 0 ? firstState(episode) : nil
                 EpisodeRow(episode: episode, identifier: "queueItem",
-                           caption: state?.caption, move: moves[episode.key],
-                           downloaded: model.isDownloaded(episode), art: art[episode.showKey],
-                           captionSymbol: state?.symbol, animateSymbol: state?.caption == "Playing")
+                           label: state?.caption, move: moves[episode.key],
+                           downloaded: model.isDownloaded(episode), progress: progress[episode.key] ?? 0,
+                           art: art[episode.showKey],
+                           captionSymbol: state?.symbol, animateSymbol: state?.caption == "Playing",
+                           isOpen: openRow == episode.key,
+                           toggle: { openRow = openRow == episode.key ? nil : episode.key },
+                           actions: actions(episode, first: index == 0))
                 .swipeActions(edge: .trailing) {
                     // "Remove", not "Delete": the episode leaves the Queue and stays on its show page.
-                    Button("Remove", systemImage: "minus.circle", role: .destructive) {
-                        items.removeAll { $0.key == episode.key }
-                        Task { await model.change { try await model.library.removeFromQueue(episode.key) } }
-                    }
+                    Button("Remove", systemImage: "minus.circle", role: .destructive) { remove(episode) }
                 }
             }
             .onMove { from, to in
@@ -83,6 +87,19 @@ struct QueueView: View {
         .task(id: "\(model.revision)|\(player.episode?.key.rawValue ?? "")") { await load() }
     }
 
+    /// Play Next (not on the first row), Played, Share, Show, Remove.
+    private func actions(_ episode: EpisodeInfo, first: Bool) -> [RowAction] {
+        (first ? [] : [.playNext(episode.key, model)]) + [
+            .played(episode.key, model), .share, .show(episode.showKey, model),
+            RowAction(title: "Remove", symbol: "minus.circle", destructive: true) { remove(episode) },
+        ]
+    }
+
+    private func remove(_ episode: EpisodeInfo) {
+        items.removeAll { $0.key == episode.key }
+        Task { await model.change { try await model.library.removeFromQueue(episode.key) } }
+    }
+
     /// The first episode's label: playing, paused, or up next.
     private func firstState(_ episode: EpisodeInfo) -> (caption: String, symbol: String?) {
         guard player.episode?.key == episode.key else { return ("Up next", nil) }
@@ -102,6 +119,7 @@ struct QueueView: View {
         items = await model.episodes(keys)
         art = (try? await model.library.showArt()) ?? [:]
         moves = await model.moves(of: keys)
+        progress = await model.progress(of: keys)
         inboxEpisodes = (try? await model.library.inboxCount()) ?? 0
         inboxCount = inboxEpisodes + ((try? await model.library.ruleCards().count) ?? 0)
         loaded = true

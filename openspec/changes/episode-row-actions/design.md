@@ -9,7 +9,7 @@ The Queue, the Inbox and the show page all build their rows from `EpisodeRow`. T
 - Each screen decides only which actions and which status words apply.
 
 **Non-Goals:**
-- No CasterrCore changes.
+- No CasterrCore changes beyond `playNextByListener`.
 - No change to swipes, drag to reorder, the Inbox swipe tip, Undo, or the Inbox countdown ("removed in 2 days" stays orange at the end of the details line, because it's a warning, not a status).
 
 ## Decisions
@@ -27,6 +27,10 @@ Symbols: Play `play.fill`, Pause `pause.fill`, Play Next `text.line.first.and.ar
 **Minutes left are loaded with the other row data.** Each screen already loads `moves` in one pass. It loads `progress` the same way into `[EpisodeKey: TimeInterval]` and passes it to the row. The row shows `ceil((duration − progress) / 60)` as "N min left" when progress is above 0 and the episode isn't played. The mini player bar already words it the same way.
 
 **Show and Share from the Queue and Inbox.** Show pushes `Route.show(showKey)` on the screen's navigation stack. Share needs the show's title and art. The Queue and Inbox already hold `ShowArt` for each show, so they build the share text from it, and the image comes from `ArtCache`.
+
+**The listener's Play Next is their own move.** `Library.playNext` records the move as automatic, which would show "Play next" and Undo on the row. A small `playNextByListener` puts the episode in the same spot and records it as the listener's move, so it gets no label and no Undo. This is the one CasterrCore addition.
+
+**Share stays open.** Using an action closes the line, except Share: closing it would remove the share link while its sheet opens.
 
 **The show page's `contextMenu` is removed.** Share Episode and Delete move into the line, so the long press would only repeat them.
 

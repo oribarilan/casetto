@@ -6,7 +6,7 @@ This is not a roadmap milestone. It is polish from daily use after the MVP. The 
 
 ## What Changes
 
-- **BREAKING:** a tap on an episode row in the Queue, the Inbox, or a show page no longer plays it. The tap opens a line of round buttons under the row, with Play first. Only one line is open at a time. Tapping the same row closes it, tapping another row moves it there, and using an action closes it. The mini player still plays with one tap.
+- **BREAKING:** a tap on an episode row in the Queue, the Inbox, or a show page no longer plays it. The tap opens a line of round buttons under the row, with Play first. Only one line is open at a time. Tapping the same row closes it, tapping another row moves it there, and using any action but Share closes it. The mini player still plays with one tap.
 - Each screen offers the actions that apply, at most six, and hides the rest:
 
   | Action | Queue | Inbox | Show page |

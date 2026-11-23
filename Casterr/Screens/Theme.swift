@@ -21,10 +21,15 @@ extension Color {
     })
 }
 
+extension Color {
+    /// Dark brown for text and symbols on tangerine: white on tangerine is only 3:1, too faint to read.
+    static let onTangerine = Color(red: 0.227, green: 0.078, blue: 0.02)
+}
+
 extension View {
-    /// A filled tangerine button with dark brown text: white on tangerine is only 3:1, too faint to read.
+    /// A filled tangerine button with dark brown text.
     func filledButton() -> some View {
-        buttonStyle(.borderedProminent).foregroundStyle(Color(red: 0.227, green: 0.078, blue: 0.02))
+        buttonStyle(.borderedProminent).foregroundStyle(Color.onTangerine)
     }
 }
 

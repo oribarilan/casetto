@@ -187,6 +187,15 @@ final class AppModel {
         return moves
     }
 
+    /// Seconds heard of each started episode.
+    func progress(of keys: [EpisodeKey]) async -> [EpisodeKey: TimeInterval] {
+        var progress: [EpisodeKey: TimeInterval] = [:]
+        for key in keys {
+            if let seconds = try? await library.progress(of: key), seconds > 0 { progress[key] = seconds }
+        }
+        return progress
+    }
+
     func appWentToBackground() async {
         await scheduleBackgroundRefresh()
         try? await player.saveProgress()

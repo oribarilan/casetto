@@ -49,13 +49,19 @@ final class ScreensTests: XCTestCase {
         let list = app.collectionViews.firstMatch
         list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
             .press(forDuration: 0, thenDragTo: list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42)))
-        for index in 0..<3 {
+        // A tap opens the row's actions: Play Next queues the third episode, swipes add the first two.
+        episodes.element(boundBy: 2).tap()
+        XCTAssertTrue(app.buttons["Play Next"].waitForExistence(timeout: 5), "no action line")
+        snapshot("4a Row Actions")
+        app.buttons["Play Next"].tap()
+        for index in 0..<2 {
             episodes.element(boundBy: index).swipeRight()
             app.buttons["Add to Queue"].tap()
         }
-        XCTAssertTrue(app.staticTexts["Queued"].waitForExistence(timeout: 5))
-        episodes.element(boundBy: 2).swipeLeft()
-        app.buttons["Mark Played"].tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Queued'")).firstMatch.waitForExistence(timeout: 5))
+        // Played in the line folds the third away.
+        episodes.element(boundBy: 2).tap()
+        app.buttons["Played"].tap()
         // Played episodes fold into a row above the list.
         XCTAssertTrue(app.staticTexts["Played"].waitForExistence(timeout: 5))
         snapshot("4 Show Page")
@@ -82,12 +88,23 @@ final class ScreensTests: XCTestCase {
         let queue = app.buttons.matching(identifier: "queueItem")
         XCTAssertTrue(queue.firstMatch.waitForExistence(timeout: 5))
         XCTAssertEqual(queue.count, 2)
-        XCTAssertTrue(app.staticTexts["Up next"].exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Up next'")).firstMatch.exists)
         // Nothing plays yet, so the bar offers the first Queue episode as new, not as continue.
         let upNext = app.buttons["upNextBar"]
         XCTAssertTrue(upNext.waitForExistence(timeout: 5))
         XCTAssertTrue(upNext.label.hasPrefix("Up next"), upNext.label)
         snapshot("5 Queue")
+
+        // The first row's line has no Play Next; tapping another row moves the line there, and tapping it again closes it.
+        queue.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["Show"].waitForExistence(timeout: 5), "no action line")
+        XCTAssertFalse(app.buttons["Play Next"].exists, "Play Next on the first row")
+        queue.element(boundBy: 1).tap()
+        XCTAssertTrue(app.buttons["Play Next"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == 'Show'")).count, 1, "two lines open")
+        snapshot("5a Queue Row Actions")
+        queue.element(boundBy: 1).tap()
+        XCTAssertTrue(app.buttons["Play Next"].waitForNonExistence(timeout: 5), "the line didn't close")
 
         // Long-press and drag reorders without an Edit button.
         let firstBefore = queue.element(boundBy: 0).label
@@ -101,7 +118,7 @@ final class ScreensTests: XCTestCase {
         XCTAssertEqual(queue.count, 1)
 
         // Downloads: the top of the Queue downloads on Wi-Fi, and Off deletes it.
-        let downloaded = app.images["Downloaded"]
+        let downloaded = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Downloaded'")).firstMatch
         XCTAssertTrue(downloaded.waitForExistence(timeout: 120))
         snapshot("5b Downloaded")
         app.navigationBars.buttons["Settings"].tap()
@@ -189,7 +206,7 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Removed after 7 days"].waitForExistence(timeout: 5))
         snapshot("10 Expired")
         app.buttons["Undo"].tap()
-        XCTAssertTrue(app.staticTexts["In Inbox"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'In Inbox'")).firstMatch.waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Undo"].exists)
 
         // New-episode settings open in a sheet; the Inbox period applies to Inbox shows only.
@@ -211,6 +228,12 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(newRow.waitForExistence(timeout: 5))
         newRow.tap()
         let item = app.buttons.matching(identifier: "inboxItem").firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
+        // Show in the line opens the episode's show page.
+        item.tap()
+        app.buttons["Show"].tap()
+        XCTAssertTrue(app.buttons["newEpisodesRow"].waitForExistence(timeout: 5), "Show didn't open the show page")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(item.waitForExistence(timeout: 5))
         item.swipeLeft()
         app.buttons["Remove"].tap()
@@ -310,7 +333,7 @@ final class ScreensTests: XCTestCase {
         show.tap()
         let episode = app.buttons.matching(identifier: "episode").firstMatch
         XCTAssertTrue(episode.waitForExistence(timeout: 10))
-        episode.tap()
+        episode.playFromRow()
         XCTAssertTrue(app.buttons["miniPlayer"].waitForExistence(timeout: 15))
 
         // One tap in Now Playing bookmarks without pausing; Add Note on the toast opens it in Bookmarks, ready to type.
@@ -380,7 +403,7 @@ final class ScreensTests: XCTestCase {
         show.tap()
         let episode = app.buttons.matching(identifier: "episode").firstMatch
         XCTAssertTrue(episode.waitForExistence(timeout: 10))
-        episode.tap()
+        episode.playFromRow()
         let miniPlayer = app.buttons["miniPlayer"]
         XCTAssertTrue(miniPlayer.waitForExistence(timeout: 15))
         miniPlayer.tap()
@@ -423,7 +446,7 @@ final class ScreensTests: XCTestCase {
     }
 
     /// Now Playing's share menu offers Share Episode and Share Clip, and Share Episode opens the share sheet.
-    /// The show page offers Share Show and Share Episode on a row.
+    /// The show page offers Share Show, and Share in a row's action line.
     @MainActor
     func testShareMenu() throws {
         try openATPNowPlaying()
@@ -442,8 +465,8 @@ final class ScreensTests: XCTestCase {
 
         app.swipeDown(velocity: .fast)
         XCTAssertTrue(app.navigationBars.buttons["Share Show"].waitForExistence(timeout: 5), "no Share Show")
-        app.buttons.matching(identifier: "episode").firstMatch.press(forDuration: 1.2)
-        XCTAssertTrue(app.buttons["Share Episode"].waitForExistence(timeout: 5), "no Share Episode on the row")
+        app.buttons.matching(identifier: "episode").firstMatch.tap()
+        XCTAssertTrue(app.buttons["Share"].waitForExistence(timeout: 5), "no Share in the row's line")
     }
 
     /// The clip editor opens around now, an edge drag changes the length, and the length stops at 60 s.
@@ -512,7 +535,7 @@ final class ScreensTests: XCTestCase {
         show.tap()
         let episode = app.buttons.matching(identifier: "episode").firstMatch
         XCTAssertTrue(episode.waitForExistence(timeout: 10))
-        episode.tap()
+        episode.playFromRow()
         let miniPlayer = app.buttons["miniPlayer"]
         XCTAssertTrue(miniPlayer.waitForExistence(timeout: 15))
         miniPlayer.tap()
@@ -572,10 +595,10 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(episode.waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["followShow"].exists, "the built-in show offers Follow")
         XCTAssertFalse(app.navigationBars.buttons["Share Show"].exists, "the built-in show offers Share Show")
-        episode.press(forDuration: 1.2)
+        episode.tap()
         XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["Share Episode"].exists, "a shared file offers Share Episode")
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+        XCTAssertFalse(app.buttons["Share"].exists, "a shared file offers Share")
+        episode.tap()
         XCTAssertTrue(app.buttons["Delete"].waitForNonExistence(timeout: 5))
         snapshot("23 Shared With Casterr")
         episode.swipeLeft()
@@ -819,5 +842,16 @@ final class ScreensTests: XCTestCase {
         shot.name = name
         shot.lifetime = .keepAlways
         add(shot)
+    }
+}
+
+extension XCUIElement {
+    /// Opens an episode row's action line and taps Play.
+    @MainActor
+    func playFromRow() {
+        tap()
+        let play = XCUIApplication().buttons["rowPlay"]
+        XCTAssertTrue(play.waitForExistence(timeout: 5), "no Play in the row's line")
+        play.tap()
     }
 }
