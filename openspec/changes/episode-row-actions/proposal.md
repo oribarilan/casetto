@@ -12,7 +12,7 @@ This is not a roadmap milestone. It is polish from daily use after the MVP. The 
   | Action | Queue | Inbox | Show page |
   |---|---|---|---|
   | Play (Pause while that episode plays) | ✓ | ✓ | ✓ |
-  | Play Next | ✓, not on the first row | ✓ | ✓, when not first in the Queue |
+  | Play Next | ✓, not on the first two rows | ✓ | ✓, when not first or second in the Queue |
   | Add to Queue | (none) | ✓ | ✓, when not queued |
   | Played / Unplayed | ✓ | (none) | ✓ |
   | Share | ✓ | ✓ | ✓ |
@@ -20,7 +20,9 @@ This is not a roadmap milestone. It is polish from daily use after the MVP. The 
   | Remove | ✓ | ✓ | ✓, when in the Inbox or Queue |
   | Delete | (none) | (none) | shared files only |
 
-- The swipes, drag to reorder in the Queue, and Undo for automatic moves stay as they are.
+- The swipes and drag to reorder in the Queue stay as they are.
+- **BREAKING:** the Undo button for automatic moves goes away. The line already fixes each one: Remove for an auto-queued or play-next episode, Add to Queue or Play for a skipped or expired one. The gray reason words stay, so every automatic move still says why it happened. Sending an expired episode back to the Inbox is no longer possible; queue or play it instead.
+- An episode removed from the Queue now reads "Removed" on its show page, like one removed from the Inbox. Before, it was left with no place and no word.
 - The long-press menu on show page rows goes away. Its Share Episode and Delete are now in the line.
 - Every row shows its status in the same way: words in the line above the title. Queued, In Inbox, Played, Removed, Downloaded and the automatic move reasons are gray. Only "Up next", "Playing" and "Paused" on the first Queue row stay orange. A played episode's title is gray.
 - "Downloaded" replaces the download icon. A started episode shows "18 min left" in place of its length.
@@ -42,6 +44,8 @@ Out of scope: download progress while a download runs (the backlog item "Downloa
 
 ### Modified Capabilities
 
+- `triage`: the Undo requirement is removed.
+- `queue`: removing from the Queue leaves the episode "Removed", not with no place.
 - `downloads`: the downloaded mark is the word "Downloaded" on every episode row, not only the Queue's icon.
 - `sharing`: episodes share from rows in the Queue and the Inbox as well as show pages, from the action line instead of a long press.
 

@@ -22,26 +22,16 @@ struct MoveReasonTests {
         #expect(MoveReason(stored: stored) == nil)
     }
 
-    @Test func automaticMovesHaveLabelsAndUndo() {
+    @Test func automaticMovesHaveLabels() {
         #expect(MoveReason.autoQueued.label == "Auto-queued")
         #expect(MoveReason.playNext.label == "Play next")
         #expect(MoveReason.skipped.label == "Skipped by show setting")
         #expect(MoveReason.expired(days: 7).label == "Removed after 7 days")
-        for reason in [MoveReason.autoQueued, .playNext, .skipped, .expired(days: 3)] {
-            #expect(reason.isUndoable)
-        }
     }
 
-    @Test func listenerMovesAndArrivalsHaveNoUndo() {
-        #expect(MoveReason.listener.label == nil && !MoveReason.listener.isUndoable)
-        #expect(MoveReason.arrived.label == nil && !MoveReason.arrived.isUndoable)
-    }
-
-    @Test func undoReturnsAnExpiryToTheInboxAndEverythingElseToNoPlace() {
-        #expect(MoveReason.expired(days: 7).placeBefore == .inbox)
-        #expect(MoveReason.autoQueued.placeBefore == nil)
-        #expect(MoveReason.playNext.placeBefore == nil)
-        #expect(MoveReason.skipped.placeBefore == nil)
+    @Test func listenerMovesAndArrivalsHaveNoLabel() {
+        #expect(MoveReason.listener.label == nil)
+        #expect(MoveReason.arrived.label == nil)
     }
 }
 

@@ -7,7 +7,7 @@
 
 > **A podcast inbox that triages itself.**
 >
-> Open the app and something good is ready to play. Casterr sorts new episodes for you, explains every move it makes, and lets you undo any of them.
+> Open the app and something good is ready to play. Casterr sorts new episodes for you, explains every move it makes, and lets you change any of them in one tap.
 
 ## Who it's for and how we know it works
 
@@ -19,7 +19,7 @@ The MVP works when I delete my current podcast app and don't go back. After that
 
 1. **Sensible defaults.** Every capability works without configuration.
 2. **Customize in context.** Change behavior where it matters (on a show, in Now Playing), not in a sprawling settings screen. A small Settings screen holds only the global defaults (Inbox expiry, downloads, default speed), and the places that use them link straight to their section. Per-show speed is set in Now Playing, scoped to "This show" or "All shows".
-3. **Explainable, reversible automation.** Every automatic move has a visible reason and an undo.
+3. **Explainable automation.** Every automatic move has a visible reason, and the episode's actions are one tap away.
 4. **Capture never interrupts listening.** Saving a moment is one tap. Notes are optional.
 
 ## Look and feel
@@ -45,7 +45,7 @@ The mascot is **Cassy**, a cassette tape whose two reels are her eyes. She is dr
 
 New subscriptions start at Inbox. In onboarding you star the shows you never miss, and those start at Auto-queue. Play next episodes stack above anything you queued yourself.
 
-**Inbox episodes expire.** After 14 days, an untouched episode moves to the show's archive. The choices are 1, 3, 7, 14, or 30 days, or never. You set your default from the Inbox; a show follows it unless you turn off "Use my default" in that show's settings and pick its own value. You can undo an expiry.
+**Inbox episodes expire.** After 14 days, an untouched episode moves to the show's archive. The choices are 1, 3, 7, 14, or 30 days, or never. You set your default from the Inbox; a show follows it unless you turn off "Use my default" in that show's settings and pick its own value.
 
 **The app suggests rules, you accept them.** Casterr watches what you do with each show: what you play, how soon, and what you let expire. When a pattern shows up, a one-line card appears at the top of the Inbox and counts in the "New (N)" row:
 
@@ -54,7 +54,7 @@ New subscriptions start at Inbox. In onboarding you star the shows you never mis
 
 These two cards are all of M4. The thresholds are constants, tuned from real use. One tap accepts. "Not now" hides the card for 30 days. "Never for this show" hides it for good. Nothing changes without your tap, except expiry, which is a rule you set. Learning uses behavior only, no language model. There are no filters: cards only change a show's level or unsubscribe. Judging an episode by its length, title, or topic comes later.
 
-**Undo.** Each episode remembers its latest move: why it happened and when. An automatic move shows its reason and an "Undo" on the episode until the episode moves again, for up to 30 days. Your own moves are one swipe to reverse, so they get no undo button.
+**Reasons.** Each episode remembers its latest move: why it happened and when. An automatic move shows its reason on the episode, such as "Auto-queued" or "Removed after 7 days". There is no Undo button: the episode's action line moves it wherever you want.
 
 **Episode rows.** In the Queue, the Inbox, and on show pages, a tap on an episode opens a line of actions under it, with Play first: Play Next, Add to Queue, Played, Share, Show, and Remove, as each screen needs. The swipes stay as shortcuts. Every row shows its status the same way, in gray words above the title (Queued, In Inbox, Played, Downloaded, or minutes left for a started episode), and only what plays next is orange.
 
@@ -117,7 +117,7 @@ Data splits into what comes **from the feed**, a cache that can be wiped and re-
 | Show | A podcast feed. Identified by its normalized feed URL at subscribe time. That key never changes, even when the feed moves. | No |
 | Episode | One feed item. Identified by its GUID, otherwise by its audio URL. | No |
 | Subscription | You following a Show: level (including Play next), expiry override, speed override, and the show's recent outcomes for learning | Yes |
-| Episode state | Exactly one place (Inbox, Queue, Archive with a reason, or none), its Queue position when queued, listening progress, and its latest move (reason and time) for explanations and undo | Yes |
+| Episode state | Exactly one place (Inbox, Queue, Archive with a reason, or none), its Queue position when queued, listening progress, and its latest move (reason and time) for explanations | Yes |
 | Proposal | A pending rule card, computed from outcomes. Only your dismissals are stored. | Dismissals |
 | Bookmark | Episode, timestamp, optional note, plus a snapshot of titles and audio URL | Yes |
 | Shared with Casterr | The built-in show of files shared to Casterr, and the files themselves | No |
@@ -129,7 +129,7 @@ Data splits into what comes **from the feed**, a cache that can be wiped and re-
 - An episode is in exactly one place.
 - Playing anything moves it to the top of the Queue.
 - Automation never reorders what you queued yourself.
-- User choices beat automation, and every automatic move can be undone for 30 days.
+- User choices beat automation, and every automatic move says why it happened.
 
 ## Roadmap
 

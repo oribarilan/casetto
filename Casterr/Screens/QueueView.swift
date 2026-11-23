@@ -37,7 +37,7 @@ struct QueueView: View {
                            captionSymbol: state?.symbol, animateSymbol: state?.caption == "Playing",
                            isOpen: openRow == episode.key,
                            toggle: { openRow = openRow == episode.key ? nil : episode.key },
-                           actions: actions(episode, first: index == 0))
+                           actions: actions(episode, upNext: index < 2))
                 .swipeActions(edge: .trailing) {
                     // "Remove", not "Delete": the episode leaves the Queue and stays on its show page.
                     Button("Remove", systemImage: "minus.circle", role: .destructive) { remove(episode) }
@@ -87,9 +87,9 @@ struct QueueView: View {
         .task(id: "\(model.revision)|\(player.episode?.key.rawValue ?? "")") { await load() }
     }
 
-    /// Play Next (not on the first row), Played, Share, Show, Remove.
-    private func actions(_ episode: EpisodeInfo, first: Bool) -> [RowAction] {
-        (first ? [] : [.playNext(episode.key, model)]) + [
+    /// Play Next (not on the first two rows, where it would change nothing), Played, Share, Show, Remove.
+    private func actions(_ episode: EpisodeInfo, upNext: Bool) -> [RowAction] {
+        (upNext ? [] : [.playNext(episode.key, model)]) + [
             .played(episode.key, model), .share, .show(episode.showKey, model),
             RowAction(title: "Remove", symbol: "minus.circle", destructive: true) { remove(episode) },
         ]

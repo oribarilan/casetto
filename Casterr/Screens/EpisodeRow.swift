@@ -48,7 +48,7 @@ struct RowAction: Identifiable {
 
 /// An episode in a list. A tap opens a line of actions under it, with Play (or Pause) first.
 /// The line above the title holds the status words: `label` in orange, the rest in gray.
-/// An automatic move shows its reason and, while allowed, Undo.
+/// An automatic move shows its reason in the status line.
 struct EpisodeRow: View {
     @Environment(AppModel.self) private var model
     @Environment(Player.self) private var player
@@ -76,30 +76,35 @@ struct EpisodeRow: View {
     var actions: [RowAction] = []
 
     var body: some View {
-        VStack(spacing: 10) {
-            HStack {
-                Button {
-                    withAnimation(.snappy) { toggle() }
-                } label: {
-                    HStack(spacing: 12) {
-                        ArtworkView(url: art?.artworkURL, title: art?.title ?? episode.title, size: 52)
-                        details
-                    }
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier(identifier)
-                .accessibilityHint(isOpen ? "Hides actions" : "Shows actions")
-                if move?.canUndo == true {
-                    Button("Undo") {
-                        Task { await model.change { try await model.library.undo(episode.key) } }
-                    }
-                    .buttonStyle(.borderless)
-                }
-            }
+        // In a List, each view in this group is its own row. The line is a second row, which the List inserts
+        // smoothly; growing one row instead makes the List snap to the new height.
+        Group {
+            header
+                .listRowSeparator(isOpen ? .hidden : .automatic, edges: .bottom)
             if isOpen {
-                actionLine.transition(.opacity.combined(with: .move(edge: .top)))
+                actionLine
+                    .listRowSeparator(.hidden, edges: .top)
+                    .moveDisabled(true)
             }
         }
+    }
+
+    private var header: some View {
+        Button {
+            animate(toggle)
+        } label: {
+            HStack(spacing: 12) {
+                ArtworkView(url: art?.artworkURL, title: art?.title ?? episode.title, size: 52)
+                details
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
+        .accessibilityHint(isOpen ? "Hides actions" : "Shows actions")
+    }
+
+    private func animate(_ change: () -> Void) {
+        withAnimation(.smooth(duration: 0.35), change)
     }
 
     private var isLoaded: Bool { player.episode?.key == episode.key }
@@ -117,14 +122,24 @@ struct EpisodeRow: View {
 
     private var actionLine: some View {
         HStack(alignment: .top, spacing: 0) {
-            ForEach([playAction] + actions.filter { !($0.isShare && episode.showKey == .shared) }) { action in
+            let all = [playAction] + actions.filter { !($0.isShare && episode.showKey == .shared) }
+            ForEach(Array(all.enumerated()), id: \.element.id) { index, action in
+                Group {
+                    actionButton(action)
+                }
+                .modifier(PopIn(delay: Double(index) * 0.035))
+            }
+        }
+    }
+
+    @ViewBuilder private func actionButton(_ action: RowAction) -> some View {
                 if action.isShare {
                     ArtShareLink(share: ShareText.episode(episode, showTitle: art?.title, at: nil),
                                  art: art?.artworkURL.flatMap { ArtCache.kept($0, pixels: 52 * scale) }) { actionLabel(action) }
                         .buttonStyle(.borderless)
                 } else {
                     Button {
-                        withAnimation(.snappy) { toggle() }
+                        animate(toggle)
                         action.run()
                     } label: {
                         actionLabel(action)
@@ -132,8 +147,6 @@ struct EpisodeRow: View {
                     .buttonStyle(.borderless)
                     .accessibilityIdentifier(action.filled ? "rowPlay" : action.title)
                 }
-            }
-        }
     }
 
     private func actionLabel(_ action: RowAction) -> some View {
@@ -201,5 +214,23 @@ struct EpisodeRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+    }
+}
+
+/// Springs a button in a moment after the one before it, so the line opens like a fan.
+private struct PopIn: ViewModifier {
+    let delay: Double
+    @State private var shown = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        let still = reduceMotion || shown
+        content
+            .scaleEffect(still ? 1 : 0.4)
+            .opacity(still ? 1 : 0)
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.6).delay(delay)) { shown = true }
+            }
     }
 }

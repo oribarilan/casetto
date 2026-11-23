@@ -95,16 +95,18 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(upNext.label.hasPrefix("Up next"), upNext.label)
         snapshot("5 Queue")
 
-        // The first row's line has no Play Next; tapping another row moves the line there, and tapping it again closes it.
+        // The first two rows have no Play Next, where it would change nothing. Tapping another row moves the line
+        // there, and tapping it again closes it.
         queue.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["Show"].waitForExistence(timeout: 5), "no action line")
         XCTAssertFalse(app.buttons["Play Next"].exists, "Play Next on the first row")
         queue.element(boundBy: 1).tap()
-        XCTAssertTrue(app.buttons["Play Next"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Played"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Play Next"].exists, "Play Next on the second row")
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == 'Show'")).count, 1, "two lines open")
         snapshot("5a Queue Row Actions")
         queue.element(boundBy: 1).tap()
-        XCTAssertTrue(app.buttons["Play Next"].waitForNonExistence(timeout: 5), "the line didn't close")
+        XCTAssertTrue(app.buttons["Show"].waitForNonExistence(timeout: 5), "the line didn't close")
 
         // Long-press and drag reorders without an Edit button.
         let firstBefore = queue.element(boundBy: 0).label
@@ -179,6 +181,13 @@ final class ScreensTests: XCTestCase {
         newRow.tap()
         XCTAssertTrue(app.buttons.matching(identifier: "inboxItem").firstMatch.waitForExistence(timeout: 5))
         snapshot("9 Inbox")
+        // Show in a row's line opens the episode's show page.
+        let item = app.buttons.matching(identifier: "inboxItem").firstMatch
+        item.tap()
+        app.buttons["Show"].tap()
+        XCTAssertTrue(app.buttons["newEpisodesRow"].waitForExistence(timeout: 5), "Show didn't open the show page")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
         // The line under the list opens Settings at the Inbox section.
         app.buttons["inboxExpiryLine"].tap()
         let sevenDays = app.buttons["7d"]
@@ -200,14 +209,12 @@ final class ScreensTests: XCTestCase {
         snapshot("10a Refresh Summary")
         XCTAssertTrue(newRow.waitForNonExistence(timeout: 5))
 
-        // The show page explains the move and offers Undo.
+        // The show page says why it left, with no Undo.
         app.buttons["Find Shows"].tap()
         app.buttons["Planet Money, NPR"].tap()
         XCTAssertTrue(app.staticTexts["Removed after 7 days"].waitForExistence(timeout: 5))
-        snapshot("10 Expired")
-        app.buttons["Undo"].tap()
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'In Inbox'")).firstMatch.waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Undo"].exists)
+        snapshot("10 Expired")
 
         // New-episode settings open in a sheet; the Inbox period applies to Inbox shows only.
         let newEpisodes = app.buttons["newEpisodesRow"]
@@ -221,23 +228,6 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(newEpisodes.waitForExistence(timeout: 5))
         XCTAssertTrue(newEpisodes.label.contains("Play next"), newEpisodes.label)
         snapshot("11a Show Page")
-
-        // Remove from the Inbox.
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        app.tabBars.buttons["Queue"].tap()
-        XCTAssertTrue(newRow.waitForExistence(timeout: 5))
-        newRow.tap()
-        let item = app.buttons.matching(identifier: "inboxItem").firstMatch
-        XCTAssertTrue(item.waitForExistence(timeout: 5))
-        // Show in the line opens the episode's show page.
-        item.tap()
-        app.buttons["Show"].tap()
-        XCTAssertTrue(app.buttons["newEpisodesRow"].waitForExistence(timeout: 5), "Show didn't open the show page")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(item.waitForExistence(timeout: 5))
-        item.swipeLeft()
-        app.buttons["Remove"].tap()
-        XCTAssertTrue(app.staticTexts["Inbox zero!"].waitForExistence(timeout: 5))
     }
 
     /// Rule cards. A threshold of one makes a single expiry raise the Ignored card.
@@ -824,6 +814,13 @@ final class ScreensTests: XCTestCase {
         let countdown = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'removed'")).firstMatch
         XCTAssertTrue(countdown.waitForExistence(timeout: 10))
         snapshot("8c Countdown")
+
+        // Swiping left removes it. The launch argument shows the tip on every visit, so close it first.
+        if app.buttons["Dismiss tip"].exists { app.buttons["Dismiss tip"].tap() }
+        let item = app.buttons.matching(identifier: "inboxItem").firstMatch
+        item.swipeLeft()
+        app.buttons["Remove"].tap()
+        XCTAssertTrue(app.staticTexts["Inbox zero!"].waitForExistence(timeout: 5))
     }
 
     @MainActor

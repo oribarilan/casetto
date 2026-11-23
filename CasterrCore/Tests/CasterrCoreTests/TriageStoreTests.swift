@@ -75,14 +75,14 @@ struct NewEpisodeTriageTests {
         try await library.setLevel(showA, to: .autoQueue)
         try await release(4, in: library)
         #expect(try await library.queue() == [episode(1), episode(4)])
-        #expect(try await library.lastMove(of: episode(4)) == LastMove(reason: .autoQueued, canUndo: true))
+        #expect(try await library.lastMove(of: episode(4)) == LastMove(reason: .autoQueued))
     }
 
     @Test func inboxLevelPutsItInTheInbox() async throws {
         let library = try await subscribed()
         try await release(4, in: library)
         #expect(try await library.inbox() == [episode(4), episode(3)])
-        #expect(try await library.lastMove(of: episode(4)) == LastMove(reason: .arrived, canUndo: false))
+        #expect(try await library.lastMove(of: episode(4)) == LastMove(reason: .arrived))
     }
 
     @Test func skipArchivesIt() async throws {
@@ -162,19 +162,19 @@ struct InboxStoreTests {
         #expect(try await library.queue() == [episode(1), episode(3)])
     }
 
-    @Test func listenerPlayNextGoesSecondWithNoUndo() async throws {
+    @Test func listenerPlayNextGoesSecondWithNoLabel() async throws {
         let library = try await subscribed(episodes: 4)
         for n in 1...4 { try await library.addToQueue(episode(n)) }
         try await library.playNextByListener(episode(4))
         #expect(try await library.queue() == [episode(1), episode(4), episode(2), episode(3)])
-        #expect(try await library.lastMove(of: episode(4)) == LastMove(reason: .listener, canUndo: false))
+        #expect(try await library.lastMove(of: episode(4)) == LastMove(reason: .listener))
     }
 
     @Test func dismissArchivesIt() async throws {
         let library = try await subscribed()
         try await library.dismiss(episode(3))
         #expect(try await library.place(of: episode(3)) == .archive(.dismissed))
-        #expect(try await library.lastMove(of: episode(3)) == LastMove(reason: .listener, canUndo: false))
+        #expect(try await library.lastMove(of: episode(3)) == LastMove(reason: .listener))
     }
 
     @Test func unsubscribeArchivesInboxEpisodesAndKeepsQueuedOnes() async throws {
@@ -253,67 +253,6 @@ struct ExpiryStoreTests {
     }
 }
 
-struct UndoStoreTests {
-    @Test func undoAnExpiryRestoresTheInboxWithAFullPeriod() async throws {
-        let clock = TestClock()
-        let library = try await subscribed(clock: clock)
-        clock.advance(days: 8)
-        try await library.expireInbox()
-        try await library.undo(episode(3))
-        #expect(try await library.inbox() == [episode(3)])
-        #expect(try await library.lastMove(of: episode(3)) == LastMove(reason: .listener, canUndo: false))
-
-        clock.advance(days: 6)
-        try await library.expireInbox()
-        #expect(try await library.inbox() == [episode(3)])
-        clock.advance(days: 1)
-        try await library.expireInbox()
-        #expect(try await library.inbox().isEmpty)
-    }
-
-    @Test func undoAnAutoQueueLeavesNoPlace() async throws {
-        let library = try await subscribed()
-        try await library.setLevel(showA, to: .autoQueue)
-        try await release(5, in: library)
-        try await library.undo(episode(4))
-        #expect(try await library.place(of: episode(4)) == nil)
-        #expect(try await library.queue() == [episode(5)])
-    }
-
-    @Test func undoASkipLeavesNoPlace() async throws {
-        let library = try await subscribed()
-        try await library.setLevel(showA, to: .skip)
-        try await release(4, in: library)
-        try await library.undo(episode(4))
-        #expect(try await library.place(of: episode(4)) == nil)
-    }
-
-    @Test func episodeMovedAgainHasNoUndo() async throws {
-        let library = try await subscribed()
-        try await library.setLevel(showA, to: .autoQueue)
-        try await release(5, in: library)
-        try await library.markPlayed(episode(4))
-        try await library.moveToTop(episode(5))
-        #expect(try await library.lastMove(of: episode(4))?.canUndo == false)
-        #expect(try await library.lastMove(of: episode(5))?.canUndo == false)
-        try await library.undo(episode(4))
-        #expect(try await library.place(of: episode(4)) == .archive(.played))
-    }
-
-    @Test func undoEndsAfter30Days() async throws {
-        let clock = TestClock()
-        let library = try await subscribed(clock: clock)
-        clock.advance(days: 8)
-        try await library.expireInbox()
-        clock.advance(days: 29.9)
-        #expect(try await library.lastMove(of: episode(3))?.canUndo == true)
-        clock.advance(days: 1.1)
-        #expect(try await library.lastMove(of: episode(3)) == LastMove(reason: .expired(days: 7), canUndo: false))
-        try await library.undo(episode(3))
-        #expect(try await library.place(of: episode(3)) == .archive(.expired))
-    }
-}
-
 struct MoveRecordTests {
     @Test func listenerActionsRecordListenerMoves() async throws {
         let clock = TestClock()
@@ -321,7 +260,7 @@ struct MoveRecordTests {
         try await library.addToQueue(episode(1))
         try await library.markPlayed(episode(2))
         for key in [episode(1), episode(2)] {
-            #expect(try await library.lastMove(of: key) == LastMove(reason: .listener, canUndo: false))
+            #expect(try await library.lastMove(of: key) == LastMove(reason: .listener))
         }
     }
 

@@ -5,10 +5,10 @@ Defines how the episode rows in the Queue, the Inbox and show pages behave: what
 ## ADDED Requirements
 
 ### Requirement: Action line
-A tap on an episode row in the Queue, the Inbox or a show page SHALL open a line of round labeled buttons under the row, with Play first, and MUST NOT start playback. Only one line MAY be open at a time: tapping the same row closes it, tapping another row moves it there, and using any action but Share closes it. The swipes, drag to reorder and Undo MUST keep working.
+A tap on an episode row in the Queue, the Inbox or a show page SHALL open a line of round labeled buttons under the row, with Play first, and MUST NOT start playback. Only one line MAY be open at a time: tapping the same row closes it, tapping another row moves it there, and using any action but Share closes it. The swipes and drag to reorder MUST keep working. Rows MUST NOT show an Undo button.
 
 #### Scenario: Tap opens the line
-- **WHEN** the listener taps the second Queue row
+- **WHEN** the listener taps the third Queue row
 - **THEN** a line with Play, Play Next, Played, Share, Show and Remove opens under it, and nothing starts playing
 
 #### Scenario: Tap another row
@@ -32,15 +32,15 @@ A tap on an episode row in the Queue, the Inbox or a show page SHALL open a line
 - **THEN** Remove shows as before, with no line opening
 
 ### Requirement: Actions on each screen
-The line SHALL show only the actions that apply. Queue: Play, Play Next (not on the first row), Played, Share, Show, Remove. Inbox: Play, Play Next, Add to Queue, Share, Show, Remove. Show page: Play, Play Next (unless first in the Queue), Add to Queue (unless queued), Played or Unplayed, Share, Remove (if in the Inbox or Queue), Delete (shared files only). Shared files MUST NOT offer Share.
+The line SHALL show only the actions that apply. Queue: Play, Play Next (not on the first two rows), Played, Share, Show, Remove. Inbox: Play, Play Next, Add to Queue, Share, Show, Remove. Show page: Play, Play Next (unless first or second in the Queue), Add to Queue (unless queued), Played or Unplayed, Share, Remove (if in the Inbox or Queue), Delete (shared files only). Shared files MUST NOT offer Share.
 
 #### Scenario: Play Next from the Queue
 - **WHEN** the listener taps Play Next on the fourth Queue row while the first one plays
 - **THEN** that episode becomes second in the Queue and the others keep their order
 
 #### Scenario: First Queue row
-- **WHEN** the listener opens the line of the first Queue row
-- **THEN** it has no Play Next
+- **WHEN** the listener opens the line of the first or second Queue row
+- **THEN** it has no Play Next, because Play Next would leave it where it is
 
 #### Scenario: Played from the Queue
 - **WHEN** the listener taps Played in a Queue row's line
@@ -53,6 +53,10 @@ The line SHALL show only the actions that apply. Queue: Play, Play Next (not on 
 #### Scenario: Remove from a show page
 - **WHEN** the listener taps Remove on a show page row whose episode is in the Inbox
 - **THEN** it leaves the Inbox and its row reads "Removed"
+
+#### Scenario: Removed from the Queue
+- **WHEN** the listener removes an episode from the Queue, from its line or by swiping
+- **THEN** its show page row reads "Removed"
 
 #### Scenario: Played episode on its show page
 - **WHEN** the listener opens the line of a played episode on its show page

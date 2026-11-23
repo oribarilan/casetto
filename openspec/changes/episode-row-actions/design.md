@@ -1,6 +1,6 @@
 ## Context
 
-The Queue, the Inbox and the show page all build their rows from `EpisodeRow`. Today the row is one `Button` whose tap plays the episode, followed by an optional Undo button. Each screen adds its own `swipeActions`. The Queue adds `onMove`, and the show page adds a `contextMenu`. Captions are orange (`.tint`). The Queue passes `downloaded`, which shows an icon in the details line; the other screens don't. `Library` already has every action: `playNext`, `addToQueue`, `removeFromQueue`, `dismiss`, `markPlayed`, `markUnplayed` and `progress(of:)`.
+The Queue, the Inbox and the show page all build their rows from `EpisodeRow`. Today the row is one `Button` whose tap plays the episode, followed by an optional Undo button, which this change removes. Each screen adds its own `swipeActions`. The Queue adds `onMove`, and the show page adds a `contextMenu`. Captions are orange (`.tint`). The Queue passes `downloaded`, which shows an icon in the details line; the other screens don't. `Library` already has every action: `playNext`, `addToQueue`, `removeFromQueue`, `dismiss`, `markPlayed`, `markUnplayed` and `progress(of:)`.
 
 ## Goals / Non-Goals
 
@@ -10,13 +10,13 @@ The Queue, the Inbox and the show page all build their rows from `EpisodeRow`. T
 
 **Non-Goals:**
 - No CasterrCore changes beyond `playNextByListener`.
-- No change to swipes, drag to reorder, the Inbox swipe tip, Undo, or the Inbox countdown ("removed in 2 days" stays orange at the end of the details line, because it's a warning, not a status).
+- No change to swipes, drag to reorder, the Inbox swipe tip, or the Inbox countdown ("removed in 2 days" stays orange at the end of the details line, because it's a warning, not a status).
 
 ## Decisions
 
-**The line lives inside the row, not as its own list row.** `EpisodeRow` becomes a `VStack`: the tappable row, then the line when it's open. Swipes and drag then still act on the whole row. A separate list row would need its own swipe and move rules, and dragging could split the two.
+**The line is its own list row.** `EpisodeRow` returns a `Group` of the row and, when open, the line, so the List shows them as two rows and inserts the line with its own smooth animation. The first try put the line inside the row; a recording at 40 frames a second showed the List snapping the row to its new height in one frame, so the rows below jumped. The line row hides the separator above it and can't be dragged. It inherits the episode's swipe actions, which act on the right episode. Its buttons spring in one after another (a 35 ms stagger), and with Reduce Motion they just appear.
 
-**The screen owns which row is open.** Each screen keeps `@State var openRow: EpisodeKey?` and passes `isOpen` and a toggle to the row. That's the simplest way to keep one line open at a time. The line opens and closes with the default animation. Using an action sets `openRow = nil`. Starting a drag doesn't need special code, because the line moves with its row.
+**The screen owns which row is open.** Each screen keeps `@State var openRow: EpisodeKey?` and passes `isOpen` and a toggle to the row. That's the simplest way to keep one line open at a time. The toggle runs in a 0.35 s smooth animation. Using an action sets `openRow = nil`.
 
 **Actions are passed in as a list.** The row takes `[RowAction]`, where `RowAction` holds a title, an SF Symbol, an optional role and a closure. Share is the exception, because it needs `ArtShareLink`, so the row takes an optional share payload and draws it in the same round style. The alternative, a `@ViewBuilder` slot, would let each screen style its own buttons, which is the drift this change removes. Play is first, and its label and symbol come from whether the player is playing this episode (Pause, `pause.fill`).
 
@@ -28,7 +28,9 @@ Symbols: Play `play.fill`, Pause `pause.fill`, Play Next `text.line.first.and.ar
 
 **Show and Share from the Queue and Inbox.** Show pushes `Route.show(showKey)` on the screen's navigation stack. Share needs the show's title and art. The Queue and Inbox already hold `ShowArt` for each show, so they build the share text from it, and the image comes from `ArtCache`.
 
-**The listener's Play Next is their own move.** `Library.playNext` records the move as automatic, which would show "Play next" and Undo on the row. A small `playNextByListener` puts the episode in the same spot and records it as the listener's move, so it gets no label and no Undo. This is the one CasterrCore addition.
+**The listener's Play Next is their own move.** `Library.playNext` records the move as automatic, which would show a "Play next" label on the row. A small `playNextByListener` puts the episode in the same spot and records it as the listener's move, so it gets no label.
+
+**Undo is removed.** `Library.undo`, `LastMove.canUndo` and the 30-day window go, with their tests. `LastMove` keeps only the reason, which the status line shows.
 
 **Share stays open.** Using an action closes the line, except Share: closing it would remove the share link while its sheet opens.
 

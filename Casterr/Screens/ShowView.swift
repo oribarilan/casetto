@@ -29,8 +29,8 @@ struct ShowView: View {
     /// The show's art, for the share sheet's preview.
     @State private var showArt: UIImage?
     @State private var progress: [EpisodeKey: TimeInterval] = [:]
-    /// The Queue's first episode, which gets no Play Next.
-    @State private var firstQueued: EpisodeKey?
+    /// The Queue's first two episodes, where Play Next would change nothing.
+    @State private var queueTop: [EpisodeKey] = []
     /// The row whose action line is open.
     @State private var openRow: EpisodeKey?
 
@@ -168,7 +168,7 @@ struct ShowView: View {
         places = loaded
         moves = await model.moves(of: episodes.map(\.key))
         progress = await model.progress(of: episodes.map(\.key))
-        firstQueued = try? await library.playableQueue().first
+        queueTop = Array(((try? await library.playableQueue()) ?? []).prefix(2))
         subscription = try? await library.subscriptions().first { $0.showKey == showKey }
         cachedFeedURL = try? await library.cachedFeedURL(of: showKey)
         globalExpiry = (try? await library.globalExpiry()) ?? .standard
@@ -226,7 +226,7 @@ struct ShowView: View {
     private func actions(_ episode: EpisodeInfo, place: Place?) -> [RowAction] {
         let key = episode.key
         var actions: [RowAction] = []
-        if key != firstQueued { actions.append(.playNext(key, model)) }
+        if !queueTop.contains(key) { actions.append(.playNext(key, model)) }
         if place != .queue { actions.append(.addToQueue(key, model)) }
         actions.append(place == Place.archive(.played) ? .unplayed(key, model) : .played(key, model))
         actions.append(.share)

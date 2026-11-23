@@ -331,20 +331,11 @@ public actor Library {
         return expired
     }
 
-    // MARK: Undo
+    // MARK: Latest move
 
     public func lastMove(of key: EpisodeKey) throws -> LastMove? {
         guard let state = try state(key), let raw = state.moveReason, let reason = MoveReason(stored: raw) else { return nil }
-        let recent = state.movedAt.map { clock().timeIntervalSince($0) < LastMove.undoWindow } ?? false
-        return LastMove(reason: reason, canUndo: reason.isUndoable && recent)
-    }
-
-    /// Returns the episode to where it was before its latest automatic move. The restore is the
-    /// listener's move, so it has no Undo, and an episode back in the Inbox starts a new period.
-    public func undo(_ key: EpisodeKey) throws {
-        guard let move = try lastMove(of: key), move.canUndo, let state = try state(key) else { return }
-        try relocate(state, to: move.reason.placeBefore, reason: .listener)
-        try modelContext.save()
+        return LastMove(reason: reason)
     }
 
     // MARK: Queue
@@ -403,10 +394,10 @@ public actor Library {
         try move(key, to: 0)
     }
 
-    /// The episode ends up with no place and keeps its progress.
+    /// Removed like a dismissed Inbox episode, so its show page says "Removed". It keeps its progress.
     public func removeFromQueue(_ key: EpisodeKey) throws {
         guard let state = try state(key), state.place == Place.queue.stored.place else { return }
-        try relocate(state, to: nil, reason: .listener)
+        try relocate(state, to: .archive(.dismissed), reason: .listener)
         try modelContext.save()
     }
 
@@ -750,7 +741,7 @@ public actor Library {
         try modelContext.save()
     }
 
-    /// The listener's own Play Next: the same spot, but no "Play next" label and no Undo.
+    /// The listener's own Play Next: the same spot, but no "Play next" label.
     public func playNextByListener(_ key: EpisodeKey) throws {
         try playNext(key)
         try state(key)?.moveReason = MoveReason.listener.stored

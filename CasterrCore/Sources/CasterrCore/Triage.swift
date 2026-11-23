@@ -30,7 +30,7 @@ public enum MoveReason: Hashable, Sendable {
     /// Expired from the Inbox after this many days.
     case expired(days: Int)
 
-    /// Shown on the episode row. Moves with a label can be undone; the others can't.
+    /// Shown on the episode row, so an automatic move says why it happened. The listener's own moves need no label.
     public var label: String? {
         switch self {
         case .listener, .arrived: nil
@@ -39,13 +39,6 @@ public enum MoveReason: Hashable, Sendable {
         case .skipped: "Skipped by show setting"
         case .expired(let days): "Removed after \(days) days"
         }
-    }
-
-    var isUndoable: Bool { label != nil }
-
-    /// Where Undo returns the episode: the Inbox after an expiry, otherwise no place.
-    var placeBefore: Place? {
-        if case .expired = self { .inbox } else { nil }
     }
 
     var stored: String {
@@ -104,7 +97,4 @@ public enum InboxExpiry: Hashable, Sendable {
 /// The latest move of an episode, as the episode row shows it.
 public struct LastMove: Equatable, Sendable {
     public var reason: MoveReason
-    public var canUndo: Bool
-
-    static let undoWindow: TimeInterval = 30 * 86_400
 }

@@ -105,12 +105,12 @@ struct QueueStoreTests {
         #expect(try await library.queue() == [episode(3), episode(1), episode(2)])
     }
 
-    @Test func removeLeavesNoPlaceAndKeepsProgress() async throws {
+    @Test func removeMarksItRemovedAndKeepsProgress() async throws {
         let library = try await queuedLibrary(2)
         try await library.setProgress(episode(1), to: 300)
         try await library.removeFromQueue(episode(1))
         #expect(try await library.queue() == [episode(2)])
-        #expect(try await library.place(of: episode(1)) == nil)
+        #expect(try await library.place(of: episode(1)) == .archive(.dismissed))
         #expect(try await library.progress(of: episode(1)) == 300)
     }
 }
