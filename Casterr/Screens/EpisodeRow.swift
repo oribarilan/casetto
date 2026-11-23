@@ -62,7 +62,8 @@ struct EpisodeRow: View {
     var move: LastMove?
     /// The show is starred: a small gray star starts the status line.
     var starred = false
-    var downloaded = false
+    /// The download's word at the end of the status line: Downloaded, Downloading 45%, or Waiting for Wi-Fi.
+    var download: DownloadState?
     var played = false
     /// Seconds already heard. A started episode shows the minutes left instead of its length.
     var progress: TimeInterval = 0
@@ -172,7 +173,7 @@ struct EpisodeRow: View {
 
     /// "Up next" in orange, then the gray words, joined by " · ".
     private var statusText: Text? {
-        let gray = statuses + [move?.reason.label, downloaded ? "Downloaded" : nil].compactMap(\.self)
+        let gray = statuses + [move?.reason.label, download?.label].compactMap(\.self)
         let words = (label.map { [Text($0).foregroundStyle(.tint)] } ?? []) + gray.map { Text($0).foregroundStyle(.secondary) }
         guard let first = words.first else { return nil }
         return words.dropFirst().reduce(first) { Text("\($0)\(Text(" · ").foregroundStyle(.secondary))\($1)") }

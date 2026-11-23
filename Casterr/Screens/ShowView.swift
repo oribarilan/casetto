@@ -202,7 +202,7 @@ struct ShowView: View {
         let art: ShowArt? = show.map { ShowArt(title: $0.title, artworkURL: $0.artworkURL) }
         return EpisodeRow(episode: episode, identifier: "episode",
                           statuses: caption(place).map { [$0] } ?? [], move: moves[episode.key],
-                          downloaded: model.isDownloaded(episode), played: played,
+                          download: model.downloadState(episode), played: played,
                           progress: progress[episode.key] ?? 0, art: art,
                           isOpen: openRow == episode.key,
                           toggle: { openRow = openRow == episode.key ? nil : episode.key },

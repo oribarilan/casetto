@@ -66,3 +66,7 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 ## Refresh progress
 
 - [ ] With all your shows, open the app from closed and pull to refresh on the Queue: the thin line under the title fills in steps as shows are checked, fills to the end, and fades out, and the list never moves. With VoiceOver, the line reads "Checking for new episodes" with a percentage.
+
+## Download progress
+
+- [ ] Open the app on cellular with Keep downloaded at 3 and new episodes at the top of the Queue: those rows say "Waiting for Wi-Fi". Join Wi-Fi: they change to "Downloading N%", the number rises, and then they say "Downloaded". The same words show for those episodes in the Inbox and on their show pages.

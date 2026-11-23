@@ -101,3 +101,34 @@ struct DownloadCountSettingTests {
         #expect(try await library.downloadCount() == 0)
     }
 }
+
+struct DownloadStateTests {
+    @Test func aFileOnThePhoneIsDownloaded() {
+        #expect(DownloadState.of(downloaded: true, progress: .some(0.5), wanted: true, downloadsAllowed: false) == .downloaded)
+    }
+
+    @Test func aRunningDownloadShowsItsShare() {
+        #expect(DownloadState.of(downloaded: false, progress: .some(0.456), wanted: true, downloadsAllowed: true) == .downloading(0.456))
+        #expect(DownloadState.downloading(0.456).label == "Downloading 45%")
+        #expect(DownloadState.downloading(0.999).label == "Downloading 99%")
+    }
+
+    @Test func aDownloadWithNoSizeShowsNoNumber() {
+        #expect(DownloadState.of(downloaded: false, progress: .some(nil), wanted: true, downloadsAllowed: true) == .downloading(nil))
+        #expect(DownloadState.downloading(nil).label == "Downloading")
+    }
+
+    @Test func aWantedEpisodeWaitsOffWiFi() {
+        #expect(DownloadState.of(downloaded: false, progress: nil, wanted: true, downloadsAllowed: false) == .waiting)
+        #expect(DownloadState.waiting.label == "Waiting for Wi-Fi")
+    }
+
+    @Test func aWantedEpisodeOnWiFiIsAboutToDownload() {
+        #expect(DownloadState.of(downloaded: false, progress: nil, wanted: true, downloadsAllowed: true) == .downloading(0))
+    }
+
+    @Test func anEpisodeOutsideTheKeptOnesSaysNothing() {
+        #expect(DownloadState.of(downloaded: false, progress: nil, wanted: false, downloadsAllowed: false) == nil)
+    }
+}
+

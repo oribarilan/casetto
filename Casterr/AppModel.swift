@@ -1,6 +1,7 @@
 import AVFoundation
 import BackgroundTasks
 import CasterrCore
+import Network
 import NowPlaying
 import Observation
 import os
@@ -29,6 +30,13 @@ final class AppModel {
     private(set) var refreshing = false
     /// How much of a refresh is done, from 0 to 1, while one runs. Nil otherwise.
     private(set) var refreshProgress: Double?
+    /// Each running download's share done; nil inside when its size is unknown.
+    private(set) var downloadProgress: [EpisodeKey: Double?] = [:]
+    /// The Queue episodes to keep downloaded, from the last download sync.
+    private(set) var wantedDownloads: Set<EpisodeKey> = []
+    /// The phone is on a network downloads may use: Wi-Fi or wired, not expensive, not in Low Data Mode.
+    private(set) var downloadsAllowed = true
+    @ObservationIgnored private let network = NWPathMonitor()
     /// The bookmark the toast confirms.
     var lastBookmark: RecentBookmark?
     /// A bookmark the toast asked to open in the Bookmarks tab.
@@ -68,6 +76,7 @@ final class AppModel {
         }
         startNowPlaying()
         observeAudioSession()
+        observeDownloadProgress()
         observeDownloadsAndPlayer()
     }
 
@@ -137,6 +146,7 @@ final class AppModel {
         let keep = (try? await library.downloadCount()) ?? 0
         let running = await downloader.running()
         let plan = DownloadPlan.make(queue: queue, keep: keep, files: downloader.store.stems(), running: Set(running.keys))
+        wantedDownloads = Set(queue.prefix(max(keep, 0)))
         for key in plan.cancel { running[key]?.cancel() }
         for stem in plan.delete { downloader.store.delete(stem: stem) }
         for key in plan.start {
@@ -163,6 +173,33 @@ final class AppModel {
         let show = try? await library.show(episode.showKey)
         let progress = (try? await library.progress(of: key)) ?? 0
         upNext = UpNext(episode: episode, showTitle: show?.title ?? "", artworkURL: show?.artworkURL, progress: progress)
+    }
+
+    /// What the episode's row says about its download, the same on every screen.
+    func downloadState(_ episode: EpisodeInfo) -> DownloadState? {
+        DownloadState.of(downloaded: isDownloaded(episode), progress: downloadProgress[episode.key],
+                         wanted: wantedDownloads.contains(episode.key), downloadsAllowed: downloadsAllowed)
+    }
+
+    /// Follows running downloads in whole percents, so rows redraw at most about a hundred times per download,
+    /// and the network, the way the download session judges it.
+    private func observeDownloadProgress() {
+        downloader.onProgress = { [weak self] key, share in
+            Task { @MainActor in
+                guard let self else { return }
+                guard let share else { self.downloadProgress[key] = nil; return }
+                let current = self.downloadProgress[key]
+                let percent = { (value: Double??) in value.flatMap { $0 }.map { Int($0 * 100) } }
+                if current == nil || percent(current) != percent(share) {
+                    self.downloadProgress[key] = share
+                }
+            }
+        }
+        network.pathUpdateHandler = { [weak self] path in
+            let allowed = path.status == .satisfied && !path.isExpensive && !path.isConstrained
+            Task { @MainActor in self?.downloadsAllowed = allowed }
+        }
+        network.start(queue: DispatchQueue(label: "casterr.network"))
     }
 
     func isDownloaded(_ episode: EpisodeInfo) -> Bool {

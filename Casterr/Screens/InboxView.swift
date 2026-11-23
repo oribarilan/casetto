@@ -73,7 +73,7 @@ struct InboxView: View {
         ForEach(items, id: \.key) { episode in
             EpisodeRow(episode: episode, identifier: "inboxItem", move: moves[episode.key],
                        starred: starredShows.contains(episode.showKey),
-                       downloaded: model.isDownloaded(episode), progress: progress[episode.key] ?? 0,
+                       download: model.downloadState(episode), progress: progress[episode.key] ?? 0,
                        art: art[episode.showKey], metaNote: countdown(daysLeft[episode.key]),
                        isOpen: openRow == episode.key,
                        toggle: { openRow = openRow == episode.key ? nil : episode.key },

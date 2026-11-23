@@ -10,6 +10,9 @@ final class Downloader: NSObject, URLSessionDownloadDelegate, @unchecked Sendabl
     static let didSave = Notification.Name("casterr.downloadDidSave")
 
     let store: DownloadStore
+    /// Hears each running download's share done (nil when the server sent no size), and nil-nil when it ends.
+    /// Called on the session's queue. Set it once, before downloads start.
+    var onProgress: (@Sendable (EpisodeKey, Double??) -> Void)?
     private var session: URLSession!
 
     init(store: DownloadStore) {
@@ -47,5 +50,17 @@ final class Downloader: NSObject, URLSessionDownloadDelegate, @unchecked Sendabl
         else { return }
         try? store.save(location, for: EpisodeKey(rawValue: key), audioURL: audioURL)
         NotificationCenter.default.post(name: Self.didSave, object: nil)
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64,
+                    totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+        guard let key = downloadTask.taskDescription else { return }
+        let share = totalBytesExpectedToWrite > 0 ? Double(totalBytesWritten) / Double(totalBytesExpectedToWrite) : nil
+        onProgress?(EpisodeKey(rawValue: key), .some(share))
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
+        guard let key = task.taskDescription else { return }
+        onProgress?(EpisodeKey(rawValue: key), nil)
     }
 }

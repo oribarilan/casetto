@@ -28,7 +28,7 @@ struct QueueView: View {
                 let state = index == 0 ? firstState(episode) : nil
                 EpisodeRow(episode: episode, identifier: "queueItem",
                            label: state?.caption, move: moves[episode.key], starred: starredShows.contains(episode.showKey),
-                           downloaded: model.isDownloaded(episode), progress: progress[episode.key] ?? 0,
+                           download: model.downloadState(episode), progress: progress[episode.key] ?? 0,
                            art: art[episode.showKey],
                            captionSymbol: state?.symbol, animateSymbol: state?.caption == "Playing",
                            isOpen: openRow == episode.key,
