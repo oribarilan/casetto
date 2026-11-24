@@ -81,6 +81,7 @@ One word per idea, in everything people read in the app:
 - **Back a Beat:** when you play again after a pause, Casterr resumes at the latest quiet gap between 5 and 2 seconds before where you paused, so you hear the end of the thought. With no gap it resumes where you paused. It works for streamed and downloaded episodes and has no setting.
 - **Voice boost:** evens out loud and quiet voices, so a quiet guest is as easy to hear as the host. It is off by default, with a switch in Settings, and each show can override it from a waveform button in Now Playing. Switching applies right away.
 - **Chapters:** from the audio file, or else from a timestamp list in the show notes. A pill under the show name in Now Playing shows the current chapter and fills as it plays; tapping it lists every chapter as its own progress bar, with the time left in the playing one, and a tap jumps there. A chapter's own picture replaces the artwork while it plays. The lock screen keeps skipping 30 and 15 seconds.
+- **Headphone and car buttons:** an AirPods double press bookmarks with a chime and a triple press skips back 15. Settings can set each to skip forward 30, skip back 15, or bookmark. Other headphones and cars follow the same choices with their next and previous buttons. Single press stays play and pause.
 - An episode counts as played when fewer than 60 seconds remain, or when you mark it played.
 
 ## Capture

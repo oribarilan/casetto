@@ -94,3 +94,10 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 
 - Install a TestFlight build with a higher version over an older one: about a second after launch Cassy says "I learned some new tricks." and See opens What's New with only the new versions. Relaunch: no toast.
 - Settings ends with About, "Version …" and the build number as the TestFlight build number; tapping it lists every version.
+
+## Headphone and car buttons
+
+- With AirPods in and an episode playing, double press: a chime plays over the episode, playback continues, and the bookmark is in Bookmarks. Triple press: playback goes back 15. Repeat with silent mode on: the chime still plays.
+- While an episode plays, the lock screen and Dynamic Island show the 15 and 30 buttons, not next and previous track.
+- In Settings, set Triple press to Skip forward 30: the next triple press skips forward. On a second iPhone on the same iCloud account, the choice arrives after a sync.
+- In the car: the steering wheel's next and previous buttons follow the two choices, and the CarPlay Dashboard still shows 15 and 30.

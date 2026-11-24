@@ -185,6 +185,30 @@ struct SettingsStoreTests {
         #expect(try await library.voiceBoostOverride(show) == nil)
         #expect(try await library.effectiveVoiceBoost(for: show) == false)
     }
+
+    @Test func buttonActionsStartAtTheDefaults() async throws {
+        let library = try Library.open(inMemory: true)
+        let actions = try await library.buttonActions()
+        #expect(actions.double == .bookmark)
+        #expect(actions.triple == .skipBack)
+    }
+
+    @Test func changingAButtonActionStampsTheSettings() async throws {
+        let library = try Library.open(inMemory: true)
+        try await library.setButtonAction(.skipForward, forDoublePress: false)
+        let actions = try await library.buttonActions()
+        #expect(actions.double == .bookmark)
+        #expect(actions.triple == .skipForward)
+        #expect(try await library.settingsUpdatedAtForTesting() > .distantPast)
+    }
+
+    @Test func anUnknownButtonActionReadsAsTheDefault() async throws {
+        let library = try Library.open(inMemory: true)
+        try await library.setRawButtonActionsForTesting(double: "nextChapter", triple: "")
+        let actions = try await library.buttonActions()
+        #expect(actions.double == .bookmark)
+        #expect(actions.triple == .skipBack)
+    }
 }
 
 struct FeedCacheStoreTests {

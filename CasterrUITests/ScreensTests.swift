@@ -740,6 +740,7 @@ final class ScreensTests: XCTestCase {
         app.tabBars.buttons["Queue"].tap()
         app.navigationBars.buttons["Settings"].tap()
         let size = app.descendants(matching: .any)["cacheSize"]
+        for _ in 0..<4 where !size.exists { app.swipeUp() }
         XCTAssertTrue(size.waitForExistence(timeout: 5))
         let shown = { "\(size.label) \(size.value as? String ?? "")" }
         XCTAssertTrue(app.descendants(matching: .any)["downloadsSize"].exists, "no downloads row in Storage")
@@ -750,6 +751,28 @@ final class ScreensTests: XCTestCase {
         for _ in 0..<5 where shown() == before { _ = size.waitForNonExistence(timeout: 1) }
         XCTAssertNotEqual(shown(), before)
         snapshot("28 Clear Cache")
+    }
+
+    /// Headphone and car buttons: the footer says what each press does and follows a change.
+    @MainActor
+    func testHeadphoneButtons() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launch()
+        app.navigationBars.buttons["Settings"].tap()
+        let footer = app.staticTexts["buttonsFooter"]
+        for _ in 0..<6 where !footer.isHittable { app.swipeUp() }
+        XCTAssertTrue(footer.waitForExistence(timeout: 5), "no Headphone and car buttons footer")
+        XCTAssertTrue(footer.label.hasPrefix("Double press bookmarks, with a chime. Triple press skips back 15."), footer.label)
+        snapshot("29 Headphone Buttons")
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Triple press'")).firstMatch.tap()
+        let skipForward = app.buttons["Skip forward 30"]
+        XCTAssertTrue(skipForward.waitForExistence(timeout: 5), "the Triple press menu didn't open")
+        skipForward.tap()
+        let changed = NSPredicate(format: "label CONTAINS 'Triple press skips forward 30.'")
+        expectation(for: changed, evaluatedWith: footer)
+        waitForExpectations(timeout: 5)
     }
 
     /// Outside the United States, the heading switches the chart to the United States, and the choice is kept.
@@ -775,10 +798,13 @@ final class ScreensTests: XCTestCase {
         let version = app.buttons["version"]
         app.swipeUp(); app.swipeUp()
         XCTAssertTrue(version.waitForExistence(timeout: 3), "no version in Settings")
-        XCTAssertTrue(version.label.contains("Version 0.2"), version.label)
+        let current = Bundle(for: Self.self).object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        XCTAssertTrue(version.label.contains("Version \(current)"), "\(version.label) is not \(current)")
         version.tap()
         XCTAssertTrue(app.navigationBars["What's New"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["VERSION 0.1"].exists || app.staticTexts["Version 0.1"].exists, "Settings should list every version")
+        let first = { [app] in app!.staticTexts["VERSION 0.1"].exists || app!.staticTexts["Version 0.1"].exists }
+        for _ in 0..<4 where !first() { app.swipeUp() }
+        XCTAssertTrue(first(), "Settings should list every version")
     }
 
     @MainActor

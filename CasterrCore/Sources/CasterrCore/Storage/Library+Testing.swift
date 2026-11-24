@@ -27,6 +27,18 @@ extension Library {
         try modelContext.save()
     }
 
+    func setRawButtonActionsForTesting(double: String, triple: String) throws {
+        let settings = try modelContext.fetch(FetchDescriptor<UserSettings>()).first ?? UserSettings()
+        if settings.modelContext == nil { modelContext.insert(settings) }
+        settings.doublePress = double
+        settings.triplePress = triple
+        try modelContext.save()
+    }
+
+    func settingsUpdatedAtForTesting() throws -> Date {
+        try modelContext.fetch(FetchDescriptor<UserSettings>()).first?.updatedAt ?? .distantPast
+    }
+
     func stateCountForTesting(_ key: EpisodeKey) throws -> Int {
         let raw = key.rawValue
         return try modelContext.fetchCount(FetchDescriptor<EpisodeState>(predicate: #Predicate { $0.episodeKey == raw }))

@@ -3,11 +3,11 @@ import SwiftUI
 
 /// The sections of Settings, so a link can open it at the right one.
 enum SettingsSection: Hashable {
-    case inbox, downloads, playback
+    case inbox, downloads, playback, buttons
 }
 
 /// Global defaults: how long episodes wait in the Inbox, how many Queue episodes stay downloaded,
-/// the default speed, and voice boost; and Clear Cache. Per-show settings live on the show page and in Now Playing.
+/// the default speed, voice boost, and what headphone and car buttons do; and Clear Cache. Per-show settings live on the show page and in Now Playing.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(Player.self) private var player
@@ -19,6 +19,8 @@ struct SettingsView: View {
     @State private var queueTop: [EpisodeInfo] = []
     @State private var speed = 1.0
     @State private var voiceBoost = false
+    @State private var doublePress = ButtonAction.doublePressDefault
+    @State private var triplePress = ButtonAction.triplePressDefault
     @State private var highlighted: SettingsSection?
     /// Bytes of kept show art, other downloaded responses, and saved popular lists.
     @State private var cacheSize = 0
@@ -106,6 +108,17 @@ struct SettingsView: View {
                 .id(SettingsSection.playback)
 
                 Section {
+                    buttonPicker("Double press", selection: $doublePress, double: true)
+                    buttonPicker("Triple press", selection: $triplePress, double: false)
+                } header: {
+                    Text("Headphone and car buttons")
+                } footer: {
+                    Text(ButtonAction.footer(double: doublePress, triple: triplePress))
+                        .accessibilityIdentifier("buttonsFooter")
+                }
+                .id(SettingsSection.buttons)
+
+                Section {
                     LabeledContent("Downloaded episodes", value: downloadsSize.formatted(.byteCount(style: .file)))
                         .accessibilityIdentifier("downloadsSize")
                     LabeledContent("Saved art and popular lists", value: cacheSize.formatted(.byteCount(style: .file)))
@@ -154,6 +167,16 @@ struct SettingsView: View {
         }
     }
 
+    private func buttonPicker(_ title: String, selection: Binding<ButtonAction>, double: Bool) -> some View {
+        Picker(title, selection: Binding(get: { selection.wrappedValue }, set: { action in
+            selection.wrappedValue = action
+            Task { await model.change { try await model.library.setButtonAction(action, forDoublePress: double) } }
+        })) {
+            ForEach(ButtonAction.allCases, id: \.self) { Text($0.title).tag($0) }
+        }
+        .listRowBackground(rowBackground(.buttons))
+    }
+
     private func rowBackground(_ section: SettingsSection) -> Color {
         highlighted == section ? Color.tangerine.opacity(0.14) : Color(.secondarySystemGroupedBackground)
     }
@@ -164,6 +187,10 @@ struct SettingsView: View {
         queueTop = (try? await model.library.queueEpisodes(limit: DownloadCount.choices.max() ?? 10)) ?? []
         speed = ((try? await model.library.globalSpeed())?.value ?? 1.0)
         voiceBoost = (try? await model.library.globalVoiceBoost()) ?? false
+        if let actions = try? await model.library.buttonActions() {
+            doublePress = actions.double
+            triplePress = actions.triple
+        }
         cacheSize = currentCacheSize
         downloadsSize = model.downloader.store.size
     }

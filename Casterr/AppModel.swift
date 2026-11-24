@@ -166,13 +166,25 @@ final class AppModel {
         if !plan.delete.isEmpty { revision += 1 }
     }
 
-    /// Saves the current moment. Playback is untouched.
-    func bookmark() async {
+    /// Saves the current moment. Playback is untouched. False when nothing is loaded or saving failed.
+    @discardableResult
+    func bookmark() async -> Bool {
         guard let episode = player.episode,
               let id = try? await library.addBookmark(episode, showTitle: player.show?.title ?? "", at: player.position)
-        else { return }
+        else { return false }
         lastBookmark = RecentBookmark(id: id, position: player.position)
         revision += 1
+        return true
+    }
+
+    /// Runs the action chosen in Settings for a headphone or car button. A bookmark chimes, since the screen may be off.
+    func button(_ press: NowPlayingBridge.Press) async {
+        guard player.episode != nil, let actions = try? await library.buttonActions() else { return }
+        switch press == .double ? actions.double : actions.triple {
+        case .skipForward: player.skipForward()
+        case .skipBack: player.skipBack()
+        case .bookmark: if await bookmark() { Chime.play() }
+        }
     }
 
     /// Reads the first Queue episode and how far into it the listener is.
@@ -348,7 +360,9 @@ final class AppModel {
     }
 
     private func startNowPlaying() {
-        let session = MediaSession(NowPlayingBridge(player: player))
+        let session = MediaSession(NowPlayingBridge(player: player) { [weak self] press in
+            await self?.button(press)
+        })
         nowPlaying = session
         Task { try? await session.requestToBecomeSystemPrimary() }
     }

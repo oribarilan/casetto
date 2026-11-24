@@ -93,6 +93,9 @@ import SwiftData
     var expiryDays: Int = 14
     /// How many Queue episodes to keep downloaded, with 0 for Off.
     var downloadCount: Int = 3
+    /// `ButtonAction` raw values for the AirPods double and triple press.
+    var doublePress: String = ButtonAction.doublePressDefault.rawValue
+    var triplePress: String = ButtonAction.triplePressDefault.rawValue
     /// When the listener last changed a setting. Defaults that were never changed keep `distantPast`.
     var updatedAt: Date = Date.distantPast
 

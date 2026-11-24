@@ -2,6 +2,11 @@
 
 What's new in each version of Casterr, newest first. The app shows these lines in What's New. AGENTS.md says how to add a version.
 
+## 0.3
+
+- Double press your AirPods to bookmark the moment, with a chime, and triple press to skip back 15.
+- Settings lets you choose what double and triple press do, and other headphones and car buttons follow the same choices.
+
 ## 0.2
 
 - The big pause button in Now Playing fills with the voice as it plays, like the mini player's.

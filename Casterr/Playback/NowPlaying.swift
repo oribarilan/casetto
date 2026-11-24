@@ -6,10 +6,15 @@ import NowPlaying
 @MainActor
 final class NowPlayingBridge: MediaSessionRepresentable {
     let id = "casterr.player"
-    private let player: Player
+    /// AirPods send a double press as next and a triple press as previous; other headphones and cars send the same.
+    enum Press { case double, triple }
 
-    init(player: Player) {
+    private let player: Player
+    private let onButton: @MainActor (Press) async -> Void
+
+    init(player: Player, onButton: @escaping @MainActor (Press) async -> Void) {
         self.player = player
+        self.onButton = onButton
     }
 
     var content: (any MediaContentRepresentable)? {
@@ -43,6 +48,8 @@ final class NowPlayingBridge: MediaSessionRepresentable {
             .skipForward(preferredIntervals: [Player.skipForwardSeconds]) { _ in player.skipForward() },
             .skipBackward(preferredIntervals: [Player.skipBackSeconds]) { _ in player.skipBack() },
             .seekToPosition { player.seek(to: $0) },
+            .next { [onButton] in await onButton(.double) },
+            .previous { [onButton] in await onButton(.triple) },
         ]
     }
 

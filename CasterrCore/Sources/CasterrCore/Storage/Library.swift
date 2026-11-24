@@ -596,6 +596,19 @@ public actor Library {
         try changeSettings { $0.downloadCount = max(count, 0) }
     }
 
+    /// A stored value this build doesn't know, from a newer device, reads as the default.
+    public func buttonActions() throws -> (double: ButtonAction, triple: ButtonAction) {
+        let settings = try settings()
+        return (ButtonAction(rawValue: settings.doublePress) ?? .doublePressDefault,
+                ButtonAction(rawValue: settings.triplePress) ?? .triplePressDefault)
+    }
+
+    public func setButtonAction(_ action: ButtonAction, forDoublePress double: Bool) throws {
+        try changeSettings {
+            if double { $0.doublePress = action.rawValue } else { $0.triplePress = action.rawValue }
+        }
+    }
+
     /// Every settings change stamps `updatedAt`, so a merge keeps the listener's settings over a new device's defaults.
     private func changeSettings(_ change: (UserSettings) -> Void) throws {
         let settings = try settings()
