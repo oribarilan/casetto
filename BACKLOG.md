@@ -1,6 +1,6 @@
 # Backlog
 
-Work we started and parked. Each entry says why it waits and where to pick it up.
+Work we started and parked, and ideas we haven't started. Each entry says why it waits and where to pick it up.
 
 ## CarPlay (parked 2026-11-20)
 
@@ -31,3 +31,23 @@ Next: on a phone with the model downloaded, measure transcription and essence ti
 ## Skip silences (parked 2026-11-21)
 
 Shorten long pauses while an episode plays. It waits because Apple's player (AVPlayer) can't drop audio: the audio tap must return as much sound as it receives. Two ways to try later. One is to raise the speed briefly while a pause plays; first test on the simulator how far ahead of the speaker the tap hears the sound, because a late speed change clips words. The other is our own audio pipeline (AVAudioEngine), which can really cut pauses but is a big rewrite and makes streaming harder.
+
+## Listening sessions (added 2026-11-24)
+
+The listener says how long they have ("I have 25 minutes") and Casterr plays Queue episodes that fit. Not started. It's on the after-MVP list in `podcast_app_concept.md`. Nothing blocks it.
+
+## Transcripts (added 2026-11-24)
+
+Show the episode's transcript in Now Playing. Use the feed's transcript when it has one; Apple's speech recognizer could fill in English shows that don't. Not started. It's on the after-MVP list.
+
+## Topic-aware learning (added 2026-11-24)
+
+Let rule cards judge an episode by its topic, using Apple's on-device model. Today learning uses behavior only. Not started. It waits for Smart bookmarks, which shows how fast and reliable the model is on the phone.
+
+## Apple Watch (added 2026-11-24)
+
+Control playback and bookmark from the watch. Not started. It's on the after-MVP list.
+
+## App Store name check (added 2026-11-24)
+
+Check the name Casterr for trademarks and on the App Store before launch. Not started. It's an open question in `podcast_app_concept.md` and must be settled before the public release.
