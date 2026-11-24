@@ -13,11 +13,14 @@ public enum DownloadState: Equatable, Sendable {
     ///   - progress: The running download's share done, `.some(nil)` when its size is unknown, nil when none runs.
     ///   - wanted: It's among the Queue episodes to keep downloaded.
     ///   - downloadsAllowed: The phone is on Wi-Fi or a wired network, not expensive and not in Low Data Mode.
-    public static func of(downloaded: Bool, progress: Double??, wanted: Bool, downloadsAllowed: Bool) -> DownloadState? {
+    ///   - loaded: It's the player's episode, which streams fine, so it never waits for Wi-Fi.
+    public static func of(downloaded: Bool, progress: Double??, wanted: Bool, downloadsAllowed: Bool,
+                          loaded: Bool = false) -> DownloadState? {
         if downloaded { return .downloaded }
         if let progress { return .downloading(progress) }
         guard wanted else { return nil }
-        return downloadsAllowed ? .downloading(0) : .waiting
+        if downloadsAllowed { return .downloading(0) }
+        return loaded ? nil : .waiting
     }
 
     /// "Downloaded", "Downloading 45%" (whole percents, rounded down), or "Waiting for Wi-Fi".

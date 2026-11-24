@@ -231,13 +231,15 @@ struct ShowView: View {
             }
     }
 
-    /// Play Next, Add to Queue, Played or Unplayed, Share, Remove, and Delete for shared files, when they apply.
+    /// Play Next, Add to Queue, Played or Unplayed, Download, Share, Remove, and Delete for shared files,
+    /// when they apply.
     private func actions(_ episode: EpisodeInfo, place: Place?) -> [RowAction] {
         let key = episode.key
         var actions: [RowAction] = []
         if !queueTop.contains(key) { actions.append(.playNext(key, model)) }
         if place != .queue { actions.append(.addToQueue(key, model)) }
         actions.append(place == Place.archive(.played) ? .unplayed(key, model) : .played(key, model))
+        actions += RowAction.downloadOnCellular(episode, model)
         actions.append(.share)
         switch place {
         case .inbox: actions.append(.change("Remove", "minus.circle", destructive: true, model) { try await $0.dismiss(key) })

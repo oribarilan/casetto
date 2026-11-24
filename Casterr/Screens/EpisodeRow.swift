@@ -24,6 +24,14 @@ struct RowAction: Identifiable {
         }
     }
 
+    /// Download, when the episode waits for Wi-Fi and the phone has cellular data.
+    @MainActor static func downloadOnCellular(_ episode: EpisodeInfo, _ model: AppModel) -> [RowAction] {
+        guard model.canDownloadOnCellular(episode) else { return [] }
+        return [RowAction(title: "Download", symbol: "arrow.down.circle") {
+            model.downloadOnCellular(episode)
+        }]
+    }
+
     @MainActor static func playNext(_ key: EpisodeKey, _ model: AppModel) -> RowAction {
         change("Play Next", "text.line.first.and.arrowtriangle.forward", model) { try await $0.playNextByListener(key) }
     }

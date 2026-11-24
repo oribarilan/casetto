@@ -24,6 +24,7 @@ struct CasterrApp: App {
         }
         // The session already exists; declaring it lets iOS relaunch the app to deliver finished downloads.
         .backgroundTask(.urlSession(Downloader.sessionID)) {}
+        .backgroundTask(.urlSession(Downloader.cellularSessionID)) {}
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active: Task { await model.appBecameActive() }

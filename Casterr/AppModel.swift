@@ -36,6 +36,10 @@ final class AppModel {
     private(set) var wantedDownloads: Set<EpisodeKey> = []
     /// The phone is on a network downloads may use: Wi-Fi or wired, not expensive, not in Low Data Mode.
     private(set) var downloadsAllowed = true
+    /// The phone has a network that downloads may not use on their own: cellular, Personal Hotspot, or Low Data Mode.
+    private(set) var onLimitedNetwork = false
+    /// The episode the listener just asked to download on cellular, waiting for its size to tell them.
+    @ObservationIgnored private var cellularToastPending: EpisodeKey?
     @ObservationIgnored private let network = NWPathMonitor()
     /// The bookmark the toast confirms.
     var lastBookmark: RecentBookmark?
@@ -183,16 +187,39 @@ final class AppModel {
     /// What the episode's row says about its download, the same on every screen.
     func downloadState(_ episode: EpisodeInfo) -> DownloadState? {
         DownloadState.of(downloaded: isDownloaded(episode), progress: downloadProgress[episode.key],
-                         wanted: wantedDownloads.contains(episode.key), downloadsAllowed: downloadsAllowed)
+                         wanted: wantedDownloads.contains(episode.key), downloadsAllowed: downloadsAllowed,
+                         loaded: player.episode?.key == episode.key)
+    }
+
+    /// The episode should download, isn't, and the phone has a network only the listener may let it use.
+    func canDownloadOnCellular(_ episode: EpisodeInfo) -> Bool {
+        onLimitedNetwork && wantedDownloads.contains(episode.key)
+            && downloadProgress[episode.key] == nil && !isDownloaded(episode)
+    }
+
+    /// Downloads one episode on the current network, and shows it downloading at once.
+    /// Cassy says how much data it takes once the download knows its size.
+    func downloadOnCellular(_ episode: EpisodeInfo) {
+        downloadProgress[episode.key] = .some(0)
+        cellularToastPending = episode.key
+        Task { await downloader.startOnCellular(episode.key, from: episode.audioURL) }
     }
 
     /// Follows running downloads in whole percents, so rows redraw at most about a hundred times per download,
     /// and the network, the way the download session judges it.
     private func observeDownloadProgress() {
-        downloader.onProgress = { [weak self] key, share in
+        downloader.onProgress = { [weak self] key, share, size in
             Task { @MainActor in
                 guard let self else { return }
-                guard let share else { self.downloadProgress[key] = nil; return }
+                guard let share else {
+                    self.downloadProgress[key] = nil
+                    if self.cellularToastPending == key { self.cellularToastPending = nil }
+                    return
+                }
+                if self.cellularToastPending == key {
+                    self.cellularToastPending = nil
+                    self.cassyToast = CassyMessage(job: .success, text: Self.cellularToast(size: size))
+                }
                 let current = self.downloadProgress[key]
                 let percent = { (value: Double??) in value.flatMap { $0 }.map { Int($0 * 100) } }
                 if current == nil || percent(current) != percent(share) {
@@ -202,9 +229,19 @@ final class AppModel {
         }
         network.pathUpdateHandler = { [weak self] path in
             let allowed = path.status == .satisfied && !path.isExpensive && !path.isConstrained
-            Task { @MainActor in self?.downloadsAllowed = allowed }
+            let limited = path.status == .satisfied && !allowed
+            Task { @MainActor in
+                self?.downloadsAllowed = allowed
+                self?.onLimitedNetwork = limited
+            }
         }
         network.start(queue: DispatchQueue(label: "casterr.network"))
+    }
+
+    /// "Downloading on cellular, about 62 MB.", or without the size when the server sent none.
+    static func cellularToast(size: Int64?) -> String {
+        guard let size else { return "Downloading on cellular." }
+        return "Downloading on cellular, about \(max(1, Int((Double(size) / 1_000_000).rounded()))) MB."
     }
 
     func isDownloaded(_ episode: EpisodeInfo) -> Bool {

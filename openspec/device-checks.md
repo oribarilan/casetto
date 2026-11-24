@@ -80,3 +80,8 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 
 - [ ] Play a talk show with Now Playing open: the big pause button's bars fill with tangerine and move with the mini player's. With Reduce Motion on, both are plain pause icons. Share a 30-second clip to Messages and WhatsApp: the waveform along the bottom fills tangerine in time with the audio, and making the clip takes no more than a few seconds longer than before.
 
+## Download on cellular
+
+- On cellular, play an Inbox episode that isn't downloaded: its Queue row reads "Playing" with no "Waiting for Wi-Fi", and its line offers Download.
+- On cellular, tap Download on the second Queue row: Cassy says "Downloading on cellular" with the size, only that row says "Downloading" with a rising percent, the third keeps "Waiting for Wi-Fi", and the file finishes.
+- On Wi-Fi, and in Airplane Mode, no line offers Download.

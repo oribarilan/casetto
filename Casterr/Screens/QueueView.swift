@@ -85,10 +85,12 @@ struct QueueView: View {
         .task(id: "\(model.revision)|\(player.episode?.key.rawValue ?? "")") { await load() }
     }
 
-    /// Play Next (not on the first two rows, where it would change nothing), Played, Share, Show, Remove.
+    /// Play Next (not on the first two rows, where it would change nothing), Played, Download
+    /// when it applies, Share, Show, Remove.
     private func actions(_ episode: EpisodeInfo, upNext: Bool) -> [RowAction] {
-        (upNext ? [] : [.playNext(episode.key, model)]) + [
-            .played(episode.key, model), .share, .show(episode.showKey, model),
+        (upNext ? [] : [.playNext(episode.key, model)]) + [.played(episode.key, model)]
+            + RowAction.downloadOnCellular(episode, model) + [
+            .share, .show(episode.showKey, model),
             RowAction(title: "Remove", symbol: "minus.circle", destructive: true) { remove(episode) },
         ]
     }

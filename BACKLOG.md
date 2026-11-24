@@ -47,11 +47,3 @@ Before building, decide how a release is cut (who bumps the version, and when) a
 ## Download space next to Keep downloaded (logged 2026-11-22)
 
 Show how much space the downloads take where the listener picks Keep downloaded, for example "about 210 MB" under the current choice, estimated by adding up the file sizes the feed lists for the top N Queue episodes. Decided against a separate megabyte cap: two limits need a rule for which wins, and an episode that silently doesn't download would need explaining in the Queue.
-
-## Waiting for Wi-Fi on the episode that's streaming (logged 2026-11-23)
-
-Playing an Inbox episode moves it to the top of the Queue. On cellular it streams fine, but its row says "Waiting for Wi-Fi", because it's among the episodes to keep downloaded and downloads need Wi-Fi. That's confusing while it plays. Discuss what the row should say for the episode that's playing (or streaming) before changing it.
-
-## Clip colors (logged 2026-11-23)
-
-In a clip video, reds come out a little darker and more magenta than in the show's art. It looks like a color space mismatch between the drawn frame and the video. Fix by tagging the video's color properties to match the frame.

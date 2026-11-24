@@ -123,6 +123,16 @@ struct DownloadStateTests {
         #expect(DownloadState.waiting.label == "Waiting for Wi-Fi")
     }
 
+    @Test func theLoadedEpisodeNeverWaitsForWiFi() {
+        #expect(DownloadState.of(downloaded: false, progress: nil, wanted: true, downloadsAllowed: false, loaded: true) == nil)
+    }
+
+    @Test func theLoadedEpisodeKeepsItsDownloadWords() {
+        #expect(DownloadState.of(downloaded: true, progress: nil, wanted: true, downloadsAllowed: false, loaded: true) == .downloaded)
+        #expect(DownloadState.of(downloaded: false, progress: .some(0.3), wanted: true, downloadsAllowed: false, loaded: true) == .downloading(0.3))
+        #expect(DownloadState.of(downloaded: false, progress: nil, wanted: true, downloadsAllowed: true, loaded: true) == .downloading(0))
+    }
+
     @Test func aWantedEpisodeOnWiFiIsAboutToDownload() {
         #expect(DownloadState.of(downloaded: false, progress: nil, wanted: true, downloadsAllowed: true) == .downloading(0))
     }
