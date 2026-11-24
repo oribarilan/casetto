@@ -125,7 +125,7 @@ struct DiscoverView: View {
         let busy = working.contains(show.id)
         return HStack(spacing: 12) {
             // The art and title open the show's page; the star and + act in place.
-            NavigationLink(value: Route.directoryShow(show.feedURL)) {
+            NavigationLink(value: Route.directoryShow(show)) {
                 HStack(spacing: 12) {
                     ArtworkView(url: show.artworkURL, title: show.title, size: 48)
                     VStack(alignment: .leading) {

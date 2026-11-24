@@ -48,6 +48,19 @@ enum Theme {
     }
 }
 
+/// A shimmering bar that stands in for a line of text while it loads.
+struct PlaceholderBar: View {
+    var width: CGFloat?
+    var height: CGFloat = 12
+
+    var body: some View {
+        Shimmer()
+            .frame(width: width, height: height)
+            .frame(maxWidth: width == nil ? .infinity : nil, alignment: .leading)
+            .clipShape(.capsule)
+    }
+}
+
 /// A show's artwork. A grey shimmer while it downloads, and a tangerine square with the show's first letter
 /// when there's no art or it fails to load.
 struct ArtworkView: View {
@@ -70,7 +83,7 @@ struct ArtworkView: View {
                         .foregroundStyle(.white)
                 }
             } else {
-                ArtShimmer()
+                Shimmer()
             }
         }
         .frame(width: size, height: size)
@@ -91,17 +104,21 @@ struct ArtworkView: View {
     }
 }
 
-/// A soft grey square with a light band sweeping across, or still grey with Reduce Motion.
-private struct ArtShimmer: View {
+/// A soft grey placeholder with a light band sweeping across, or still grey with Reduce Motion.
+/// Art, and the bars that stand in for text while a page loads.
+struct Shimmer: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @State private var sweeping = false
 
     var body: some View {
-        Color(.systemGray5)
+        // A fill that adapts to what's behind it, so the shape shows on light and dark rows alike.
+        Color(.tertiarySystemFill)
             .overlay {
                 if !reduceMotion {
                     GeometryReader { proxy in
-                        LinearGradient(colors: [.clear, .white.opacity(0.35), .clear], startPoint: .leading, endPoint: .trailing)
+                        LinearGradient(colors: [.clear, .white.opacity(colorScheme == .dark ? 0.08 : 0.35), .clear],
+                                       startPoint: .leading, endPoint: .trailing)
                             .frame(width: proxy.size.width * 0.6)
                             .offset(x: proxy.size.width * (sweeping ? 1 : -0.6))
                     }

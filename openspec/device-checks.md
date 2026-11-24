@@ -101,3 +101,7 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 - While an episode plays, the lock screen and Dynamic Island show the 15 and 30 buttons, not next and previous track.
 - In Settings, set Triple press to Skip forward 30: the next triple press skips forward. On a second iPhone on the same iCloud account, the choice arrives after a sync.
 - In the car: the steering wheel's next and previous buttons follow the two choices, and the CarPlay Dashboard still shows 15 and 30.
+
+## Show page while loading
+
+- On cellular, open a show from Find Shows that you don't follow: its name, host and art show at once, the description and four episode rows shimmer, and then they fill in without the Follow button or the Episodes heading moving. The art doesn't flash or reload. Repeat in dark mode and with Reduce Motion on (the placeholders stay still).

@@ -686,8 +686,13 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Find Shows"].waitForExistence(timeout: 5))
         XCTAssertTrue(waitForTopShows())
         snapshot("25 Find Shows Sheet")
-        // A row opens the show's page without following it.
-        app.buttons.matching(identifier: "directoryShow").firstMatch.tap()
+        // A row opens the show's page without following it. The directory's name shows at once,
+        // while the episodes are still placeholders.
+        let row = app.buttons.matching(identifier: "directoryShow").firstMatch
+        let title = String(row.label.split(separator: ",").first ?? "")
+        row.tap()
+        XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 2), "the directory's name \(title) didn't show at once")
+        snapshot("25a Show Loading")
         XCTAssertTrue(app.buttons.matching(identifier: "episode").firstMatch.waitForExistence(timeout: 30), "no episodes on a Find Shows page")
         XCTAssertEqual(app.buttons["followShow"].label, "Follow")
         snapshot("25b Show From Find Shows")

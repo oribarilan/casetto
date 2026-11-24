@@ -82,7 +82,7 @@ extension View {
             switch route {
             case .inbox: InboxView()
             case .show(let key): ShowView(showKey: key)
-            case .directoryShow(let url): if let key = ShowKey(feedURL: url) { ShowView(showKey: key, feedURL: url) }
+            case .directoryShow(let show): if let key = ShowKey(feedURL: show.feedURL) { ShowView(showKey: key, feedURL: show.feedURL, preview: show) }
             case .settings(let focus): SettingsView(focus: focus)
             }
         }
@@ -157,8 +157,8 @@ private struct UpNextBar: View {
 enum Route: Hashable {
     case inbox
     case show(ShowKey)
-    /// A show from Find Shows, by its feed address: its page fetches the feed without following it.
-    case directoryShow(URL)
+    /// A show from Find Shows, with what the directory knows: its page fetches the feed without following it.
+    case directoryShow(DirectoryShow)
     case settings(SettingsSection?)
 }
 

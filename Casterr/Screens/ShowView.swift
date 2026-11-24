@@ -9,6 +9,8 @@ struct ShowView: View {
     let showKey: ShowKey
     /// For a show opened from Find Shows: where to fetch its feed when the device doesn't have it.
     var feedURL: URL?
+    /// What Find Shows already knows: the name, host and art show at once, and the art stays.
+    var preview: DirectoryShow?
 
     @State private var show: ShowInfo?
     @State private var episodes: [EpisodeInfo] = []
@@ -41,9 +43,6 @@ struct ShowView: View {
         List {
             header
             followButtons
-            if fetchingFeed && episodes.isEmpty {
-                Section { ProgressView("Loading episodes…").frame(maxWidth: .infinity) }
-            }
             Section {
                 failingFeed
                 if let speedOverride = subscription?.speedOverride {
@@ -75,7 +74,16 @@ struct ShowView: View {
                 }
             }
             Section("Episodes") {
-                ForEach(episodes.filter { places[$0.key] != .archive(.played) }, id: \.key) { episodeRow($0) }
+                if loadingFeed && episodes.isEmpty {
+                    ForEach(0..<4, id: \.self) { index in
+                        placeholderRow
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("Loading episodes")
+                            .accessibilityHidden(index > 0)
+                    }
+                } else {
+                    ForEach(episodes.filter { places[$0.key] != .archive(.played) }, id: \.key) { episodeRow($0) }
+                }
             }
         }
         .keepsRowSwipes()
@@ -180,6 +188,8 @@ struct ShowView: View {
         cachedFeedURL = loadedFeedURL
         globalExpiry = loadedExpiry
 
+
+
         // The share preview's art can come later: nothing on the page moves for it.
         if showArt == nil, let url = show?.artworkURL, let (data, _) = try? await URLSession.shared.data(from: url) {
             showArt = UIImage(data: data)
@@ -199,7 +209,7 @@ struct ShowView: View {
     private func episodeRow(_ episode: EpisodeInfo) -> some View {
         let place = places[episode.key]
         let played = place == Place.archive(.played)
-        let art: ShowArt? = show.map { ShowArt(title: $0.title, artworkURL: $0.artworkURL, feedURL: $0.feedURL ?? feedURL) }
+        let art: ShowArt? = show.map { ShowArt(title: $0.title, artworkURL: preview?.artworkURL ?? $0.artworkURL, feedURL: $0.feedURL ?? feedURL) }
         return EpisodeRow(episode: episode, identifier: "episode",
                           statuses: caption(place).map { [$0] } ?? [], move: moves[episode.key],
                           download: model.downloadState(episode), played: played,
@@ -313,19 +323,32 @@ struct ShowView: View {
         }
     }
 
+    /// True while the feed of a show from Find Shows hasn't arrived, so the page shows placeholders in its final layout.
+    private var loadingFeed: Bool { fetchingFeed || (show == nil && feedURL != nil) }
+
     @ViewBuilder private var header: some View {
-        if let show {
+        let title = show?.title ?? preview?.title
+        if title != nil || loadingFeed {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 16) {
-                    ArtworkView(url: show.artworkURL, title: show.title, size: 120)
+                    if let title {
+                        ArtworkView(url: preview?.artworkURL ?? show?.artworkURL, title: title, size: 120)
+                    } else {
+                        Shimmer().frame(width: 120, height: 120).clipShape(.rect(cornerRadius: 120 * 0.23))
+                    }
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(show.title).font(.title3.weight(.black))
-                        if let author = show.author {
-                            Text(author).foregroundStyle(.secondary)
+                        if let title {
+                            Text(title).font(.title3.weight(.black))
+                            if let author = show?.author ?? preview?.author {
+                                Text(author).foregroundStyle(.secondary)
+                            }
+                        } else {
+                            PlaceholderBar(width: 170, height: 20)
+                            PlaceholderBar(width: 110, height: 14)
                         }
                     }
                 }
-                if let description = show.plainSummary {
+                if let description = show?.plainSummary {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(description)
                             .font(.subheadline)
@@ -334,12 +357,33 @@ struct ShowView: View {
                             .font(.subheadline.weight(.semibold))
                             .buttonStyle(.borderless)
                     }
+                } else if show == nil {
+                    // Two lines and More, each as tall as the text it stands in for, so nothing moves when it arrives.
+                    VStack(alignment: .leading, spacing: 2) {
+                        PlaceholderBar(height: 12).frame(height: 20)
+                        PlaceholderBar(width: 210, height: 12).frame(height: 20)
+                        PlaceholderBar(width: 44, height: 12).frame(height: 20)
+                    }
+                    .accessibilityHidden(true)
                 }
             }
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
         }
+    }
+
+    /// Shaped like an episode row: art, then the status, title and date lines.
+    private var placeholderRow: some View {
+        HStack(spacing: 12) {
+            Shimmer().frame(width: 52, height: 52).clipShape(.rect(cornerRadius: 52 * 0.23))
+            VStack(alignment: .leading, spacing: 7) {
+                PlaceholderBar(width: 70, height: 10)
+                PlaceholderBar(height: 15)
+                PlaceholderBar(width: 110, height: 10)
+            }
+        }
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder private var failingFeed: some View {

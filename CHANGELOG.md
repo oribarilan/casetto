@@ -2,6 +2,10 @@
 
 What's new in each version of Casterr, newest first. The app shows these lines in What's New. AGENTS.md says how to add a version.
 
+## 0.3.1
+
+- A show you open from Find Shows shows its name and art at once, and its page keeps its shape while the episodes load.
+
 ## 0.3
 
 - Double press your AirPods to bookmark the moment, with a chime, and triple press to skip back 15.
