@@ -51,3 +51,19 @@ Control playback and bookmark from the watch. Not started. It's on the after-MVP
 ## App Store name check (added 2026-11-24)
 
 Check the name Casterr for trademarks and on the App Store before launch. Not started. It's an open question in `podcast_app_concept.md` and must be settled before the public release.
+
+## Show page loading shimmer (added 2026-11-24)
+
+Tapping a show opens an empty page until its metadata arrives, and only then does the shimmer start. Shimmer the metadata too, so the page keeps its layout from the first frame: the metadata renders first, then the artwork. Not started.
+
+## Follow button lag (added 2026-11-24)
+
+The Follow button lags after a tap. Not started.
+
+## Country name on Find Shows (added 2026-11-24)
+
+The country name in the "Popular now" heading on the Find Shows page should use the accent color, so it's clear it can be tapped. Not started.
+
+## What's New row in Settings (added 2026-11-24)
+
+The What's New row in Settings doesn't look tappable. Not started.
