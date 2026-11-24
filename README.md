@@ -1,45 +1,51 @@
-# Casterr
+<p align="center">
+  <img src=".github/readme/icon.png" width="128" alt="Casterr's app icon, a cassette tape with eyes">
+</p>
 
-A podcast inbox that triages itself. Casterr is a free, open-source iOS podcast player that sorts new episodes for you, explains every move it makes, and lets you undo any of them. No accounts, no server, no tracking.
+<h1 align="center">Casterr</h1>
 
-It's early. Read [the concept](podcast_app_concept.md) for what it does and the roadmap. Planned work lives in [`openspec/`](openspec/).
+<p align="center">
+  <strong>Podcasts, not homework.</strong><br>
+  Guilt-free, private, and open source.
+</p>
 
-Licensed under the [Mozilla Public License 2.0](LICENSE).
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/readme/inbox-dark.png">
+    <img src=".github/readme/inbox.png" width="250" alt="The Inbox, with new episodes waiting">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/readme/queue-dark.png">
+    <img src=".github/readme/queue.png" width="250" alt="The Queue, with the episode playing at the top">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/readme/now-playing-dark.png">
+    <img src=".github/readme/now-playing.png" width="250" alt="Now Playing, tinted by the show's artwork">
+  </picture>
+</p>
 
-## Building
+## What it does
 
-You need Xcode 27 and [XcodeGen](https://github.com/yonaskolb/XcodeGen). The Xcode project is generated from `project.yml` and isn't checked in.
+**Ready when you are.** Shows you love land in your Queue. The rest wait in your Inbox and quietly leave if you pass, and when Casterr spots a habit it suggests a rule you can take or leave.
 
-```sh
-brew install xcodegen
-xcodegen generate
-open Casterr.xcodeproj
-```
+**Easy on the ears.** Back a Beat, voice boost, per-show speed, chapters, and a sleep timer that can stop at the end of an episode.
 
-Run the core tests (domain logic, feeds, storage) on your Mac:
+**Bookmarks and notes.** Save the moments worth keeping, add a note, and send them to Obsidian, Notes, or anywhere Markdown goes.
 
-```sh
-swift test --package-path CasterrCore
-```
+**Yours, really.** No account, no ads, no tracking, and no server between you and your shows. The code is open, so you can check.
 
-Build the app from the command line:
+**Plays well with others.** Bring your shows from any app with OPML, sideload your own audio files, and share clips from shows you follow.
 
-```sh
-xcodebuild -project Casterr.xcodeproj -scheme Casterr -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build
-```
+## Get it
 
-Run the UI tests on the simulator. They need a network connection, because they subscribe to a real public feed and stream an episode. The Inbox test launches with `-fastClock`, where one second counts as one day, so it can test expiry. The simulator downloads episodes but has no background refresh, so check that on a phone:
+Casterr is in private testing. It's coming to the App Store. Watch this repo's releases to hear first.
 
-```sh
-xcodebuild -project Casterr.xcodeproj -scheme Casterr -destination 'platform=iOS Simulator,name=iPhone 18 Pro' test
-```
+It runs on iPhone with iOS 27.
 
-## iCloud sync
+## Feedback
 
-Without setup, Casterr keeps everything on the device. To sync subscriptions, the Queue, settings, and bookmarks through your private iCloud database, you need a paid Apple Developer account:
+Found a bug or have an idea? [Open an issue](../../issues/new/choose).
 
-1. In `project.yml`, add your team under the `Casterr` target's `settings.base`: `DEVELOPMENT_TEAM: <your team ID>`.
-2. In `Casterr/Casterr.entitlements`, replace `iCloud.REPLACE-WITH-YOUR-CONTAINER` with your container, for example `iCloud.com.yourname.Casterr`. Container IDs can't be deleted once created.
-3. Under the same `settings.base`, add `CODE_SIGN_ENTITLEMENTS: Casterr/Casterr.entitlements`.
-4. Run `xcodegen generate` and build to a phone signed in to iCloud. Xcode creates the container on the first signed build.
-5. Check the records in the [CloudKit dashboard](https://icloud.developer.apple.com/dashboard), in the container's private database. Before a TestFlight build, deploy the schema from the Development to the Production environment there.
+## License
+
+Casterr is free software under the [Mozilla Public License 2.0](LICENSE). It reads feeds with [FeedKit](https://github.com/nmdias/FeedKit), under the MIT License.

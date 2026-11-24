@@ -65,3 +65,12 @@ fastlane/test_output
 Casterr.xcodeproj/
 Casterr/Info.plist
 CasterrShare/Info.plist
+
+# macOS and Xcode
+.DS_Store
+DerivedData/
+
+# Local Claude Code state
+.claude/settings.local.json
+.claude/scheduled_tasks.*
+.claude/worktrees/

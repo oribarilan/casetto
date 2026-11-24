@@ -3,13 +3,13 @@ import Testing
 @testable import CasterrCore
 
 struct ShowNotesChaptersTests {
-    @Test func readsTheWeeklySyncList() throws {
-        let notes = try #require(String(data: try fixture("weekly-sync-218-notes.html"), encoding: .utf8))
+    @Test func readsAHebrewList() throws {
+        let notes = try #require(String(data: try fixture("hebrew-show-notes.html"), encoding: .utf8))
         let chapters = ShowNotesChapters.parse(notes, duration: 57 * 60 + 22)
         #expect(chapters.count == 10)
         #expect(chapters.first == Chapter(start: 0, title: "פתיחה"))
-        #expect(chapters[2] == Chapter(start: 5 * 60 + 51, title: "ג׳נסן שובב"))
-        #expect(chapters.last == Chapter(start: 53 * 60 + 19, title: "המופע של תור"))
+        #expect(chapters[2] == Chapter(start: 5 * 60 + 51, title: "מכוניות חשמליות"))
+        #expect(chapters.last == Chapter(start: 53 * 60 + 19, title: "סיכום ופרידה"))
     }
 
     @Test func readsHoursInParentheses() {

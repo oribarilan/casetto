@@ -1,0 +1,29 @@
+name: Bug
+description: Something in Casterr doesn't work as it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: show
+    attributes:
+      label: Show and episode
+      description: If it's about one show or episode, its name.
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Your iPhone model, iOS version, and the Casterr version from Settings.
+      placeholder: iPhone 17 Pro, iOS 27.2, Casterr 0.3
+    validations:
+      required: true
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshot or recording
+      description: Drag one in if it helps.
