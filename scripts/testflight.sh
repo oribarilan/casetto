@@ -11,13 +11,21 @@ cd "${0:A:h}/.."
 destination=export
 [[ "${1:-}" == "--upload" ]] && destination=upload
 
+# What's New reads the changelog, so its newest section must be the app's version.
+version=$(sed -n 's/^ *MARKETING_VERSION: "\(.*\)"/\1/p' project.yml | head -1)
+newest=$(sed -n 's/^## //p' CHANGELOG.md | head -1)
+if [[ "$version" != "$newest" ]]; then
+  echo "The app is version $version but CHANGELOG.md starts with $newest. Bump one to match." >&2
+  exit 1
+fi
+
 # A build number from the clock always rises, so there's nothing to bump in the repo.
 build=$(date +%Y%m%d%H%M)
 out="${TMPDIR:-/tmp}/casterr-testflight/$build"
 mkdir -p "$out"
 
 xcodegen generate --quiet
-echo "Archiving build $build..."
+echo "Archiving version $version, build $build..."
 xcodebuild archive -scheme Casterr -configuration Release -destination generic/platform=iOS \
   -archivePath "$out/Casterr.xcarchive" -allowProvisioningUpdates \
   DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" CURRENT_PROJECT_VERSION="$build" -quiet

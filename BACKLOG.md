@@ -31,19 +31,3 @@ Next: on a phone with the model downloaded, measure transcription and essence ti
 ## Skip silences (parked 2026-11-21)
 
 Shorten long pauses while an episode plays. It waits because Apple's player (AVPlayer) can't drop audio: the audio tap must return as much sound as it receives. Two ways to try later. One is to raise the speed briefly while a pause plays; first test on the simulator how far ahead of the speaker the tap hears the sound, because a late speed change clips words. The other is our own audio pipeline (AVAudioEngine), which can really cut pauses but is a big rewrite and makes streaming harder.
-
-
-## Versions, changelog and What's New (logged 2026-11-22)
-
-To do, not started. Today every build is version 0.1 (1), and nothing tells the listener what changed.
-
-- Semantic versioning (major.minor.patch) for the app's version.
-- A changelog in the repository, one entry per version.
-- A What's New screen in the app after an update, drawn from the changelog.
-- The version shown in Settings.
-
-Before building, decide how a release is cut (who bumps the version, and when) and what What's New shows, then write an OpenSpec proposal.
-
-## Download space next to Keep downloaded (logged 2026-11-22)
-
-Show how much space the downloads take where the listener picks Keep downloaded, for example "about 210 MB" under the current choice, estimated by adding up the file sizes the feed lists for the top N Queue episodes. Decided against a separate megabyte cap: two limits need a rule for which wins, and an episode that silently doesn't download would need explaining in the Queue.

@@ -46,6 +46,9 @@ struct RootView: View {
             }
             .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: Binding(get: { model.whatsNew != nil }, set: { if !$0 { model.whatsNew = nil } })) {
+            WhatsNewView(releases: model.whatsNew ?? [])
+        }
         .fullScreenCover(isPresented: $showingOnboarding) {
             OnboardingView { hasSeenOnboarding = true; showingOnboarding = false }
         }
@@ -53,6 +56,9 @@ struct RootView: View {
             if !hasSeenOnboarding, (try? await model.library.subscriptions().isEmpty) == true {
                 showingOnboarding = true
             }
+            // After the launch settles, so the toast isn't lost under the first screen.
+            try? await Task.sleep(for: .seconds(1))
+            model.greetUpdate(hasSeenOnboarding: hasSeenOnboarding)
         }
     }
 

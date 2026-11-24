@@ -76,6 +76,8 @@ public struct EpisodeInfo: Equatable, Sendable {
     public var summary: String?
     /// The episode's own page from its feed.
     public var webPage: URL?
+    /// The file size the feed lists, often missing or wrong.
+    public var byteLength: Int64?
 }
 
 /// The app's only access to storage. It owns one long-lived context and hands out value types only.
@@ -391,6 +393,13 @@ public actor Library {
     public func playableQueue() throws -> [EpisodeKey] {
         let known = try knownEpisodeKeys()
         return try queue().filter { known.contains($0.rawValue) }
+    }
+
+    /// The first `limit` playable Queue episodes, leaving out shared files, as downloads pick them.
+    public func queueEpisodes(limit: Int) throws -> [EpisodeInfo] {
+        let shared = ShowKey.shared.rawValue + "|"
+        return try playableQueue().filter { !$0.rawValue.hasPrefix(shared) }.prefix(max(limit, 0))
+            .compactMap { try episode($0) }
     }
 
     /// Moves a queued episode to `index` in the playable Queue, where hidden episodes don't count.
@@ -709,6 +718,7 @@ public actor Library {
             record.duration = parsed.duration
             record.summary = parsed.description
             record.webPage = parsed.webPage
+            record.byteLength = parsed.byteLength
         }
         try modelContext.save()
     }
@@ -856,7 +866,7 @@ public actor Library {
         EpisodeInfo(
             key: EpisodeKey(rawValue: record.key), showKey: ShowKey(rawValue: record.showKey), title: record.title,
             audioURL: record.audioURL, publishDate: record.publishDate, duration: record.duration, summary: record.summary,
-            webPage: record.webPage
+            webPage: record.webPage, byteLength: record.byteLength
         )
     }
 }

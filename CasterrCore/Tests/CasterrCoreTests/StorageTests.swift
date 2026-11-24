@@ -255,6 +255,21 @@ struct SharedShowTests {
         #expect(try await library.show(.shared)?.title == "Shared with Casterr")
     }
 
+    @Test func queueEpisodesLeaveOutSharedFiles() async throws {
+        let library = try Library.open(inMemory: true)
+        try await library.addSubscription(show, feedURL: feedURL)
+        try await library.saveFeed(try FeedParser.parse(fixture("podcast.xml")), for: show)
+        let episodes = try await library.episodes(of: show)
+        try await library.addToQueue(episodes[0].key)
+        try await library.addToQueue(episodes[1].key)
+        _ = try await library.addSharedEpisode(id: "1", title: "Voice memo 12", duration: 95, audioURL: memo)
+
+        let top = try await library.queueEpisodes(limit: 10)
+        #expect(top.map(\.key) == [episodes[0].key, episodes[1].key])
+        #expect(top.map(\.byteLength) == [3000, 2000])
+        #expect(try await library.queueEpisodes(limit: 1).count == 1)
+    }
+
     @Test func listsNewestFirst() async throws {
         let library = try Library.open(inMemory: true)
         await library.useClock { Date(timeIntervalSince1970: 1_000) }

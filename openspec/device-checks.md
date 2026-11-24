@@ -85,3 +85,12 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 - On cellular, play an Inbox episode that isn't downloaded: its Queue row reads "Playing" with no "Waiting for Wi-Fi", and its line offers Download.
 - On cellular, tap Download on the second Queue row: Cassy says "Downloading on cellular" with the size, only that row says "Downloading" with a rising percent, the third keeps "Waiting for Wi-Fi", and the file finishes.
 - On Wi-Fi, and in Airplane Mode, no line offers Download.
+
+## Download size
+
+- In Settings, Keep downloaded shows "About … MB for the top 3." Tap 1, 5 and 10: the line follows, and for the current choice it's close to "Downloaded episodes" in Storage once the downloads finish.
+
+## What's New
+
+- Install a TestFlight build with a higher version over an older one: about a second after launch Cassy says "I learned some new tricks." and See opens What's New with only the new versions. Relaunch: no toast.
+- Settings ends with About, "Version …" and the build number as the TestFlight build number; tapping it lists every version.

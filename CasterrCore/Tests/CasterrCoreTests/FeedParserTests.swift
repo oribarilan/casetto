@@ -23,6 +23,11 @@ struct FeedParserTests {
         #expect(episode.description == "The third episode.")
     }
 
+    @Test func readsTheEnclosureLength() throws {
+        let lengths = try FeedParser.parse(fixture("podcast.xml")).episodes.map(\.byteLength)
+        #expect(lengths == [3000, 2000, 1000])
+    }
+
     @Test func parsesDurationsInBothForms() throws {
         let durations = try FeedParser.parse(fixture("podcast.xml")).episodes.map(\.duration)
         #expect(durations == [3723, 1800, nil])

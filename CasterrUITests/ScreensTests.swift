@@ -128,7 +128,13 @@ final class ScreensTests: XCTestCase {
         snapshot("5b Downloaded")
         app.navigationBars.buttons["Settings"].tap()
         XCTAssertTrue(app.buttons["Off"].waitForExistence(timeout: 5))
+        // The size line follows the choice, and Off has none.
+        let estimate = app.staticTexts["downloadEstimate"]
+        XCTAssertTrue(estimate.waitForExistence(timeout: 5), "no download size line")
+        XCTAssertTrue(estimate.label.hasSuffix("for the top 3."), estimate.label)
+        snapshot("5c Download Size")
         app.buttons["Off"].tap()
+        XCTAssertTrue(estimate.waitForNonExistence(timeout: 5), "Off still shows a size")
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(downloaded.waitForNonExistence(timeout: 10))
 
@@ -747,6 +753,34 @@ final class ScreensTests: XCTestCase {
     }
 
     /// Outside the United States, the heading switches the chart to the United States, and the choice is kept.
+    /// After an update, Cassy offers What's New; Settings ends with the version, which opens it too.
+    @MainActor
+    func testWhatsNew() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES",
+                               "-lastSeenVersion", "0.1"]
+        app.launch()
+        let toast = app.buttons["cassyToast"]
+        XCTAssertTrue(toast.waitForExistence(timeout: 5), "no update toast")
+        XCTAssertTrue(toast.label.contains("I learned some new tricks."), toast.label)
+        toast.tap()
+        XCTAssertTrue(app.navigationBars["What's New"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["VERSION 0.2"].exists || app.staticTexts["Version 0.2"].exists, "no 0.2 section")
+        XCTAssertFalse(app.staticTexts["VERSION 0.1"].exists || app.staticTexts["Version 0.1"].exists, "lists 0.1, already seen")
+        snapshot("29 Whats New")
+        app.navigationBars["What's New"].buttons["Done"].tap()
+
+        app.navigationBars.buttons["Settings"].tap()
+        let version = app.buttons["version"]
+        app.swipeUp(); app.swipeUp()
+        XCTAssertTrue(version.waitForExistence(timeout: 3), "no version in Settings")
+        XCTAssertTrue(version.label.contains("Version 0.2"), version.label)
+        version.tap()
+        XCTAssertTrue(app.navigationBars["What's New"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["VERSION 0.1"].exists || app.staticTexts["Version 0.1"].exists, "Settings should list every version")
+    }
+
     @MainActor
     func testChartCountry() throws {
         continueAfterFailure = false

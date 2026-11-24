@@ -15,6 +15,8 @@ struct SettingsView: View {
 
     @State private var expiry: InboxExpiry = .standard
     @State private var downloads = 3
+    /// The top Queue episodes for the largest choice, so each choice sizes its share at once.
+    @State private var queueTop: [EpisodeInfo] = []
     @State private var speed = 1.0
     @State private var voiceBoost = false
     @State private var highlighted: SettingsSection?
@@ -56,6 +58,12 @@ struct SettingsView: View {
                         }
                         .pickerStyle(.segmented)
                         .labelsHidden()
+                        if let size = DownloadSize.caption(queueTop, count: downloads) {
+                            Text(size)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .accessibilityIdentifier("downloadEstimate")
+                        }
                     }
                     .listRowBackground(rowBackground(.downloads))
                 } header: {
@@ -115,6 +123,23 @@ struct SettingsView: View {
                 } footer: {
                     Text("Keep downloaded decides which episodes stay downloaded. Clear Cache deletes saved show art and popular lists, which download again when needed.")
                 }
+
+                Section {
+                    Button {
+                        model.whatsNew = AppModel.changelog.releases
+                    } label: {
+                        LabeledContent {
+                            Text("What's New").foregroundStyle(.secondary)
+                        } label: {
+                            Text("Version \(AppModel.version)").foregroundStyle(Color(.label))
+                        }
+                    }
+                    .accessibilityIdentifier("version")
+                } header: {
+                    Text("About")
+                } footer: {
+                    Text("Build \(AppModel.build)")
+                }
             }
             .navigationTitle("Settings")
             .task(id: model.revision) { await load() }
@@ -136,6 +161,7 @@ struct SettingsView: View {
     private func load() async {
         expiry = (try? await model.library.globalExpiry()) ?? .standard
         downloads = (try? await model.library.downloadCount()) ?? 3
+        queueTop = (try? await model.library.queueEpisodes(limit: DownloadCount.choices.max() ?? 10)) ?? []
         speed = ((try? await model.library.globalSpeed())?.value ?? 1.0)
         voiceBoost = (try? await model.library.globalVoiceBoost()) ?? false
         cacheSize = currentCacheSize

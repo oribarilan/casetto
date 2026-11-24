@@ -32,6 +32,7 @@ import SwiftData
     var duration: TimeInterval?
     var summary: String?
     var webPage: URL?
+    var byteLength: Int64?
 
     init(key: String, showKey: String, title: String, audioURL: URL) {
         self.key = key

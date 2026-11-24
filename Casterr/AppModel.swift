@@ -41,6 +41,13 @@ final class AppModel {
     /// The episode the listener just asked to download on cellular, waiting for its size to tell them.
     @ObservationIgnored private var cellularToastPending: EpisodeKey?
     @ObservationIgnored private let network = NWPathMonitor()
+    /// The releases What's New lists while its sheet is open.
+    var whatsNew: [Changelog.Release]?
+    /// The bundled CHANGELOG.md.
+    static let changelog = Changelog(Bundle.main.url(forResource: "CHANGELOG", withExtension: "md")
+        .flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? "")
+    static let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+    static let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
     /// The bookmark the toast confirms.
     var lastBookmark: RecentBookmark?
     /// A bookmark the toast asked to open in the Bookmarks tab.
@@ -182,6 +189,22 @@ final class AppModel {
         }
         let show = try? await library.show(episode.showKey)
         upNext = UpNext(episode: episode, showTitle: show?.title ?? "", artworkURL: show?.artworkURL)
+    }
+
+    /// On the first launch after an update, Cassy offers What's New for every version since the last one seen.
+    /// A first install stays quiet, and so do UI tests unless they pass the last version.
+    func greetUpdate(hasSeenOnboarding: Bool) {
+        let defaults = UserDefaults.standard
+        let last = defaults.string(forKey: "lastSeenVersion")
+        defaults.set(Self.version, forKey: "lastSeenVersion")
+        guard last != Self.version else { return }
+        let uiTesting = ProcessInfo.processInfo.arguments.contains("-uiTesting")
+        if last == nil, !hasSeenOnboarding || uiTesting { return }
+        let releases = last.map { Self.changelog.releases(after: $0) } ?? Array(Self.changelog.releases.prefix(1))
+        guard !releases.isEmpty else { return }
+        cassyToast = CassyMessage(job: .success, text: "I learned some new tricks.", actionTitle: "See") { [weak self] in
+            self?.whatsNew = releases
+        }
     }
 
     /// What the episode's row says about its download, the same on every screen.

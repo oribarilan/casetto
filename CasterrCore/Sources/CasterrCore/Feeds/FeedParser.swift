@@ -23,6 +23,8 @@ public struct ParsedEpisode: Equatable, Sendable {
     public var description: String?
     /// The item's `<link>`, or nil when it's the show's page or another item's too.
     public var webPage: URL?
+    /// The file size the enclosure lists, often missing or wrong.
+    public var byteLength: Int64?
 }
 
 public enum FeedParseError: Error, Equatable {
@@ -76,7 +78,8 @@ public enum FeedParser {
             publishDate: item.pubDate,
             duration: item.iTunes?.duration,
             description: item.description,
-            webPage: url(item.link)
+            webPage: url(item.link),
+            byteLength: enclosure.length
         )
     }
 
