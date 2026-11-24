@@ -76,3 +76,7 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 
 - [ ] Play an episode for a minute, force quit Casterr, and reopen it: the mini player shows that episode paused (with no bookmark button), tapping it opens Now Playing at the same spot, and play resumes there without jumping back. Queue a brand-new episode at the top instead: the bar says "Up next · from your Queue" and opens the Queue.
 
+## Waveforms
+
+- [ ] Play a talk show with Now Playing open: the big pause button's bars fill with tangerine and move with the mini player's. With Reduce Motion on, both are plain pause icons. Share a 30-second clip to Messages and WhatsApp: the waveform along the bottom fills tangerine in time with the audio, and making the clip takes no more than a few seconds longer than before.
+

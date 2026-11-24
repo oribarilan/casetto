@@ -33,10 +33,20 @@ struct NowPlayingView: View {
 
             HStack(spacing: 40) {
                 Button("Back 15 seconds", systemImage: "gobackward.15") { player.skipBack() }
-                Button(player.isPlaying ? "Pause" : "Play", systemImage: player.isPlaying ? "pause.circle.fill" : "play.circle.fill") {
+                Button {
                     Task { try? await player.togglePlayPause() }
+                } label: {
+                    if player.isPlaying {
+                        // The white circle of the pause symbol, with the mini player's meter in place of its bars.
+                        Circle().fill(.white)
+                            .frame(width: 64, height: 64)
+                            .overlay { PauseMeter(height: 24, base: Color(white: 0.12)) }
+                    } else {
+                        Image(systemName: "play.circle.fill").font(.system(size: 64))
+                    }
                 }
-                .font(.system(size: 64))
+                .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
+                .accessibilityIdentifier(player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                 Button("Forward 30 seconds", systemImage: "goforward.30") { player.skipForward() }
             }
             .labelStyle(.iconOnly)

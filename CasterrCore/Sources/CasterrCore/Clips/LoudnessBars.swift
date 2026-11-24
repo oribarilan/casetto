@@ -19,6 +19,23 @@ public enum LoudnessBars {
         guard let loudest = decibels.compactMap(\.self).max() else { return Array(repeating: 0, count: count) }
         return decibels.map { db in db.map { max(0, 1 - (loudest - $0) / range) } ?? 0 }
     }
+
+    /// The bars for `clip` alone, from `bars` spread evenly over `span`, regrouped into `count` bars that each take
+    /// the loudest bar they cover, so short pauses don't flatten the clip's shape.
+    public static func bars(_ bars: [Float], over span: ClosedRange<TimeInterval>, for clip: ClosedRange<TimeInterval>,
+                            count: Int) -> [Float] {
+        let length = span.upperBound - span.lowerBound
+        guard count > 0, !bars.isEmpty, length > 0 else { return Array(repeating: 0, count: max(count, 0)) }
+        func index(_ time: TimeInterval) -> Int {
+            min(bars.count, max(0, Int(((time - span.lowerBound) / length * Double(bars.count)).rounded())))
+        }
+        let step = (clip.upperBound - clip.lowerBound) / Double(count)
+        return (0..<count).map { group in
+            let first = index(clip.lowerBound + Double(group) * step)
+            let last = max(first + 1, index(clip.lowerBound + Double(group + 1) * step))
+            return bars[min(first, bars.count - 1)..<min(last, bars.count)].max() ?? 0
+        }
+    }
 }
 
 extension Loudness {

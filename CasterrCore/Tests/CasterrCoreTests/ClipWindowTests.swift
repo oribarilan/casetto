@@ -108,3 +108,33 @@ struct LoudnessBarsTests {
         #expect(LoudnessBars.bars(from: tone(1, count: 10), count: 0) == [])
     }
 }
+
+struct ClipBarsTests {
+    // 120 bars over 0...120 s: bar i covers second i, and its height is i / 120.
+    private let window = (0..<120).map { Float($0) / 120 }
+
+    @Test func takesOnlyTheClipsSpan() {
+        let bars = LoudnessBars.bars(window, over: 0...120, for: 30...60, count: 30)
+        #expect(bars.count == 30)
+        #expect(bars.first == Float(30) / 120)
+        #expect(bars.last == Float(59) / 120)
+    }
+
+    @Test func eachGroupTakesItsLoudestBar() {
+        var loud = Array(repeating: Float(0.1), count: 120)
+        loud[41] = 0.9
+        let bars = LoudnessBars.bars(loud, over: 0...120, for: 40...60, count: 5)
+        #expect(bars == [0.9, 0.1, 0.1, 0.1, 0.1])
+    }
+
+    @Test func moreGroupsThanBarsRepeatTheBarTheyFallIn() {
+        let bars = LoudnessBars.bars(window, over: 0...120, for: 10...12, count: 4)
+        #expect(bars.count == 4)
+        #expect(bars.allSatisfy { $0 >= Float(10) / 120 && $0 <= Float(12) / 120 })
+    }
+
+    @Test func noBarsGiveFlatZeros() {
+        #expect(LoudnessBars.bars([], over: 0...120, for: 0...30, count: 3) == [0, 0, 0])
+    }
+}
+

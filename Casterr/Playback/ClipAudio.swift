@@ -183,13 +183,19 @@ enum ClipFetcher {
     }
 }
 
-/// Cuts a clip and writes it as a square video of one still frame.
+/// Cuts a clip and writes it as a square video of the art, whose waveform fills tangerine as the clip plays.
 enum ClipVideo {
     static let side = 1080
+    /// Enough frames a second for the fill to move smoothly; only the waveform changes, so frames stay small.
+    static let framesPerSecond = 15
+    static let barCount = 48
+    /// Where the waveform sits, in the 1080 px frame, from the top left.
+    static let waveformArea = CGRect(x: 60, y: 865, width: 960, height: 115)
     private static let log = Logger(subsystem: "sh.oribi.Casterr", category: "clips")
 
-    /// A temporary `.mp4` of `frame` with the clip's audio at normal speed.
-    static func make(_ clip: ClosedRange<TimeInterval>, of audio: ClipAudio, frame: CGImage) async throws -> URL {
+    /// A temporary `.mp4` of `frame`, revealing `played` over it left to right across the waveform as the clip plays,
+    /// with the clip's audio at normal speed.
+    static func make(_ clip: ClosedRange<TimeInterval>, of audio: ClipAudio, frame: CGImage, played: CGImage) async throws -> URL {
         try await Task.detached {
             let started = Date.now
             let temporary = FileManager.default.temporaryDirectory
@@ -198,7 +204,7 @@ enum ClipVideo {
             try await cutAudio(clip, of: audio, to: cut)
             let video = temporary.appending(path: "Clip-\(UUID().uuidString.prefix(8)).mp4")
             do {
-                try await write(frame: frame, audio: cut, to: video)
+                try await write(frame: frame, played: played, audio: cut, to: video)
             } catch {
                 try? FileManager.default.removeItem(at: video)
                 throw error
@@ -218,8 +224,9 @@ enum ClipVideo {
         try await session.export(to: url, as: .m4a)
     }
 
-    /// One frame a second of the still, plus the AAC audio passed through, into an H.264 `.mp4`.
-    private static func write(frame: CGImage, audio: URL, to url: URL) async throws {
+    /// `framesPerSecond` frames of the art with the waveform filling, plus the AAC audio passed through, into an
+    /// H.264 `.mp4`.
+    private static func write(frame: CGImage, played: CGImage, audio: URL, to url: URL) async throws {
         let asset = AVURLAsset(url: audio)
         guard let track = try await asset.loadTracks(withMediaType: .audio).first,
               let format = try await track.load(.formatDescriptions).first else { throw ClipProblem.needsDownload }
@@ -236,17 +243,21 @@ enum ClipVideo {
         try reader.start()
         writer.startSession(atSourceTime: .zero)
 
-        let pixels = CVReadOnlyPixelBuffer(unsafeBuffer: try pixelBuffer(of: frame))
-        let frames = max(Int(duration.seconds.rounded(.up)), 1)
+        let frames = max(Int((duration.seconds * Double(framesPerSecond)).rounded(.up)), 1)
         // The writer interleaves the tracks, so it takes from whichever one it's ready for.
-        var second = 0
+        var index = 0
+        var pixels = CVReadOnlyPixelBuffer(unsafeBuffer: try pixelBuffer(of: frame, played: played, progress: 0))
         var sample = try await audioSamples.next()
         if sample == nil { audioReceiver.finish() }
-        while second < frames || sample != nil {
+        while index < frames || sample != nil {
             var appended = false
-            if second < frames, try videoReceiver.appendImmediately(pixels, with: CMTime(value: CMTimeValue(second), timescale: 1)) {
-                second += 1
-                if second == frames { videoReceiver.finish() }
+            if index < frames, try videoReceiver.appendImmediately(pixels, with: CMTime(value: CMTimeValue(index), timescale: CMTimeScale(framesPerSecond))) {
+                index += 1
+                if index == frames {
+                    videoReceiver.finish()
+                } else {
+                    pixels = CVReadOnlyPixelBuffer(unsafeBuffer: try pixelBuffer(of: frame, played: played, progress: Double(index) / Double(frames)))
+                }
                 appended = true
             }
             if let next = sample, try audioReceiver.appendImmediately(next) {
@@ -261,7 +272,8 @@ enum ClipVideo {
         guard writer.status == .completed else { throw writer.error ?? ClipProblem.needsDownload }
     }
 
-    private static func pixelBuffer(of image: CGImage) throws -> CVPixelBuffer {
+    /// `image`, with `played` drawn over it up to `progress` of the way across the waveform.
+    private static func pixelBuffer(of image: CGImage, played: CGImage, progress: Double) throws -> CVPixelBuffer {
         var buffer: CVPixelBuffer?
         CVPixelBufferCreate(nil, side, side, kCVPixelFormatType_32BGRA,
                             [kCVPixelBufferCGImageCompatibilityKey: true, kCVPixelBufferCGBitmapContextCompatibilityKey: true] as CFDictionary,
@@ -272,7 +284,12 @@ enum ClipVideo {
         let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer), width: side, height: side, bitsPerComponent: 8,
                                 bytesPerRow: CVPixelBufferGetBytesPerRow(buffer), space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                 bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
-        context?.draw(image, in: CGRect(x: 0, y: 0, width: side, height: side))
+        let all = CGRect(x: 0, y: 0, width: side, height: side)
+        context?.draw(image, in: all)
+        if progress > 0 {
+            context?.clip(to: CGRect(x: 0, y: 0, width: waveformArea.minX + waveformArea.width * progress, height: CGFloat(side)))
+            context?.draw(played, in: all)
+        }
         return buffer
     }
 }

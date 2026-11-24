@@ -115,36 +115,6 @@ private struct MiniPlayer: View {
     }
 }
 
-/// The pause icon's two bars, each filling with tangerine from the bottom as loud as the voice is now (left) and a
-/// tenth of a second ago (right). With Reduce Motion it's the plain pause icon.
-private struct PauseMeter: View {
-    @Environment(Player.self) private var player
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        // About ten updates a second, each easing out (fast start, slow finish), so the fill glides with the voice.
-        TimelineView(.animation(minimumInterval: 0.1, paused: reduceMotion)) { _ in
-            let levels = reduceMotion ? (now: 0.0, before: 0.0) : player.levels()
-            HStack(spacing: 5) {
-                bar(levels.now)
-                bar(levels.before)
-            }
-        }
-        .accessibilityHidden(true)
-    }
-
-    private func bar(_ level: Double) -> some View {
-        RoundedRectangle(cornerRadius: 2)
-            .fill(Color(.label))
-            .overlay(alignment: .bottom) {
-                Rectangle().fill(Color.tangerine).frame(height: 19 * level)
-                    .animation(.easeOut(duration: 0.25), value: level)
-            }
-            .clipShape(.rect(cornerRadius: 2))
-            .frame(width: 6, height: 19)
-    }
-}
-
 /// The bar while nothing is loaded: the new episode the Queue would start, and a play button. A started episode is
 /// loaded instead, so the mini player shows it.
 private struct UpNextBar: View {

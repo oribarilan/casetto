@@ -47,6 +47,11 @@ struct ClipEditor: View {
 
     private var window: ClipWindow { request.window }
 
+    /// The waveform the clip video shows: the editor's bars for just the clip.
+    private var clipBars: [Float] {
+        span.map { LoudnessBars.bars($0.bars, over: window.span, for: clip, count: ClipVideo.barCount) } ?? []
+    }
+
     private var span: ClipSpan? {
         if case .ready(let span) = phase { span } else { nil }
     }
@@ -54,7 +59,7 @@ struct ClipEditor: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 14) {
-                ClipFrame(art: art, side: 220)
+                ClipFrame(art: art, side: 220, bars: clipBars)
                     .clipShape(.rect(cornerRadius: 18))
                     .accessibilityHidden(true)
                 Text("\(clip.lowerBound.clockTenths) – \(clip.upperBound.clockTenths) · \((clip.upperBound - clip.lowerBound).rounded().clock)")
@@ -239,14 +244,17 @@ struct ClipEditor: View {
         guard let audio = span?.audio else { return }
         stopPreview()
         exporting = true
-        let renderer = ImageRenderer(content: ClipFrame(art: art, side: CGFloat(ClipVideo.side)))
+        // Two frames, unplayed and played; the video reveals the second over the first as the clip plays.
+        let renderer = ImageRenderer(content: ClipFrame(art: art, side: CGFloat(ClipVideo.side), bars: clipBars))
         renderer.scale = 1
+        let playedRenderer = ImageRenderer(content: ClipFrame(art: art, side: CGFloat(ClipVideo.side), bars: clipBars, played: true))
+        playedRenderer.scale = 1
         let caption = ShareText.episode(request.episode, show: request.show)
         Task {
             defer { exporting = false }
-            guard let frame = renderer.cgImage else { return }
+            guard let frame = renderer.cgImage, let played = playedRenderer.cgImage else { return }
             do {
-                let video = try await ClipVideo.make(clip, of: audio, frame: frame)
+                let video = try await ClipVideo.make(clip, of: audio, frame: frame, played: played)
                 sharing = ClipShare(video: video, text: caption.text, link: caption.url, frame: UIImage(cgImage: frame))
             } catch {
                 Self.log.error("Clip video failed: \(error)")
@@ -360,11 +368,15 @@ private struct ClipBars: View {
     }
 }
 
-/// The clip video's picture, and the editor's preview of it: the art, with the badge in the top left corner.
-/// Laid out for 1080 px and scaled to `side`.
+/// The clip video's picture, and the editor's preview of it: the art, with the badge in the top left corner and the
+/// clip's waveform along the bottom over a soft fade. Laid out for 1080 px and scaled to `side`.
 struct ClipFrame: View {
     let art: UIImage?
     let side: CGFloat
+    /// The clip's loudness, 0 to 1, as `ClipVideo.barCount` bars.
+    var bars: [Float] = []
+    /// Draws every bar as played (tangerine); the video reveals this copy left to right over the unplayed one.
+    var played = false
 
     var body: some View {
         let scale = side / CGFloat(ClipVideo.side)
@@ -380,6 +392,28 @@ struct ClipFrame: View {
         .overlay(alignment: .topLeading) {
             ClipBadge(scale: scale).padding(40 * scale)
         }
+        .overlay(alignment: .bottom) {
+            if !bars.isEmpty { waveform(scale: scale) }
+        }
+    }
+
+    private func waveform(scale: CGFloat) -> some View {
+        let area = ClipVideo.waveformArea
+        let step = area.width / CGFloat(bars.count)
+        return ZStack(alignment: .bottom) {
+            LinearGradient(colors: [.clear, .black.opacity(0.75)], startPoint: .top, endPoint: .bottom)
+                .frame(height: 430 * scale)
+            HStack(alignment: .center, spacing: step * 0.45 * scale) {
+                ForEach(bars.indices, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: 5 * scale)
+                        .fill(played ? Color.tangerine : .white.opacity(0.55))
+                        .frame(width: step * 0.55 * scale, height: max(8, CGFloat(bars[index]) * area.height) * scale)
+                }
+            }
+            .frame(width: area.width * scale, height: area.height * scale)
+            .padding(.bottom, (CGFloat(ClipVideo.side) - area.maxY) * scale)
+        }
+        .accessibilityHidden(true)
     }
 }
 
