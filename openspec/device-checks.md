@@ -130,3 +130,8 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 - Open a show whose description fits in two lines: no Show more, and tapping it does nothing.
 - On Find Shows with the phone's region outside the United States, the country in "Popular now" is tangerine, like the chevron.
 - In Settings, "What's New" in the About row is tangerine. In light and dark mode, all three are easy to read.
+
+## Show page controls
+
+- On a show you don't follow, tap Follow: the New episodes rows appear at once and fade in while the episodes slide down, with no jump, and the button fades to a grey Following as the plus spins into the check. Unfollow: the rows fade out and the episodes slide up. Pick a new choice in each menu: the value cross-fades. With Reduce Motion on, nothing slides or spins.
+- Follow, Following and the round Star look right in light and dark mode, and the filled star is tangerine.

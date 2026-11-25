@@ -71,10 +71,11 @@ final class ScreensTests: XCTestCase {
         XCTAssertEqual(star.label, "Star")
         star.tap()
         XCTAssertTrue(app.buttons["Starred"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Go to the end of your Queue"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["newEpisodesRow"].waitForValue("Queue"))
         star.tap()
         XCTAssertTrue(star.wait(for: \.label, toEqual: "Star", timeout: 5), "still starred")
-        XCTAssertTrue(app.staticTexts["Go to the end of your Queue"].exists, "unstarring changed the setting")
+        sleep(1)
+        XCTAssertEqual(app.buttons["newEpisodesRow"].value as? String, "Queue", "unstarring changed the setting")
 
         // Unfollow asks first, keeps queued episodes, and leaves the page with Follow.
         let follow = app.buttons["followShow"]
@@ -225,17 +226,21 @@ final class ScreensTests: XCTestCase {
         XCTAssertFalse(app.buttons["Undo"].exists)
         snapshot("10 Expired")
 
-        // New-episode settings open in a sheet; the Inbox period applies to Inbox shows only.
+        // Where new episodes go is a menu in its row; the Inbox period has its own row, for Inbox shows only.
         let newEpisodes = app.buttons["newEpisodesRow"]
+        let removedAfter = app.buttons["removedAfterRow"]
+        XCTAssertTrue(removedAfter.waitForExistence(timeout: 5))
+        removedAfter.tap()
+        choose("3 days")
+        XCTAssertTrue(removedAfter.waitForValue("3 days"))
+        removedAfter.tap()
+        choose("My default (7 days)")
+        XCTAssertTrue(removedAfter.waitForValue("7 days"), "My default didn't follow the 7-day default set above")
         newEpisodes.tap()
-        let useDefault = app.switches.firstMatch
-        XCTAssertTrue(useDefault.waitForExistence(timeout: 5))
-        snapshot("11 New Episodes Sheet")
-        app.buttons["Play next"].tap()
-        XCTAssertTrue(useDefault.waitForNonExistence(timeout: 5))
-        app.buttons["Done"].tap()
-        XCTAssertTrue(newEpisodes.waitForExistence(timeout: 5))
-        XCTAssertTrue(newEpisodes.label.contains("Play next"), newEpisodes.label)
+        snapshot("11 New Episodes Menu")
+        choose("Play next")
+        XCTAssertTrue(newEpisodes.waitForValue("Play next"))
+        XCTAssertTrue(removedAfter.waitForNonExistence(timeout: 5), "the Inbox period stayed for Play next")
         snapshot("11a Show Page")
     }
 
@@ -273,7 +278,7 @@ final class ScreensTests: XCTestCase {
         app.buttons["Planet Money, NPR"].tap()
         let newEpisodes = app.buttons["newEpisodesRow"]
         XCTAssertTrue(newEpisodes.waitForExistence(timeout: 5))
-        XCTAssertTrue(newEpisodes.label.contains("Skipped"), newEpisodes.label)
+        XCTAssertTrue(newEpisodes.waitForValue("Skip"))
     }
 
     /// Onboarding on first launch: search, star a show, and its newest episode is queued.
@@ -641,7 +646,10 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(app.buttons["starShow"].exists)
         snapshot("24 Unfollowed Show")
         follow.tap()
-        XCTAssertTrue(app.buttons["newEpisodesRow"].waitForExistence(timeout: 30), "following didn't show the settings")
+        // The settings show while the feed still downloads.
+        XCTAssertTrue(app.buttons["newEpisodesRow"].exists, "the settings waited for the follow")
+        XCTAssertEqual(app.buttons["newEpisodesRow"].value as? String, "Inbox")
+        XCTAssertTrue(app.buttons["removedAfterRow"].exists)
         XCTAssertEqual(follow.label, "Following")
     }
 
@@ -758,7 +766,7 @@ final class ScreensTests: XCTestCase {
         snapshot("28 Clear Cache")
     }
 
-    /// Follow, Star, the new episodes sheet and Settings show a tap at once, before the save lands.
+    /// Follow, Star, the New episodes row and Settings show a tap at once, before the save lands.
     /// Each check reads the state right after the tap, with no waiting.
     @MainActor
     func testInstantControls() throws {
@@ -780,7 +788,7 @@ final class ScreensTests: XCTestCase {
         star.tap()
         XCTAssertEqual(star.label, "Unstar", "Star waited for the save")
 
-        // The show page: Star flips at once, and so does a tile in the new episodes sheet.
+        // The show page: Star flips at once, and so does the New episodes row.
         app.buttons.matching(identifier: "directoryShow").firstMatch.tap()
         let starShow = app.buttons["starShow"]
         XCTAssertTrue(starShow.waitForExistence(timeout: 30))
@@ -790,11 +798,8 @@ final class ScreensTests: XCTestCase {
         let newEpisodes = app.buttons["newEpisodesRow"]
         XCTAssertTrue(newEpisodes.waitForExistence(timeout: 10))
         newEpisodes.tap()
-        let skip = app.buttons["Skip"]
-        XCTAssertTrue(skip.waitForExistence(timeout: 5))
-        skip.tap()
-        XCTAssertTrue(skip.isSelected, "the sheet's tile waited for the save")
-        app.buttons["Done"].tap()
+        choose("Skip")
+        XCTAssertEqual(newEpisodes.value as? String, "Skip", "the row waited for the save")
         app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["Done"].tap()
 
@@ -996,6 +1001,14 @@ final class ScreensTests: XCTestCase {
     }
 
     @MainActor
+    /// Taps the open menu's choice named `title`, with or without its explanation after it.
+    private func choose(_ title: String) {
+        let predicate = NSPredicate(format: "label == %@ OR label BEGINSWITH %@", title, title + ", ")
+        let choice = app.buttons.matching(predicate).firstMatch
+        XCTAssertTrue(choice.waitForExistence(timeout: 5), "no \(title) in the menu")
+        choice.tap()
+    }
+
     private func snapshot(_ name: String) {
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = name
@@ -1005,6 +1018,13 @@ final class ScreensTests: XCTestCase {
 }
 
 extension XCUIElement {
+    /// Waits until the element's accessibility value reads `value`.
+    @MainActor
+    func waitForValue(_ value: String, timeout: TimeInterval = 5) -> Bool {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", value), object: self)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
     /// Opens an episode row's action line and taps Play.
     @MainActor
     func playFromRow() {

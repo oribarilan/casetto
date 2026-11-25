@@ -47,7 +47,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Inbox")
                 } footer: {
-                    Text("Your default for every show. A show can have its own in its New episodes settings.")
+                    Text("Your default for every show. A show can have its own on its page.")
                 }
                 .id(SettingsSection.inbox)
 
@@ -212,6 +212,16 @@ struct SettingsView: View {
                 cacheSize = currentCacheSize
                 if step == 4 { withAnimation { cleared = false } }
             }
+        }
+    }
+}
+
+extension InboxExpiry {
+    /// "1d", "14d", or "Never", for the picker.
+    var shortTitle: String {
+        switch self {
+        case .days(let days): "\(days)d"
+        case .never: "Never"
         }
     }
 }

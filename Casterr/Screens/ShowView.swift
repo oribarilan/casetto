@@ -6,6 +6,7 @@ import SwiftUI
 struct ShowView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let showKey: ShowKey
     /// For a show opened from Find Shows: where to fetch its feed when the device doesn't have it.
     var feedURL: URL?
@@ -22,7 +23,6 @@ struct ShowView: View {
     /// Taps that followed or starred the show; a new count spins the button's icon.
     @State private var followSpins = 0
     @State private var starSpins = 0
-    @State private var editingNewEpisodes = false
     @State private var showingPlayed = false
     /// Where an unfollowed show's feed came from, for Follow.
     @State private var cachedFeedURL: URL?
@@ -31,9 +31,12 @@ struct ShowView: View {
     /// A tap is never dropped: each waits its turn, and the buttons show the latest choice until the last one lands.
     @State private var lastSave: Task<Void, Never>?
     @State private var savesRunning = 0
-    /// Follow and Star as shown before their save lands; nil shows the saved state.
+    /// Follow, Star and the new-episode choices as shown before their save lands; nil shows the saved state.
     @State private var pendingFollow: Bool?
     @State private var pendingStar: Bool?
+    @State private var pendingLevel: TriageLevel?
+    /// The show's own Inbox period; `.some(nil)` shows My default.
+    @State private var pendingOverride: InboxExpiry??
     /// Fetching the feed of a show opened from Find Shows.
     @State private var fetchingFeed = false
     /// The show's art, for the share sheet's preview.
@@ -107,12 +110,6 @@ struct ShowView: View {
         // The header names the show, so the bar doesn't repeat it.
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $editingNewEpisodes) {
-            if let subscription {
-                NewEpisodesSheet(showKey: showKey, level: subscription.level,
-                                 override: subscription.expiryOverride, global: globalExpiry)
-            }
-        }
         .toolbar {
             if let show, !isShared, let feedURL = subscription?.feedURL ?? cachedFeedURL {
                 ArtShareLink(share: ShareText.show(show, feedURL: feedURL), art: showArt) {
@@ -127,11 +124,14 @@ struct ShowView: View {
         .task { await fetchFeedIfMissing() }
     }
 
-    /// Follow or Following, and Star or Starred, as in Find Shows. The star is a favorite, separate from the level.
+    private var following: Bool { pendingFollow ?? (subscription != nil) }
+    private var starred: Bool { pendingStar ?? (subscription?.starred == true) }
+    private var level: TriageLevel { pendingLevel ?? subscription?.level ?? .inbox }
+    private var expiryOverride: InboxExpiry? { pendingOverride ?? subscription?.expiryOverride }
+
+    /// Follow or Following, and a round Star, as in Find Shows. The star is a favorite, separate from the level.
     @ViewBuilder private var followButtons: some View {
         if !isShared, let url = subscription?.feedURL ?? cachedFeedURL ?? feedURL {
-            let following = pendingFollow ?? (subscription != nil)
-            let starred = pendingStar ?? (subscription?.starred == true)
             HStack(spacing: 10) {
                 ShowPageButton(title: following ? "Following" : "Follow", symbol: following ? "checkmark" : "plus",
                                on: following, spin: (.degrees(-90), followSpins)) {
@@ -139,7 +139,9 @@ struct ShowView: View {
                         confirmingUnfollow = true
                     } else {
                         followSpins += 1
-                        act(follow: true, touching: .following) { _ = try await model.feeds.subscribe(to: url) }
+                        act(follow: true, level: .inbox, override: .some(nil), touching: .following) {
+                            _ = try await model.feeds.subscribe(to: url)
+                        }
                     }
                 }
                 .accessibilityIdentifier("followShow")
@@ -149,16 +151,28 @@ struct ShowView: View {
                 } message: {
                     Text("Episodes you queued stay in your Queue.")
                 }
-                ShowPageButton(title: starred ? "Starred" : "Star", symbol: starred ? "star.fill" : "star",
-                               on: starred, spin: (.degrees(-144), starSpins)) {
+                // One button for both looks, so the star's spin isn't cut short.
+                Button {
+                    // Read now: the save runs after the tap has changed what `starred` and `following` show.
+                    let star = !starred
                     let wasFollowing = following
-                    if !starred { starSpins += 1 }
+                    if star { starSpins += 1 }
                     if !wasFollowing { followSpins += 1 }
-                    act(follow: true, star: !starred, touching: wasFollowing ? .follows : .following) {
+                    // Starring sends an Inbox show's new episodes to the Queue, as `setStarred` saves it.
+                    let queues = star && (!wasFollowing || level == .inbox)
+                    act(follow: true, star: star, level: queues ? .autoQueue : nil,
+                        override: wasFollowing ? nil : .some(nil), touching: wasFollowing ? .follows : .following) {
                         if !wasFollowing { _ = try await model.feeds.subscribe(to: url, level: .autoQueue) }
-                        try await model.library.setStarred(showKey, !starred)
+                        try await model.library.setStarred(showKey, star)
                     }
+                } label: {
+                    Image(systemName: starred ? "star.fill" : "star")
+                        .spin(from: .degrees(-144), trigger: starSpins)
+                        .foregroundStyle(starred ? Color.tangerine : .primary)
                 }
+                .buttonStyle(.bordered).buttonBorderShape(.circle).controlSize(.large)
+                .tint(.gray)
+                .accessibilityLabel(starred ? "Starred" : "Star")
                 .accessibilityIdentifier("starShow")
             }
             .listRowSeparator(.hidden)
@@ -167,16 +181,21 @@ struct ShowView: View {
         }
     }
 
-    /// Shows the new Follow and Star at once, saves, then lets the saved state take over. A failed save goes back.
-    private func act(follow: Bool? = nil, star: Bool? = nil, touching areas: DataArea,
-                     _ work: @escaping () async throws -> Void) {
-        withAnimation(.snappy) {
-            pendingFollow = follow
-            pendingStar = star
-        }
+    /// Shows the new choices at once, saves, then lets the saved state take over. A failed save goes back.
+    /// A value left nil keeps what is shown, so a tap during an earlier save doesn't undo that save's choice.
+    private func act(follow: Bool? = nil, star: Bool? = nil, level: TriageLevel? = nil, override: InboxExpiry?? = nil,
+                     touching areas: DataArea, _ work: @escaping () async throws -> Void) {
         let previous = lastSave
         savesRunning += 1
         lastSave = Task {
+            // Shown from the task, a moment after the tap: a change made inside the tapped List row
+            // would insert the New episodes rows without their animation.
+            withAnimation(reduceMotion ? nil : .snappy) {
+                if let follow { pendingFollow = follow }
+                if let star { pendingStar = star }
+                if let level { pendingLevel = level }
+                if let override { pendingOverride = override }
+            }
             await previous?.value
             await model.change(areas, work)
             savesRunning -= 1
@@ -184,9 +203,11 @@ struct ShowView: View {
             await loadFollow()
             // A tap during the load keeps its choice on screen.
             guard savesRunning == 0 else { return }
-            withAnimation(.snappy) {
+            withAnimation(reduceMotion ? nil : .snappy) {
                 pendingFollow = nil
                 pendingStar = nil
+                pendingLevel = nil
+                pendingOverride = nil
             }
         }
     }
@@ -317,57 +338,79 @@ struct ShowView: View {
         Task { await model.change([.episodes, .feeds]) { try await model.library.deleteSharedEpisode(episode.key) } }
     }
 
-    /// One line saying what happens to new episodes; tapping it opens the sheet that changes it.
-    /// A show you don't follow offers Subscribe instead; the built-in shared show offers neither.
+    /// Where new episodes go, and for the Inbox how long they wait, each a menu in place.
+    /// The rows show from the moment Follow is tapped. A show you don't follow has neither;
+    /// the built-in shared show has a note instead.
     @ViewBuilder private var newEpisodesRow: some View {
         if subscription == nil, isShared {
             Section {
                 Text("Files you share to Casterr live here, on this iPhone only, until you delete them.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
-        } else if let subscription {
+        } else if !isShared, following {
             Section {
-                Button { editingNewEpisodes = true } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: symbol(for: subscription.level))
-                            .foregroundStyle(.tint)
-                            .frame(width: 30, height: 30)
-                            .background(Color.tangerine.opacity(0.12), in: .rect(cornerRadius: 8))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("New episodes").foregroundStyle(.primary)
-                            Text(newEpisodesSummary(subscription)).font(.caption).foregroundStyle(.secondary)
+                menuRow("New episodes go to", value: Self.levelTitle(level), identifier: "newEpisodesRow") {
+                    Picker("New episodes go to", selection: Binding(get: { level }, set: { value in
+                        act(level: value, touching: .follows) { try await model.library.setLevel(showKey, to: value) }
+                    })) {
+                        ForEach(TriageLevel.allCases, id: \.self) { choice in
+                            Button {} label: {
+                                Text(Self.levelTitle(choice))
+                                Text(Self.levelDetail(choice))
+                            }
+                            .tag(choice)
                         }
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
                     }
-                    .contentShape(.rect)
                 }
-                // A plain row, not tinted like a button.
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("newEpisodesRow")
+                if level == .inbox {
+                    menuRow("Removed after", value: (expiryOverride ?? globalExpiry).title, identifier: "removedAfterRow") {
+                        Picker("Removed after", selection: Binding(get: { expiryOverride }, set: { value in
+                            act(override: .some(value), touching: .follows) {
+                                try await model.library.setExpiryOverride(showKey, to: value)
+                            }
+                        })) {
+                            Text("My default (\(globalExpiry.title))").tag(InboxExpiry?.none)
+                            ForEach(InboxExpiry.choices, id: \.self) { Text($0.title).tag(InboxExpiry?.some($0)) }
+                        }
+                    }
+                }
             }
         }
     }
 
-    private func symbol(for level: TriageLevel) -> String {
+    /// A row with its name on the left and its value, which cross-fades, on the right; tapping it opens the menu.
+    private func menuRow(_ title: String, value: String, identifier: String,
+                         @ViewBuilder content: () -> some View) -> some View {
+        Menu(content: content) {
+            HStack {
+                // `Color.primary`, since `.primary` would take the menu's tangerine.
+                Text(title).foregroundStyle(Color.primary)
+                Spacer()
+                Text(value).contentTransition(.opacity)
+                Image(systemName: "chevron.up.chevron.down").font(.footnote.weight(.semibold))
+            }
+            .contentShape(.rect)
+        }
+        .accessibilityLabel(title)
+        .accessibilityValue(value)
+        .accessibilityIdentifier(identifier)
+    }
+
+    private static func levelTitle(_ level: TriageLevel) -> String {
         switch level {
-        case .inbox: "tray"
-        case .autoQueue: "text.badge.plus"
-        case .playNext: "text.line.first.and.arrowtriangle.forward"
-        case .skip: "archivebox"
+        case .inbox: "Inbox"
+        case .autoQueue: "Queue"
+        case .playNext: "Play next"
+        case .skip: "Skip"
         }
     }
 
-    private func newEpisodesSummary(_ subscription: SubscriptionInfo) -> String {
-        switch subscription.level {
-        case .inbox:
-            let expiry = subscription.expiryOverride ?? globalExpiry
-            let base = expiry == .never ? "Go to your Inbox and stay until you remove them"
-                                        : "Go to your Inbox, removed after \(expiry.title)"
-            return subscription.expiryOverride == nil ? base + " (your default)" : base
-        case .autoQueue: return "Go to the end of your Queue"
-        case .playNext: return "Play next, right after what's playing"
-        case .skip: return "Skipped, only on this page"
+    private static func levelDetail(_ level: TriageLevel) -> String {
+        switch level {
+        case .inbox: "Wait for me to decide"
+        case .autoQueue: "Add to the end"
+        case .playNext: "Right after what's playing"
+        case .skip: "Only on this page"
         }
     }
 
@@ -514,8 +557,8 @@ private struct ShowPageButton: View {
         // One button for both looks: swapping buttons would replace the icon and cut its spin short.
         Button(action: action) { label }
             .buttonStyle(.borderedProminent)
-            .tint(on ? Color.tangerine.opacity(0.2) : .tangerine)
-            .foregroundStyle(on ? Color.tangerine : .onTangerine)
+            .tint(on ? Color(.tertiarySystemFill) : .tangerine)
+            .foregroundStyle(on ? Color.primary : .onTangerine)
             .controlSize(.large).buttonBorderShape(.capsule)
     }
 }

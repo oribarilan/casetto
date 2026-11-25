@@ -2,6 +2,12 @@
 
 What's new in each version of Casterr, newest first. The app shows these lines in What's New. AGENTS.md says how to add a version.
 
+## 0.6
+
+- On a show's page, Follow is the one orange button, and Star sits beside it as a round button.
+- Choose where a show's new episodes go, and how long they wait in your Inbox, from menus right on its page.
+- Those menus appear the moment you tap Follow or Star, and slide in smoothly.
+
 ## 0.5.1
 
 - A show's description shows Show more only when there's more to read, and a tap anywhere on it opens it.
