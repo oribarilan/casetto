@@ -758,6 +758,30 @@ final class ScreensTests: XCTestCase {
         snapshot("28 Clear Cache")
     }
 
+    /// A long show draws its newest 30 episodes, then Show older episodes, which adds the next 30 below.
+    @MainActor
+    func testShowOlderEpisodes() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launch()
+        app.tabBars.buttons["Shows"].tap()
+        subscribe(to: feed)
+        let tile = app.buttons["Planet Money, NPR"]
+        XCTAssertTrue(tile.waitForExistence(timeout: 30))
+        tile.tap()
+        XCTAssertTrue(app.buttons.matching(identifier: "episode").firstMatch.waitForExistence(timeout: 30))
+        let older = app.buttons["showOlder"]
+        for _ in 0..<15 where !older.isHittable { app.swipeUp() }
+        XCTAssertTrue(older.isHittable, "no Show older episodes after the first 30")
+        snapshot("30 Show Older Episodes")
+        older.tap()
+        // The next 30 slide in above the row, so it's pushed off screen until the list scrolls again.
+        XCTAssertTrue(older.waitForNonExistence(timeout: 2) || !older.isHittable, "Show older episodes added nothing")
+        for _ in 0..<15 where !older.isHittable { app.swipeUp() }
+        XCTAssertTrue(older.isHittable, "no Show older episodes after 60")
+    }
+
     /// Headphone and car buttons: the footer says what each press does and follows a change.
     @MainActor
     func testHeadphoneButtons() throws {

@@ -35,6 +35,10 @@ struct ShowView: View {
     @State private var queueTop: [EpisodeKey] = []
     /// The row whose action line is open.
     @State private var openRow: EpisodeKey?
+    /// How many rows each list draws: a long back catalog is slow to draw, not to read.
+    @State private var shownEpisodes = ShowView.batch
+    @State private var shownPlayed = ShowView.batch
+    static let batch = 30
 
     /// The built-in show for files shared to Casterr: Delete instead of following.
     private var isShared: Bool { showKey == .shared }
@@ -59,11 +63,15 @@ struct ShowView: View {
             newEpisodesRow
             // Played episodes fold into one row above the list, so it stays one tap away
             // even when a show's back catalog runs to hundreds of episodes.
-            let played = episodes.filter { places[$0.key] == .archive(.played) }
+            // One pass splits the list; grouping keeps each group newest first.
+            let split = Dictionary(grouping: episodes) { places[$0.key] == .archive(.played) }
+            let played = split[true] ?? []
+            let unplayed = split[false] ?? []
             if !played.isEmpty {
                 Section {
                     DisclosureGroup(isExpanded: $showingPlayed) {
-                        ForEach(played, id: \.key) { episodeRow($0) }
+                        ForEach(played.prefix(shownPlayed), id: \.key) { episodeRow($0) }
+                        if played.count > shownPlayed { showOlder($shownPlayed) }
                     } label: {
                         HStack {
                             Text("Played")
@@ -82,7 +90,8 @@ struct ShowView: View {
                             .accessibilityHidden(index > 0)
                     }
                 } else {
-                    ForEach(episodes.filter { places[$0.key] != .archive(.played) }, id: \.key) { episodeRow($0) }
+                    ForEach(unplayed.prefix(shownEpisodes), id: \.key) { episodeRow($0) }
+                    if unplayed.count > shownEpisodes { showOlder($shownEpisodes) }
                 }
             }
         }
@@ -371,6 +380,15 @@ struct ShowView: View {
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
         }
+    }
+
+    /// Adds the next batch of older episodes below the ones already shown.
+    private func showOlder(_ shown: Binding<Int>) -> some View {
+        Button("Show older episodes") {
+            withAnimation { shown.wrappedValue += Self.batch }
+        }
+        .foregroundStyle(Color.accentColor)
+        .accessibilityIdentifier("showOlder")
     }
 
     /// Shaped like an episode row: art, then the status, title and date lines.

@@ -105,3 +105,7 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 ## Show page while loading
 
 - On cellular, open a show from Find Shows that you don't follow: its name, host and art show at once, the description and four episode rows shimmer, and then they fill in without the Follow button or the Episodes heading moving. The art doesn't flash or reload. Repeat in dark mode and with Reduce Motion on (the placeholders stay still).
+
+## Long episode lists
+
+- Open a show you follow with a long history (The Joe Rogan Experience has about 2,800 episodes): the page opens without a pause, scrolling is smooth, and the list ends after 30 episodes with "Show older episodes". Tap it: 30 more appear below without the list jumping. Open Played on a show with many played episodes: it works the same, and its count still counts all of them.

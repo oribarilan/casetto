@@ -2,6 +2,10 @@
 
 What's new in each version of Casterr, newest first. The app shows these lines in What's New. AGENTS.md says how to add a version.
 
+## 0.4
+
+- A show page lists its newest 30 episodes, with Show older episodes for the rest, so shows with a long history open faster.
+
 ## 0.3.1
 
 - A show you open from Find Shows shows its name and art at once, and its page keeps its shape while the episodes load.
