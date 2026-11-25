@@ -40,6 +40,8 @@ In the library, read only the records that you need. To find which of a few keys
 
 A library call goes to another queue and comes back later. In a test, do not wait for library work with `Task.yield()` only. Wait for a library call, as `settle()` in `PlayerTests` does.
 
+Do not start a repeating animation (`repeatForever`) with `withAnimation`. `withAnimation` gives the animation to all changes in the same update, and a List that changes in that update moves forever. Put `.animation(_:value:)` on the view that repeats, as `Shimmer` does.
+
 To animate a control between two looks, use one view and change its modifiers (for example `.tint(on ? a : b)`). Do not put two views in `if`/`else` branches. SwiftUI makes a new view for each branch, and the animation stops.
 
 A button in a List row that adds List rows must not change the state in its action. In that case the List adds the rows without animation. Change the state in a `Task` that the action starts, as `act` in `ShowView` does.

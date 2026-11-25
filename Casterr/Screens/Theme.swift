@@ -121,10 +121,11 @@ struct Shimmer: View {
                                        startPoint: .leading, endPoint: .trailing)
                             .frame(width: proxy.size.width * 0.6)
                             .offset(x: proxy.size.width * (sweeping ? 1 : -0.6))
+                            // Only the band repeats. `withAnimation` in onAppear gave the endless animation to every
+                            // change in the same update, so a List settling at launch scrolled up and down forever.
+                            .animation(.linear(duration: 1.2).repeatForever(autoreverses: false), value: sweeping)
                     }
-                    .onAppear {
-                        withAnimation(.linear(duration: 1.2).repeatForever(autoreverses: false)) { sweeping = true }
-                    }
+                    .onAppear { sweeping = true }
                 }
             }
             .clipped()

@@ -2,6 +2,10 @@
 
 What's new in each version of Casterr, newest first. The app shows these lines in What's New. AGENTS.md says how to add a version.
 
+## 0.6.1
+
+- The Queue no longer scrolls up and down on its own when you open the app.
+
 ## 0.6
 
 - On a show's page, Follow is the one orange button, and Star sits beside it as a round button.
