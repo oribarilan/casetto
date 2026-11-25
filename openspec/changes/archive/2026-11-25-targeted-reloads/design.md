@@ -33,7 +33,7 @@ Alternatives:
 - Keep the library on the main thread and make every read cheap: each new screen or bigger library brings the stalls back.
 - A second, background library only for heavy reads: two contexts on one store must agree after each save, which is more code and a new kind of bug.
 
-**The 0.6 s wait goes last.** After the rest lands, measure Unstar and Star on the phone. If both are smooth without the wait, remove it and its `afterSpin` plumbing; keep the queued saves, which stop taps from being dropped.
+**The 0.6 s wait goes.** It hid main-thread work. With the library off the main thread and the targeted reloads in, the listener saw a smooth spin without it, so it and its `afterSpin` plumbing are removed. The queued saves stay: they stop taps from being dropped.
 
 ## Risks / Trade-offs
 

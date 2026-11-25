@@ -190,8 +190,8 @@ enum ArtCache {
     }
 }
 
-/// How long an icon's spin lasts. A save that would reload every screen waits this long, so the spin stays smooth.
-let spinSeconds = 0.6
+/// How long an icon's spin lasts.
+private let spinSeconds = 0.6
 
 extension View {
     /// Spins this icon in from `angle`, growing from 0.6 to full size, each time `trigger` changes.

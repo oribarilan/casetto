@@ -94,7 +94,7 @@ The system SHALL teach a control with a one-time tip at the moment the listener 
 - **THEN** the tip closes and doesn't show again
 
 ### Requirement: Chart country
-The chart country SHALL start as the phone's region, or the United States when the phone has no region. When the region isn't the United States, the Popular now heading MUST be a menu offering the region and the United States, and the choice MUST be kept on this device. Switching to a country with no saved chart MUST show the loading state until the new chart arrives. There SHALL be no worldwide choice, because Apple has no worldwide chart.
+The chart country SHALL start as the phone's region, or the United States when the phone has no region. When the region isn't the United States, the Popular now heading MUST be a menu offering the region and the United States, with the country name in the accent color, and the choice MUST be kept on this device. Switching to a country with no saved chart MUST show the loading state until the new chart arrives. There SHALL be no worldwide choice, because Apple has no worldwide chart.
 
 #### Scenario: Switch to the United States
 - **WHEN** the phone's region is Israel and the listener picks United States from the heading
@@ -111,6 +111,10 @@ The chart country SHALL start as the phone's region, or the United States when t
 #### Scenario: Switching loads
 - **WHEN** no United States chart is saved and the listener picks United States from the heading
 - **THEN** the Israel list goes away and the loading Cassy shows "Flipping through the shelves…" until the United States chart appears
+
+#### Scenario: Country looks tappable
+- **WHEN** the phone's region is Israel and the listener opens Find Shows
+- **THEN** "Israel" in the heading is in the accent color, like the chevron after it
 
 ### Requirement: Find Shows after onboarding
 The Shows tab's + menu SHALL offer Find Shows as its first item. It MUST open the onboarding's Find Shows screen, with the top shows, search, Follow and Star, as a sheet without the welcome screen, closed with Done.

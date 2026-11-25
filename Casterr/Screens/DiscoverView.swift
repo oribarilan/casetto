@@ -23,7 +23,6 @@ struct DiscoverView: View {
     /// Counts the taps that starred or followed each row, keyed "star.<id>" or "follow.<id>"; a new count spins the icon.
     @State private var spins: [String: Int] = [:]
     @State private var message: String?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var loading = false
     @State private var topShowsFailed = false
     @State private var attempt = 0
@@ -167,7 +166,7 @@ struct DiscoverView: View {
                 tip = nil
                 if isStarred != true { spins["star.\(show.id)", default: 0] += 1 }
                 if isStarred == nil { spins["follow.\(show.id)", default: 0] += 1 }
-                act(show, showing: isStarred != true, afterSpin: isStarred != true,
+                act(show, showing: isStarred != true,
                     touching: isStarred == nil ? DataArea.following : .follows) { try await star(show, starred: isStarred) }
             } label: {
                 Label {
@@ -181,7 +180,7 @@ struct DiscoverView: View {
             .cassyTipTarget("star.\(show.id)")
             Button {
                 if isStarred == nil { spins["follow.\(show.id)", default: 0] += 1 }
-                act(show, showing: isStarred == nil ? false : nil, afterSpin: isStarred == nil, touching: .following) {
+                act(show, showing: isStarred == nil ? false : nil, touching: .following) {
                     try await toggleSubscription(show, following: isStarred != nil)
                     // The first follow with + teaches the star, once.
                     if isStarred == nil, !anyStarred {
@@ -205,8 +204,7 @@ struct DiscoverView: View {
     }
 
     /// Shows the choice at once, saves it, then lets the saved state take over. A failed save goes back.
-    /// After a spin, the save waits for it to finish: the reload that follows a save would make it stutter.
-    private func act(_ show: DirectoryShow, showing choice: Bool?, afterSpin: Bool, touching areas: DataArea,
+    private func act(_ show: DirectoryShow, showing choice: Bool?, touching areas: DataArea,
                      _ work: @escaping () async throws -> Void) {
         guard let key = ShowKey(feedURL: show.feedURL) else { return }
         withAnimation(.snappy) { pending[key] = .some(choice) }
@@ -214,7 +212,6 @@ struct DiscoverView: View {
         savesRunning[key, default: 0] += 1
         lastSave[key] = Task {
             await previous?.value
-            if afterSpin, !reduceMotion { try? await Task.sleep(for: .seconds(spinSeconds)) }
             if let error = await model.change(areas, work) { message = error }
             savesRunning[key, default: 1] -= 1
             guard savesRunning[key] == 0 else { return }

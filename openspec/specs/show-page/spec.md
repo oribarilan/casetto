@@ -6,11 +6,19 @@ What a show page shows: the show, what happens to its new episodes, and its epis
 ## Requirements
 
 ### Requirement: Show header
-The show page SHALL open with the show's artwork, title, and author, and two lines of its description without HTML, with More to expand it. The navigation bar MUST NOT repeat the title.
+The show page SHALL open with the show's artwork, title, and author, and two lines of its description without HTML. When the description is longer than two lines, Show more MUST show under it, and tapping anywhere on the description MUST show the rest, with Show less under it to fold it again. A description that fits in two lines MUST show in full, with neither Show more nor Show less. The navigation bar MUST NOT repeat the title.
 
 #### Scenario: Long description
 - **WHEN** a show's description runs to several lines
-- **THEN** the header shows two lines and More, and More shows the rest
+- **THEN** the header shows two lines and Show more, and tapping the description shows the rest with Show less
+
+#### Scenario: Short description
+- **WHEN** a show's description fits in two lines
+- **THEN** the header shows it with no Show more
+
+#### Scenario: Fold again
+- **WHEN** the listener has opened a long description and taps it again
+- **THEN** it folds back to two lines with Show more
 
 ### Requirement: New-episode settings
 The show page SHALL summarize what happens to the show's new episodes in one row, such as "Go to your Inbox, removed after 14 days (your default)". Tapping it SHALL open a half sheet with four choices (Inbox, Queue, Play next, Skip), each with a one-line description. For Inbox, the sheet SHALL show a "Use my default" toggle; turning it off MUST show the presets 1d, 3d, 7d, 14d, 30d, and Never, starting at the current default.
@@ -38,7 +46,7 @@ The page of a show the listener doesn't follow, reached from a shared episode in
 - **THEN** ATP is followed, its page shows the new-episode settings, and the shared episode keeps its place in the Queue
 
 ### Requirement: Follow and Star on the show page
-The show page SHALL show two buttons under the header: Follow, or Following once followed, and Star, or Starred once starred. Star MUST work as in the directory: it stars the show, following it if needed, and tapping Starred removes only the star. Tapping Following MUST ask to confirm, then unfollow. The page's menu MUST NOT hold Unfollow.
+The show page SHALL show two buttons under the header: Follow, or Following once followed, and Star, or Starred once starred. Star MUST work as in the directory: it stars the show, following it if needed, and tapping Starred removes only the star. Tapping Following MUST ask to confirm, then unfollow. The question MUST point at the Following button. The page's menu MUST NOT hold Unfollow.
 
 #### Scenario: Star from the show page
 - **WHEN** the listener follows Planet Money at the Inbox level and taps Star on its page
@@ -51,6 +59,10 @@ The show page SHALL show two buttons under the header: Follow, or Following once
 #### Scenario: Unfollow from the show page
 - **WHEN** the listener taps Following on Planet Money's page and confirms Unfollow
 - **THEN** Planet Money is no longer followed and its page shows Follow and Star
+
+#### Scenario: Unfollow question points at Following
+- **WHEN** the listener taps Following on Planet Money's page
+- **THEN** the question "Episodes you queued stay in your Queue." opens pointing at the Following button
 
 ### Requirement: Show page while loading
 While a show's feed loads, the show page SHALL keep its final layout, with shimmering placeholders for the art, title, author, two lines of description, and four episode rows, in place of a spinner. A show opened from Find Shows MUST show the name, host and art from the directory at once and keep that art after the feed arrives. With Reduce Motion on, the placeholders MUST stay still.

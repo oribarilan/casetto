@@ -6,7 +6,6 @@ import SwiftUI
 struct ShowView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let showKey: ShowKey
     /// For a show opened from Find Shows: where to fetch its feed when the device doesn't have it.
     var feedURL: URL?
@@ -140,7 +139,7 @@ struct ShowView: View {
                         confirmingUnfollow = true
                     } else {
                         followSpins += 1
-                        act(follow: true, afterSpin: true, touching: .following) { _ = try await model.feeds.subscribe(to: url) }
+                        act(follow: true, touching: .following) { _ = try await model.feeds.subscribe(to: url) }
                     }
                 }
                 .accessibilityIdentifier("followShow")
@@ -155,7 +154,7 @@ struct ShowView: View {
                     let wasFollowing = following
                     if !starred { starSpins += 1 }
                     if !wasFollowing { followSpins += 1 }
-                    act(follow: true, star: !starred, afterSpin: !starred, touching: wasFollowing ? .follows : .following) {
+                    act(follow: true, star: !starred, touching: wasFollowing ? .follows : .following) {
                         if !wasFollowing { _ = try await model.feeds.subscribe(to: url, level: .autoQueue) }
                         try await model.library.setStarred(showKey, !starred)
                     }
@@ -169,8 +168,7 @@ struct ShowView: View {
     }
 
     /// Shows the new Follow and Star at once, saves, then lets the saved state take over. A failed save goes back.
-    /// After a spin, the save waits for it to finish: the reload that follows a save would make it stutter.
-    private func act(follow: Bool? = nil, star: Bool? = nil, afterSpin: Bool = false, touching areas: DataArea,
+    private func act(follow: Bool? = nil, star: Bool? = nil, touching areas: DataArea,
                      _ work: @escaping () async throws -> Void) {
         withAnimation(.snappy) {
             pendingFollow = follow
@@ -180,7 +178,6 @@ struct ShowView: View {
         savesRunning += 1
         lastSave = Task {
             await previous?.value
-            if afterSpin, !reduceMotion { try? await Task.sleep(for: .seconds(spinSeconds)) }
             await model.change(areas, work)
             savesRunning -= 1
             guard savesRunning == 0 else { return }
