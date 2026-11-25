@@ -359,3 +359,15 @@ struct PlayableQueueTests {
         #expect(try await library.playableQueue() == [k[0], shared, k[1], k[2]])
     }
 }
+
+extension Library {
+    fileprivate func worksOnMainThread() -> Bool { pthread_main_np() != 0 }
+}
+
+struct LibraryThreadTests {
+    @Test @MainActor
+    func aLibraryOpenedOnTheMainThreadWorksOffIt() async throws {
+        let library = try Library.open(inMemory: true)
+        #expect(await library.worksOnMainThread() == false)
+    }
+}

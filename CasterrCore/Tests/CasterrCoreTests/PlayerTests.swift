@@ -52,8 +52,11 @@ private struct Harness {
 
     /// Waits for work the player starts on its own (engine callbacks spawn tasks).
     func settle() async {
-        for _ in 0..<20 { await Task.yield() }
-        _ = try? await library.queue()
+        // Each round trip lets the player's next library call finish.
+        for _ in 0..<20 {
+            await Task.yield()
+            _ = try? await library.queue()
+        }
     }
 }
 

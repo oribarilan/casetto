@@ -22,7 +22,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         showNowPlayingButtons(bookmarked: false)
         watching = Task { [weak self] in
             let model = AppModel.shared
-            for await _ in Observations({ (model.revision, model.player.episode?.key, model.player.isPlaying) }) {
+            for await _ in Observations({ (model.revision([.episodes, .feeds, .downloads]), model.player.episode?.key, model.player.isPlaying) }) {
                 await self?.reloadQueue()
             }
         }
@@ -69,7 +69,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     }
 
     private func play(_ key: EpisodeKey) async {
-        await model.change { try await model.player.play(key) }
+        await model.change(.episodes) { try await model.player.play(key) }
         interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true, completion: nil)
     }
 
@@ -98,7 +98,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private func nextSpeed() async {
         guard let show = model.player.episode?.showKey else { return }
         let speed = model.player.speed.next
-        await model.change {
+        await model.change(.follows) {
             try await model.library.setSpeedOverride(show, to: speed)
             try await model.player.reloadSpeed()
         }

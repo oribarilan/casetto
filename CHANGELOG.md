@@ -2,6 +2,21 @@
 
 What's new in each version of Casterr, newest first. The app shows these lines in What's New. AGENTS.md says how to add a version.
 
+## 0.5.1
+
+- A show's description shows Show more only when there's more to read, and a tap anywhere on it opens it.
+- The country in Find Shows and What's New in Settings now look tappable.
+- Following, unfollowing and other taps across the app are smoother, even with big shows.
+
+## 0.5
+
+- The star and the + give a little spin when you star or follow a show.
+- On a show's page, the Unfollow question now points at the Following button.
+
+## 0.4.1
+
+- Follow, Star, a show's new episodes settings, and Settings respond the moment you tap.
+
 ## 0.4
 
 - A show page lists its newest 30 episodes, with Show older episodes for the rest, so shows with a long history open faster.

@@ -13,8 +13,17 @@ struct DiscoverView: View {
     @State private var results: [DirectoryShow] = []
     /// The shows you follow, and whether each is starred.
     @State private var followed: [ShowKey: Bool] = [:]
-    @State private var working: Set<String> = []
+    /// Each show's newest save, which runs after the ones before it, and how many are still running.
+    /// A tap is never dropped: each waits its turn, and the row shows the latest choice until the last one lands.
+    @State private var lastSave: [ShowKey: Task<Void, Never>] = [:]
+    @State private var savesRunning: [ShowKey: Int] = [:]
+    /// Choices shown before their save lands: true or false for starred, nil for not followed.
+    /// A reload while a save is still running keeps them, so nothing flickers back.
+    @State private var pending: [ShowKey: Bool?] = [:]
+    /// Counts the taps that starred or followed each row, keyed "star.<id>" or "follow.<id>"; a new count spins the icon.
+    @State private var spins: [String: Int] = [:]
     @State private var message: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var loading = false
     @State private var topShowsFailed = false
     @State private var attempt = 0
@@ -28,9 +37,16 @@ struct DiscoverView: View {
     /// Shows already starred when this visit began. Only a star given during the visit makes Cassy cheer.
     @State private var starredBefore: Set<ShowKey>?
 
-    private var anyStarred: Bool { followed.values.contains(true) }
+    /// What the rows show: the saved follows, with any choice still saving on top.
+    private var shown: [ShowKey: Bool] {
+        var shown = followed
+        for (key, choice) in pending { shown[key] = choice }
+        return shown
+    }
+
+    private var anyStarred: Bool { shown.values.contains(true) }
     private var starred: Bool {
-        followed.contains { $0.value && starredBefore?.contains($0.key) == false }
+        shown.contains { $0.value && starredBefore?.contains($0.key) == false }
     }
 
     var body: some View {
@@ -69,7 +85,7 @@ struct DiscoverView: View {
             }
         }
         .task(id: "\(query)|\(attempt)|\(country)") { await loadResults() }
-        .task(id: model.revision) { await loadLevels() }
+        .reload(on: model.revision(.follows)) { await loadLevels() }
     }
 
     /// The chart and search country: the listener's pick, or the phone's region.
@@ -89,7 +105,13 @@ struct DiscoverView: View {
                 }
             } label: {
                 HStack(spacing: 4) {
-                    Text(title).foregroundStyle(Color(.secondaryLabel))
+                    // The country is in the accent color, like the chevron, so it reads as tappable.
+                    if let name {
+                        Text("Popular now · \(Text(name).foregroundStyle(Color.tangerine))")
+                            .foregroundStyle(Color(.secondaryLabel))
+                    } else {
+                        Text(title).foregroundStyle(Color(.secondaryLabel))
+                    }
                     Image(systemName: "chevron.down").font(.caption.weight(.semibold))
                 }
             }
@@ -121,8 +143,7 @@ struct DiscoverView: View {
     private func row(_ show: DirectoryShow) -> some View {
         let key = ShowKey(feedURL: show.feedURL)
         /// Nil when not followed.
-        let isStarred = key.flatMap { followed[$0] }
-        let busy = working.contains(show.id)
+        let isStarred = key.flatMap { shown[$0] }
         return HStack(spacing: 12) {
             // The art and title open the show's page; the star and + act in place.
             NavigationLink(value: Route.directoryShow(show)) {
@@ -140,17 +161,27 @@ struct DiscoverView: View {
             }
             .foregroundStyle(.primary)
             .accessibilityIdentifier("directoryShow")
-            Button(isStarred == true ? "Unstar" : "Star", systemImage: isStarred == true ? "star.fill" : "star") {
+            Button {
                 // Starring before the tip shows means the listener already knows the star.
                 CassyTip.markShown("star")
                 tip = nil
-                act(show) { try await star(show, starred: isStarred) }
+                if isStarred != true { spins["star.\(show.id)", default: 0] += 1 }
+                if isStarred == nil { spins["follow.\(show.id)", default: 0] += 1 }
+                act(show, showing: isStarred != true, afterSpin: isStarred != true,
+                    touching: isStarred == nil ? DataArea.following : .follows) { try await star(show, starred: isStarred) }
+            } label: {
+                Label {
+                    Text(isStarred == true ? "Unstar" : "Star")
+                } icon: {
+                    Image(systemName: isStarred == true ? "star.fill" : "star")
+                        .spin(from: .degrees(-144), trigger: spins["star.\(show.id)", default: 0])
+                }
             }
             .accessibilityIdentifier("starButton")
             .cassyTipTarget("star.\(show.id)")
-            Button(isStarred == nil ? "Follow" : "Unfollow",
-                   systemImage: isStarred == nil ? "plus.circle" : "checkmark.circle.fill") {
-                act(show) {
+            Button {
+                if isStarred == nil { spins["follow.\(show.id)", default: 0] += 1 }
+                act(show, showing: isStarred == nil ? false : nil, afterSpin: isStarred == nil, touching: .following) {
                     try await toggleSubscription(show, following: isStarred != nil)
                     // The first follow with + teaches the star, once.
                     if isStarred == nil, !anyStarred {
@@ -158,21 +189,39 @@ struct DiscoverView: View {
                                             text: "Never miss this one? Star it and I'll queue its new episodes.")
                     }
                 }
+            } label: {
+                Label {
+                    Text(isStarred == nil ? "Follow" : "Unfollow")
+                } icon: {
+                    Image(systemName: isStarred == nil ? "plus.circle" : "checkmark.circle.fill")
+                        .spin(from: .degrees(-90), trigger: spins["follow.\(show.id)", default: 0])
+                }
             }
             .accessibilityIdentifier("subscribeButton")
         }
         .labelStyle(.iconOnly)
         .buttonStyle(.borderless)
         .font(.title3)
-        .disabled(busy)
-        .opacity(busy ? 0.5 : 1)
     }
 
-    private func act(_ show: DirectoryShow, _ work: @escaping () async throws -> Void) {
-        working.insert(show.id)
-        Task {
-            if let error = await model.change(work) { message = error }
-            working.remove(show.id)
+    /// Shows the choice at once, saves it, then lets the saved state take over. A failed save goes back.
+    /// After a spin, the save waits for it to finish: the reload that follows a save would make it stutter.
+    private func act(_ show: DirectoryShow, showing choice: Bool?, afterSpin: Bool, touching areas: DataArea,
+                     _ work: @escaping () async throws -> Void) {
+        guard let key = ShowKey(feedURL: show.feedURL) else { return }
+        withAnimation(.snappy) { pending[key] = .some(choice) }
+        let previous = lastSave[key]
+        savesRunning[key, default: 0] += 1
+        lastSave[key] = Task {
+            await previous?.value
+            if afterSpin, !reduceMotion { try? await Task.sleep(for: .seconds(spinSeconds)) }
+            if let error = await model.change(areas, work) { message = error }
+            savesRunning[key, default: 1] -= 1
+            guard savesRunning[key] == 0 else { return }
+            await loadLevels()
+            // A tap during the load keeps its choice on screen.
+            guard savesRunning[key] == 0 else { return }
+            withAnimation(.snappy) { pending[key] = nil }
         }
     }
 
@@ -277,7 +326,7 @@ struct FindShowsView: View {
                 .toolbar {
                     Button(following || !inOnboarding ? "Done" : "Skip", action: close)
                 }
-                .task(id: model.revision) {
+                .reload(on: model.revision(.follows)) {
                     following = !((try? await model.library.subscriptions().isEmpty) ?? true)
                 }
         }

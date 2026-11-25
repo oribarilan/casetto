@@ -52,10 +52,14 @@ final class AppModel {
     var lastBookmark: RecentBookmark?
     /// A bookmark the toast asked to open in the Bookmarks tab.
     var openingBookmark: OpenBookmark?
-    /// Bumped after every change to stored data, so views know to reload.
-    private(set) var revision = 0 {
-        didSet { Task { await loadUpNext() } }
-    }
+    // One counter per area, bumped after a change to it. Each is its own property, so a screen that reads
+    // one counter isn't redrawn when another moves. Screens read them through `revision(_:)`.
+    private(set) var followsRevision = 0
+    private(set) var episodesRevision = 0
+    private(set) var feedsRevision = 0
+    private(set) var bookmarksRevision = 0
+    private(set) var settingsRevision = 0
+    private(set) var downloadsRevision = 0
     /// The first Queue episode, for the bar shown while nothing is playing.
     private(set) var upNext: UpNext?
     @ObservationIgnored private var nowPlaying: MediaSession<NowPlayingBridge>?
@@ -112,7 +116,7 @@ final class AppModel {
             }
         }
         try? await library.mergeDuplicates()
-        revision += 1
+        bump([.feeds, .episodes, .follows])
         if announce, let line = summary?.sentence {
             cassyToast = CassyMessage(job: .success, text: line) { [weak self] in
                 self?.tab = .queue
@@ -163,7 +167,7 @@ final class AppModel {
         for key in plan.start {
             if let episode = try? await library.episode(key) { downloader.start(key, from: episode.audioURL) }
         }
-        if !plan.delete.isEmpty { revision += 1 }
+        if !plan.delete.isEmpty { bump(.downloads) }
     }
 
     /// Saves the current moment. Playback is untouched. False when nothing is loaded or saving failed.
@@ -173,7 +177,7 @@ final class AppModel {
               let id = try? await library.addBookmark(episode, showTitle: player.show?.title ?? "", at: player.position)
         else { return false }
         lastBookmark = RecentBookmark(id: id, position: player.position)
-        revision += 1
+        bump(.bookmarks)
         return true
     }
 
@@ -279,21 +283,48 @@ final class AppModel {
         return "Downloading on cellular, about \(max(1, Int((Double(size) / 1_000_000).rounded()))) MB."
     }
 
+    /// Reads the downloads counter, so a view that asks redraws when a download lands or goes.
     func isDownloaded(_ episode: EpisodeInfo) -> Bool {
-        downloader.store.localFile(for: episode.key, audioURL: episode.audioURL) != nil
+        _ = downloadsRevision
+        return downloader.store.localFile(for: episode.key, audioURL: episode.audioURL) != nil
     }
 
-    /// Runs a change and tells views to reload. Returns the error message, if any.
+    /// Runs a change and tells the screens that show `areas` to reload. Returns the error message, if any.
     @discardableResult
-    func change(_ work: () async throws -> Void) async -> String? {
-        defer { Task { await syncDownloads() } }
-        defer { revision += 1 }
+    func change(_ areas: DataArea = .all, _ work: () async throws -> Void) async -> String? {
+        // Which episodes download follows the Queue and the Keep downloaded setting.
+        defer { if !areas.isDisjoint(with: [.episodes, .feeds, .settings]) { Task { await syncDownloads() } } }
+        defer { bump(areas) }
         do {
             try await work()
             return nil
         } catch {
             return error.localizedDescription
         }
+    }
+
+    /// The counters of `areas`, as a screen's reload id. Reads only those counters, so the others moving
+    /// neither redraws nor reloads the screen.
+    func revision(_ areas: DataArea) -> [Int] {
+        var counters: [Int] = []
+        if areas.contains(.follows) { counters.append(followsRevision) }
+        if areas.contains(.episodes) { counters.append(episodesRevision) }
+        if areas.contains(.feeds) { counters.append(feedsRevision) }
+        if areas.contains(.bookmarks) { counters.append(bookmarksRevision) }
+        if areas.contains(.settings) { counters.append(settingsRevision) }
+        if areas.contains(.downloads) { counters.append(downloadsRevision) }
+        return counters
+    }
+
+    private func bump(_ areas: DataArea) {
+        if areas.contains(.follows) { followsRevision += 1 }
+        if areas.contains(.episodes) { episodesRevision += 1 }
+        if areas.contains(.feeds) { feedsRevision += 1 }
+        if areas.contains(.bookmarks) { bookmarksRevision += 1 }
+        if areas.contains(.settings) { settingsRevision += 1 }
+        if areas.contains(.downloads) { downloadsRevision += 1 }
+        // The bar under the tabs shows the top of the Queue.
+        if !areas.isDisjoint(with: [.episodes, .feeds]) { Task { await loadUpNext() } }
     }
 
     /// Episodes for the keys, in order. Keys without feed data are left out.
@@ -334,7 +365,7 @@ final class AppModel {
         eventTasks += [
             Task { [weak self] in
                 for await _ in NotificationCenter.default.notifications(named: Downloader.didSave) {
-                    self?.revision += 1
+                    self?.bump(.downloads)
                 }
             },
             Task { [weak self] in

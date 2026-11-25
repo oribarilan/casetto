@@ -81,8 +81,9 @@ public struct EpisodeInfo: Equatable, Sendable {
 }
 
 /// The app's only access to storage. It owns one long-lived context and hands out value types only.
-@ModelActor
-public actor Library {
+public actor Library: ModelActor {
+    public nonisolated let modelContainer: ModelContainer
+    public nonisolated let modelExecutor: any ModelExecutor
     private var clock: @Sendable () -> Date = { Date.now }
     private var ruleThresholds = RuleCard.Thresholds()
 
@@ -92,6 +93,11 @@ public actor Library {
     }
 
     func now() -> Date { clock() }
+
+    init(modelContainer: ModelContainer) {
+        self.modelContainer = modelContainer
+        modelExecutor = LibraryExecutor(container: modelContainer)
+    }
 
     /// Replaces the rule card thresholds. For tests.
     public func useRuleThresholds(_ thresholds: RuleCard.Thresholds) {
@@ -391,8 +397,9 @@ public actor Library {
     /// The Queue as this device can show and play it: a shared file or an unfollowed show's episode
     /// queued on another device has no record here, so it's skipped and the others keep their order.
     public func playableQueue() throws -> [EpisodeKey] {
-        let known = try knownEpisodeKeys()
-        return try queue().filter { known.contains($0.rawValue) }
+        let queued = try queue()
+        let known = try knownEpisodeKeys(among: queued.map(\.rawValue))
+        return queued.filter { known.contains($0.rawValue) }
     }
 
     /// The first `limit` playable Queue episodes, leaving out shared files, as downloads pick them.
@@ -415,9 +422,11 @@ public actor Library {
         try move(key, to: target)
     }
 
-    /// Keys of the episodes in the feed cache: the ones this device can show and play.
-    private func knownEpisodeKeys() throws -> Set<String> {
-        Set(try modelContext.fetch(FetchDescriptor<EpisodeRecord>()).map(\.key))
+    /// The keys among `keys` that have an episode in the feed cache: the ones this device can show and play.
+    private func knownEpisodeKeys(among keys: [String]) throws -> Set<String> {
+        var descriptor = FetchDescriptor<EpisodeRecord>(predicate: #Predicate { keys.contains($0.key) })
+        descriptor.propertiesToFetch = [\.key]
+        return Set(try modelContext.fetch(descriptor).map(\.key))
     }
 
     /// Adds to the end. An episode already in the Queue keeps its position.
@@ -454,7 +463,7 @@ public actor Library {
     /// Play-next episodes go after Now Playing and after earlier play-next episodes.
     /// Right after Now Playing, the first episode this device has, and after earlier Play next episodes.
     private func playNextIndex(in queued: [EpisodeState]) throws -> Int {
-        let known = try knownEpisodeKeys()
+        let known = try knownEpisodeKeys(among: queued.map(\.episodeKey))
         guard let nowPlaying = queued.firstIndex(where: { known.contains($0.episodeKey) }) else { return queued.count }
         var index = nowPlaying + 1
         while index < queued.count, queued[index].moveReason == MoveReason.playNext.stored {

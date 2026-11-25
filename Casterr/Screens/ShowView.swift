@@ -6,6 +6,7 @@ import SwiftUI
 struct ShowView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let showKey: ShowKey
     /// For a show opened from Find Shows: where to fetch its feed when the device doesn't have it.
     var feedURL: URL?
@@ -19,13 +20,21 @@ struct ShowView: View {
     @State private var subscription: SubscriptionInfo?
     @State private var globalExpiry: InboxExpiry = .standard
     @State private var confirmingUnfollow = false
+    /// Taps that followed or starred the show; a new count spins the button's icon.
+    @State private var followSpins = 0
+    @State private var starSpins = 0
     @State private var editingNewEpisodes = false
     @State private var showingPlayed = false
-    @State private var fullDescription = false
     /// Where an unfollowed show's feed came from, for Follow.
     @State private var cachedFeedURL: URL?
     /// Following, unfollowing, or starring is under way.
-    @State private var working = false
+    /// The newest save, which runs after the ones before it, and how many are still running.
+    /// A tap is never dropped: each waits its turn, and the buttons show the latest choice until the last one lands.
+    @State private var lastSave: Task<Void, Never>?
+    @State private var savesRunning = 0
+    /// Follow and Star as shown before their save lands; nil shows the saved state.
+    @State private var pendingFollow: Bool?
+    @State private var pendingStar: Bool?
     /// Fetching the feed of a show opened from Find Shows.
     @State private var fetchingFeed = false
     /// The show's art, for the share sheet's preview.
@@ -54,7 +63,7 @@ struct ShowView: View {
                         HStack {
                             Text(speedOverride.title)
                             Button("Reset") {
-                                Task { await model.change { try await model.library.setSpeedOverride(showKey, to: nil) } }
+                                Task { await model.change(.follows) { try await model.library.setSpeedOverride(showKey, to: nil) } }
                             }
                         }
                     }
@@ -112,53 +121,83 @@ struct ShowView: View {
                 }
             }
         }
-        .confirmationDialog("Unfollow this show?", isPresented: $confirmingUnfollow) {
-            Button("Unfollow", role: .destructive) { unfollow() }
-        } message: {
-            Text("Episodes you queued stay in your Queue.")
-        }
         .refreshable { await model.refresh() }
-        .task(id: model.revision) { await load() }
+        // Two reloads, so a Follow or Star re-reads the follow and not every episode.
+        .reload(on: model.revision([.follows, .settings])) { await loadFollow() }
+        .reload(on: model.revision([.feeds, .episodes])) { await loadEpisodes() }
         .task { await fetchFeedIfMissing() }
     }
 
     /// Follow or Following, and Star or Starred, as in Find Shows. The star is a favorite, separate from the level.
     @ViewBuilder private var followButtons: some View {
         if !isShared, let url = subscription?.feedURL ?? cachedFeedURL ?? feedURL {
-            let starred = subscription?.starred == true
+            let following = pendingFollow ?? (subscription != nil)
+            let starred = pendingStar ?? (subscription?.starred == true)
             HStack(spacing: 10) {
-                ShowPageButton(title: subscription == nil ? "Follow" : "Following",
-                               symbol: subscription == nil ? "plus" : "checkmark", on: subscription != nil) {
-                    if subscription == nil { act { _ = try await model.feeds.subscribe(to: url) } } else { confirmingUnfollow = true }
+                ShowPageButton(title: following ? "Following" : "Follow", symbol: following ? "checkmark" : "plus",
+                               on: following, spin: (.degrees(-90), followSpins)) {
+                    if following {
+                        confirmingUnfollow = true
+                    } else {
+                        followSpins += 1
+                        act(follow: true, afterSpin: true, touching: .following) { _ = try await model.feeds.subscribe(to: url) }
+                    }
                 }
                 .accessibilityIdentifier("followShow")
-                ShowPageButton(title: starred ? "Starred" : "Star", symbol: starred ? "star.fill" : "star", on: starred) {
-                    act {
-                        if subscription == nil { _ = try await model.feeds.subscribe(to: url, level: .autoQueue) }
+                // Attached to the button, so the question points at it.
+                .confirmationDialog("Unfollow this show?", isPresented: $confirmingUnfollow) {
+                    Button("Unfollow", role: .destructive) { unfollow() }
+                } message: {
+                    Text("Episodes you queued stay in your Queue.")
+                }
+                ShowPageButton(title: starred ? "Starred" : "Star", symbol: starred ? "star.fill" : "star",
+                               on: starred, spin: (.degrees(-144), starSpins)) {
+                    let wasFollowing = following
+                    if !starred { starSpins += 1 }
+                    if !wasFollowing { followSpins += 1 }
+                    act(follow: true, star: !starred, afterSpin: !starred, touching: wasFollowing ? .follows : .following) {
+                        if !wasFollowing { _ = try await model.feeds.subscribe(to: url, level: .autoQueue) }
                         try await model.library.setStarred(showKey, !starred)
                     }
                 }
                 .accessibilityIdentifier("starShow")
             }
-            .disabled(working)
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
         }
     }
 
-    private func act(_ work: @escaping () async throws -> Void) {
-        working = true
-        Task {
-            await model.change(work)
-            working = false
+    /// Shows the new Follow and Star at once, saves, then lets the saved state take over. A failed save goes back.
+    /// After a spin, the save waits for it to finish: the reload that follows a save would make it stutter.
+    private func act(follow: Bool? = nil, star: Bool? = nil, afterSpin: Bool = false, touching areas: DataArea,
+                     _ work: @escaping () async throws -> Void) {
+        withAnimation(.snappy) {
+            pendingFollow = follow
+            pendingStar = star
+        }
+        let previous = lastSave
+        savesRunning += 1
+        lastSave = Task {
+            await previous?.value
+            if afterSpin, !reduceMotion { try? await Task.sleep(for: .seconds(spinSeconds)) }
+            await model.change(areas, work)
+            savesRunning -= 1
+            guard savesRunning == 0 else { return }
+            await loadFollow()
+            // A tap during the load keeps its choice on screen.
+            guard savesRunning == 0 else { return }
+            withAnimation(.snappy) {
+                pendingFollow = nil
+                pendingStar = nil
+            }
         }
     }
 
     /// Unfollows but keeps the feed address, so the page can offer Follow again.
     private func unfollow() {
         guard let url = subscription?.feedURL else { return }
-        act {
+        act(follow: false, star: false, touching: .following) {
             try await model.feeds.unsubscribe(showKey)
             try await model.library.setFeedURL(url, for: showKey)
         }
@@ -167,12 +206,23 @@ struct ShowView: View {
     private func fetchFeedIfMissing() async {
         guard let feedURL, (try? await model.library.show(showKey)) == nil else { return }
         fetchingFeed = true
-        await model.change { _ = try await model.feeds.preview(feedURL) }
+        await model.change(.feeds) { _ = try await model.feeds.preview(feedURL) }
         fetchingFeed = false
     }
 
-    /// Reads everything first and sets it together, so the page appears whole instead of filling in.
-    private func load() async {
+    /// The follow, star and new-episode settings, for the buttons and the New episodes row.
+    private func loadFollow() async {
+        let library = model.library
+        let loadedSubscription = try? await library.subscriptions().first { $0.showKey == showKey }
+        let loadedFeedURL = try? await library.cachedFeedURL(of: showKey)
+        let loadedExpiry = (try? await library.globalExpiry()) ?? .standard
+        subscription = loadedSubscription
+        cachedFeedURL = loadedFeedURL
+        globalExpiry = loadedExpiry
+    }
+
+    /// Reads the show and its episodes first and sets them together, so the list appears whole instead of filling in.
+    private func loadEpisodes() async {
         let library = model.library
         let loadedShow = try? await library.show(showKey)
         let loadedEpisodes = (try? await library.episodes(of: showKey)) ?? []
@@ -183,9 +233,6 @@ struct ShowView: View {
         let loadedMoves = snapshots.compactMapValues(\.move)
         let loadedProgress = snapshots.compactMapValues { $0.progress > 0 ? $0.progress : nil }
         let loadedQueueTop = Array(((try? await library.playableQueue()) ?? []).prefix(2))
-        let loadedSubscription = try? await library.subscriptions().first { $0.showKey == showKey }
-        let loadedFeedURL = try? await library.cachedFeedURL(of: showKey)
-        let loadedExpiry = (try? await library.globalExpiry()) ?? .standard
 
         show = loadedShow
         episodes = loadedEpisodes
@@ -193,11 +240,6 @@ struct ShowView: View {
         moves = loadedMoves
         progress = loadedProgress
         queueTop = loadedQueueTop
-        subscription = loadedSubscription
-        cachedFeedURL = loadedFeedURL
-        globalExpiry = loadedExpiry
-
-
 
         // The share preview's art can come later: nothing on the page moves for it.
         if showArt == nil, let url = show?.artworkURL, let (data, _) = try? await URLSession.shared.data(from: url) {
@@ -229,7 +271,7 @@ struct ShowView: View {
             .swipeActions(edge: .leading) {
                 if place != .queue {
                     Button("Add to Queue", systemImage: "text.badge.plus") {
-                        Task { await model.change { try await model.library.addToQueue(episode.key) } }
+                        Task { await model.change(.episodes) { try await model.library.addToQueue(episode.key) } }
                     }
                     .tint(.accentColor)
                 }
@@ -240,11 +282,11 @@ struct ShowView: View {
                 }
                 if played {
                     Button("Mark Unplayed", systemImage: "circle") {
-                        Task { await model.change { try await model.library.markUnplayed(episode.key) } }
+                        Task { await model.change(.episodes) { try await model.library.markUnplayed(episode.key) } }
                     }
                 } else {
                     Button("Mark Played", systemImage: "checkmark.circle") {
-                        Task { await model.change { try await model.library.markPlayed(episode.key) } }
+                        Task { await model.change(.episodes) { try await model.library.markPlayed(episode.key) } }
                     }
                 }
             }
@@ -275,7 +317,7 @@ struct ShowView: View {
     private func delete(_ episode: EpisodeInfo) {
         model.player.unload(episode.key)
         model.sharedStore?.delete(episode.audioURL)
-        Task { await model.change { try await model.library.deleteSharedEpisode(episode.key) } }
+        Task { await model.change([.episodes, .feeds]) { try await model.library.deleteSharedEpisode(episode.key) } }
     }
 
     /// One line saying what happens to new episodes; tapping it opens the sheet that changes it.
@@ -358,20 +400,13 @@ struct ShowView: View {
                     }
                 }
                 if let description = show?.plainSummary {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(description)
-                            .font(.subheadline)
-                            .lineLimit(fullDescription ? nil : 2)
-                        Button(fullDescription ? "Less" : "More") { withAnimation { fullDescription.toggle() } }
-                            .font(.subheadline.weight(.semibold))
-                            .buttonStyle(.borderless)
-                    }
+                    ShowDescription(text: description)
                 } else if show == nil {
-                    // Two lines and More, each as tall as the text it stands in for, so nothing moves when it arrives.
+                    // Two lines and Show more, each as tall as the text it stands in for.
                     VStack(alignment: .leading, spacing: 2) {
                         PlaceholderBar(height: 12).frame(height: 20)
                         PlaceholderBar(width: 210, height: 12).frame(height: 20)
-                        PlaceholderBar(width: 44, height: 12).frame(height: 20)
+                        PlaceholderBar(width: 80, height: 12).frame(height: 20)
                     }
                     .accessibilityHidden(true)
                 }
@@ -421,20 +456,69 @@ struct ShowView: View {
 }
 
 /// A wide capsule button under the show header: filled while it invites an action, soft once it's on.
+/// Two lines of the show's description. When it's cut off, Show more sits under it and the whole description
+/// toggles it; a description that fits shows in full with nothing to tap.
+private struct ShowDescription: View {
+    let text: String
+    @State private var expanded = false
+    @State private var twoLineHeight: CGFloat = 0
+    @State private var fullHeight: CGFloat = 0
+
+    var body: some View {
+        let cutOff = fullHeight > twoLineHeight + 1
+        let content = VStack(alignment: .leading, spacing: 2) {
+            Text(text)
+                .font(.subheadline)
+                .lineLimit(expanded ? nil : 2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background { measures }
+            if cutOff {
+                Text(expanded ? "Show less" : "Show more")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.tangerine)
+            }
+        }
+        if cutOff {
+            Button { withAnimation { expanded.toggle() } } label: { content.contentShape(.rect) }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("showDescription")
+        } else {
+            content
+        }
+    }
+
+    /// The description at two lines and in full, unseen, so a cut-off description can be told from one that fits.
+    private var measures: some View {
+        ZStack {
+            Text(text).font(.subheadline).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { twoLineHeight = $0 }
+            Text(text).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { fullHeight = $0 }
+        }
+        .hidden()
+    }
+}
+
 private struct ShowPageButton: View {
     let title: String
     let symbol: String
     let on: Bool
+    /// Where the icon spins in from, and the tap count that starts the spin.
+    let spin: (from: Angle, trigger: Int)
     let action: () -> Void
 
     var body: some View {
-        let label = Label(title, systemImage: symbol).labelStyle(.titleAndIcon).frame(maxWidth: .infinity)
-        if on {
-            Button(action: action) { label }.buttonStyle(.bordered)
-                .controlSize(.large).buttonBorderShape(.capsule)
-        } else {
-            Button(action: action) { label }.filledButton()
-                .controlSize(.large).buttonBorderShape(.capsule)
+        let label = Label {
+            Text(title)
+        } icon: {
+            Image(systemName: symbol).spin(from: spin.from, trigger: spin.trigger)
         }
+        .labelStyle(.titleAndIcon).frame(maxWidth: .infinity)
+        // One button for both looks: swapping buttons would replace the icon and cut its spin short.
+        Button(action: action) { label }
+            .buttonStyle(.borderedProminent)
+            .tint(on ? Color.tangerine.opacity(0.2) : .tangerine)
+            .foregroundStyle(on ? Color.tangerine : .onTangerine)
+            .controlSize(.large).buttonBorderShape(.capsule)
     }
 }

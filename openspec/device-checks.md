@@ -109,3 +109,24 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 ## Long episode lists
 
 - Open a show you follow with a long history (The Joe Rogan Experience has about 2,800 episodes): the page opens without a pause, scrolling is smooth, and the list ends after 30 episodes with "Show older episodes". Tap it: 30 more appear below without the list jumping. Open Played on a show with many played episodes: it works the same, and its count still counts all of them.
+
+## Instant controls
+
+- On a show page, open the new episodes settings and tap each tile, "Use my default", and a day: each lights up the moment you tap, on a show with a long history too.
+- Follow a big show from Find Shows and from its page: the button says Following at once, and the episodes arrive a few seconds later. In Airplane Mode, Follow goes back to Follow. Star and Unstar flip at once in both places.
+- In Settings, tap a new value for Remove unplayed episodes after, Keep downloaded, and Default speed: each shows at once.
+
+## Follow and Star spin
+
+- In Find Shows, tap the star on a show you don't follow: the star turns as it fills and the + turns into the check. Tap the + on another show: only the check turns in. Unstar and Unfollow swap without spinning.
+- On a show page, tap Follow, then Star: each icon spins in. Tap Starred: no spin. Go back and open the page again: Following and Starred show without spinning.
+- With Reduce Motion on (Settings > Accessibility > Motion), Follow and Star change without spinning.
+- In light and dark mode, Following looks the same as before: a pale tangerine capsule with tangerine text.
+- Tap Following: the Unfollow question opens pointing at the button.
+
+## Tappable polish
+
+- Open a show with a long description: two lines, then Show more. Tap anywhere on the text: it opens, with Show less. Tap again: it folds.
+- Open a show whose description fits in two lines: no Show more, and tapping it does nothing.
+- On Find Shows with the phone's region outside the United States, the country in "Popular now" is tangerine, like the chevron.
+- In Settings, "What's New" in the About row is tangerine. In light and dark mode, all three are easy to read.

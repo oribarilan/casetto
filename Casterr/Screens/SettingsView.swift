@@ -35,7 +35,8 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Remove unplayed episodes after")
                         Picker("Remove unplayed episodes after", selection: Binding(get: { expiry }, set: { value in
-                            Task { await model.change { try await model.library.setGlobalExpiry(value) } }
+                            expiry = value
+                            Task { await model.change(.settings) { try await model.library.setGlobalExpiry(value) } }
                         })) {
                             ForEach(InboxExpiry.choices, id: \.self) { Text($0.shortTitle).tag($0) }
                         }
@@ -54,7 +55,8 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Keep downloaded")
                         Picker("Keep downloaded", selection: Binding(get: { downloads }, set: { value in
-                            Task { await model.change { try await model.library.setDownloadCount(value) } }
+                            downloads = value
+                            Task { await model.change(.settings) { try await model.library.setDownloadCount(value) } }
                         })) {
                             ForEach(DownloadCount.choices, id: \.self) { Text($0 == 0 ? "Off" : "\($0)").tag($0) }
                         }
@@ -77,8 +79,9 @@ struct SettingsView: View {
 
                 Section {
                     Picker("Default speed", selection: Binding(get: { speed }, set: { value in
+                        speed = value
                         Task {
-                            await model.change {
+                            await model.change(.settings) {
                                 try await model.library.setGlobalSpeed(PlaybackSpeed(value))
                                 try await player.reloadSpeed()
                             }
@@ -92,7 +95,7 @@ struct SettingsView: View {
                     Toggle("Voice boost", isOn: Binding(get: { voiceBoost }, set: { isOn in
                         voiceBoost = isOn
                         Task {
-                            await model.change {
+                            await model.change(.settings) {
                                 try await model.library.setGlobalVoiceBoost(isOn)
                                 try await player.reloadVoiceBoost()
                             }
@@ -142,7 +145,7 @@ struct SettingsView: View {
                         model.whatsNew = AppModel.changelog.releases
                     } label: {
                         LabeledContent {
-                            Text("What's New").foregroundStyle(.secondary)
+                            Text("What's New").foregroundStyle(Color.tangerine)
                         } label: {
                             Text("Version \(AppModel.version)").foregroundStyle(Color(.label))
                         }
@@ -155,7 +158,8 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .task(id: model.revision) { await load() }
+            // Reloads every time it shows, unlike other screens: the cache size changes without a counter, and it's cheap.
+            .task(id: model.revision([.settings, .episodes])) { await load() }
             .task {
                 // Opened from a link: scroll to its section and highlight it for a moment.
                 guard let focus else { return }
@@ -170,7 +174,7 @@ struct SettingsView: View {
     private func buttonPicker(_ title: String, selection: Binding<ButtonAction>, double: Bool) -> some View {
         Picker(title, selection: Binding(get: { selection.wrappedValue }, set: { action in
             selection.wrappedValue = action
-            Task { await model.change { try await model.library.setButtonAction(action, forDoublePress: double) } }
+            Task { await model.change(.settings) { try await model.library.setButtonAction(action, forDoublePress: double) } }
         })) {
             ForEach(ButtonAction.allCases, id: \.self) { Text($0.title).tag($0) }
         }

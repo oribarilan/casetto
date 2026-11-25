@@ -44,7 +44,7 @@ struct QueueView: View {
                 let key = items[source].key
                 let destination = to > source ? to - 1 : to
                 items.move(fromOffsets: from, toOffset: to)
-                Task { await model.change { try await model.library.movePlayable(key, to: destination) } }
+                Task { await model.change(.episodes) { try await model.library.movePlayable(key, to: destination) } }
             }
         }
         .overlay {
@@ -82,7 +82,7 @@ struct QueueView: View {
         }
         // Hand off to Cassy right away instead of holding the system spinner.
         .refreshable { Task { await model.refresh() } }
-        .task(id: "\(model.revision)|\(player.episode?.key.rawValue ?? "")") { await load() }
+        .reload(on: "\(model.revision([.episodes, .feeds, .follows]))|\(player.episode?.key.rawValue ?? "")") { await load() }
     }
 
     /// Play Next (not on the first two rows, where it would change nothing), Played, Download
@@ -97,7 +97,7 @@ struct QueueView: View {
 
     private func remove(_ episode: EpisodeInfo) {
         items.removeAll { $0.key == episode.key }
-        Task { await model.change { try await model.library.removeFromQueue(episode.key) } }
+        Task { await model.change(.episodes) { try await model.library.removeFromQueue(episode.key) } }
     }
 
     /// The first episode's label: playing, paused, or up next.

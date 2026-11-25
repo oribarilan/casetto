@@ -189,3 +189,44 @@ enum ArtCache {
         return try? await URLSession.shared.data(for: request).0
     }
 }
+
+/// How long an icon's spin lasts. A save that would reload every screen waits this long, so the spin stays smooth.
+let spinSeconds = 0.6
+
+extension View {
+    /// Spins this icon in from `angle`, growing from 0.6 to full size, each time `trigger` changes.
+    /// Opening a screen doesn't spin it, and with Reduce Motion on it never spins.
+    func spin(from angle: Angle, trigger: Int) -> some View {
+        modifier(Spin(start: angle, trigger: trigger))
+    }
+}
+
+private struct Spin: ViewModifier {
+    let start: Angle
+    let trigger: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private struct Pose {
+        var angle = Angle.zero
+        var scale = 1.0
+    }
+
+    func body(content: Content) -> some View {
+        if reduceMotion {
+            content
+        } else {
+            content.keyframeAnimator(initialValue: Pose(), trigger: trigger) { view, pose in
+                view.rotationEffect(pose.angle).scaleEffect(pose.scale)
+            } keyframes: { _ in
+                KeyframeTrack(\.angle) {
+                    MoveKeyframe(start)
+                    SpringKeyframe(.zero, duration: spinSeconds, spring: .bouncy)
+                }
+                KeyframeTrack(\.scale) {
+                    MoveKeyframe(0.6)
+                    SpringKeyframe(1, duration: spinSeconds, spring: .bouncy)
+                }
+            }
+        }
+    }
+}

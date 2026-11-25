@@ -22,6 +22,34 @@ Keep the specs current:
 - Archive a change when its tasks pass and the user approves the result. Move checks that need a real iPhone to `openspec/device-checks.md` before you archive.
 - The current specs are in `openspec/specs/`. Run `openspec validate --specs --strict` after an archive.
 
+## Changes and reloads
+
+A tap must show its result at once. Do not make the listener wait for a save.
+
+Save with `model.change(areas) { … }`. Name only the areas that the change touches, from `DataArea` (`Casterr/DataArea.swift`). If you are not sure, use `.all`.
+
+A screen loads its data with `.reload(on: model.revision(areas)) { … }` (`Casterr/Screens/Reload.swift`). Use only the areas that the screen shows. Do not use `.task(id:)` with a revision. The exception is a screen that also shows data that no area tracks, for example the cache size in Settings: it can use `.task(id: model.revision(areas))`, which loads each time the screen shows. If a screen shows two parts that change for different reasons, give each part its own `.reload`.
+
+When you add a library method that changes data, decide which areas it touches. When you add a screen, decide which areas it shows.
+
+## Smooth animations
+
+Do not do database work on the main thread. `Library` runs its work on its own serial queue through `LibraryExecutor` (`CasterrCore/Sources/CasterrCore/Storage/LibraryExecutor.swift`). Do not change `Library` back to `@ModelActor`. The default SwiftData executor runs each job on the thread that calls it, so calls from the main actor run on the main thread and stop animations. If you add a new model actor, give it the same executor. `LibraryThreadTests` checks this.
+
+In the library, read only the records that you need. To find which of a few keys exist, fetch with a predicate on those keys (`keys.contains($0.key)`) and `propertiesToFetch`. Do not fetch all records of a type to make a set.
+
+A library call goes to another queue and comes back later. In a test, do not wait for library work with `Task.yield()` only. Wait for a library call, as `settle()` in `PlayerTests` does.
+
+To animate a control between two looks, use one view and change its modifiers (for example `.tint(on ? a : b)`). Do not put two views in `if`/`else` branches. SwiftUI makes a new view for each branch, and the animation stops.
+
+The simulator does not show most stalls. To check that an animation is smooth, measure a Release build on the listener's iPhone:
+
+1. Build and install: `xcodebuild build -scheme Casterr -configuration Release -destination "id=<phone>" -derivedDataPath <dir> -allowProvisioningUpdates DEVELOPMENT_TEAM=<team>`, then `xcrun devicectl device install app --device <phone> <app>`.
+2. Ask the listener to open the screen, then attach the recorder: `xcrun xctrace record --device <phone> --template 'Animation Hitches' --instrument 'Time Profiler' --attach Casterr --output <file>.trace`. Ask the listener to tap, then stop the recorder with SIGINT.
+3. Export the `hitches` and `time-profile` tables with `xcrun xctrace export`. Find the hitches. Count the Casterr functions in the main-thread samples during each hitch.
+
+Measure before and after a change, with the same taps on the same show.
+
 ## Versions and What's New
 
 The app version is `MARKETING_VERSION` in `project.yml`. It is the only place for the version. `CHANGELOG.md` has one section for each version, newest first. The app bundles `CHANGELOG.md` and shows its sections in What's New, so every line in it is text that the listener reads.

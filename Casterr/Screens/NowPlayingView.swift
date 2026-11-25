@@ -361,7 +361,7 @@ private struct SpeedSheet: View {
         override = speed
         let library = model.library
         Task {
-            await model.change {
+            await model.change(.follows) {
                 try await library.setSpeedOverride(show, to: speed)
                 try await player.reloadSpeed()
             }
@@ -405,7 +405,7 @@ private struct VoiceBoostSheet: View {
         choice = isOn
         let library = model.library
         Task {
-            await model.change {
+            await model.change(.follows) {
                 try await library.setVoiceBoostOverride(show, to: isOn)
                 try await player.reloadVoiceBoost()
             }

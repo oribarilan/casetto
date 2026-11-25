@@ -6,7 +6,7 @@ options:
 settings:
   base:
     # The app's version. Bump it with every listener-facing change, with a matching CHANGELOG.md section.
-    MARKETING_VERSION: "0.4"
+    MARKETING_VERSION: "0.5.1"
 packages:
   CasterrCore:
     path: CasterrCore

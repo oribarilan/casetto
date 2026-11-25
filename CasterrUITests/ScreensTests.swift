@@ -758,6 +758,55 @@ final class ScreensTests: XCTestCase {
         snapshot("28 Clear Cache")
     }
 
+    /// Follow, Star, the new episodes sheet and Settings show a tap at once, before the save lands.
+    /// Each check reads the state right after the tap, with no waiting.
+    @MainActor
+    func testInstantControls() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenTip.star", "YES", "-hasSeenOnboarding", "NO"]
+        app.launch()
+        // Onboarding's Find Shows stays open after a follow, unlike the Shows tab, which then shows the grid.
+        app.buttons["Let's add some shows"].tap()
+        XCTAssertTrue(waitForTopShows())
+
+        // Find Shows: Follow shows Unfollow while the feed still downloads.
+        let follow = app.buttons.matching(identifier: "subscribeButton").firstMatch
+        follow.tap()
+        XCTAssertEqual(follow.label, "Unfollow", "Follow waited for the feed")
+        XCTAssertTrue(follow.isEnabled, "the row's buttons are disabled while saving")
+        XCTAssertTrue(follow.wait(for: \.label, toEqual: "Unfollow", timeout: 40))
+        let star = app.buttons.matching(identifier: "starButton").firstMatch
+        star.tap()
+        XCTAssertEqual(star.label, "Unstar", "Star waited for the save")
+
+        // The show page: Star flips at once, and so does a tile in the new episodes sheet.
+        app.buttons.matching(identifier: "directoryShow").firstMatch.tap()
+        let starShow = app.buttons["starShow"]
+        XCTAssertTrue(starShow.waitForExistence(timeout: 30))
+        XCTAssertTrue(starShow.wait(for: \.label, toEqual: "Starred", timeout: 10))
+        starShow.tap()
+        XCTAssertEqual(starShow.label, "Star", "Star on the show page waited for the save")
+        let newEpisodes = app.buttons["newEpisodesRow"]
+        XCTAssertTrue(newEpisodes.waitForExistence(timeout: 10))
+        newEpisodes.tap()
+        let skip = app.buttons["Skip"]
+        XCTAssertTrue(skip.waitForExistence(timeout: 5))
+        skip.tap()
+        XCTAssertTrue(skip.isSelected, "the sheet's tile waited for the save")
+        app.buttons["Done"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["Done"].tap()
+
+        // Settings: Keep downloaded shows the new choice at once.
+        app.tabBars.buttons["Queue"].tap()
+        app.navigationBars.buttons["Settings"].tap()
+        let one = app.buttons["1"]
+        XCTAssertTrue(one.waitForExistence(timeout: 5))
+        one.tap()
+        XCTAssertTrue(one.isSelected, "Keep downloaded waited for the save")
+    }
+
     /// A long show draws its newest 30 episodes, then Show older episodes, which adds the next 30 below.
     @MainActor
     func testShowOlderEpisodes() throws {
@@ -771,6 +820,14 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(tile.waitForExistence(timeout: 30))
         tile.tap()
         XCTAssertTrue(app.buttons.matching(identifier: "episode").firstMatch.waitForExistence(timeout: 30))
+        // The long description folds to two lines with Show more, and a tap anywhere on it opens it.
+        let description = app.buttons["showDescription"]
+        XCTAssertTrue(description.waitForExistence(timeout: 5), "no Show more on a long description")
+        XCTAssertTrue(description.label.contains("Show more"), description.label)
+        description.tap()
+        expectation(for: NSPredicate(format: "label CONTAINS 'Show less'"), evaluatedWith: description)
+        waitForExpectations(timeout: 5)
+        description.tap()
         let older = app.buttons["showOlder"]
         for _ in 0..<15 where !older.isHittable { app.swipeUp() }
         XCTAssertTrue(older.isHittable, "no Show older episodes after the first 30")
@@ -818,7 +875,10 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(toast.label.contains("I learned some new tricks."), toast.label)
         toast.tap()
         XCTAssertTrue(app.navigationBars["What's New"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["VERSION 0.2"].exists || app.staticTexts["Version 0.2"].exists, "no 0.2 section")
+        // The oldest unseen version is at the bottom, below the screen once the list is long.
+        let oldest = app.staticTexts.matching(NSPredicate(format: "label ==[c] 'Version 0.2'")).firstMatch
+        for _ in 0..<6 where !oldest.exists { app.swipeUp() }
+        XCTAssertTrue(oldest.exists, "no 0.2 section")
         XCTAssertFalse(app.staticTexts["VERSION 0.1"].exists || app.staticTexts["Version 0.1"].exists, "lists 0.1, already seen")
         snapshot("29 Whats New")
         app.navigationBars["What's New"].buttons["Done"].tap()

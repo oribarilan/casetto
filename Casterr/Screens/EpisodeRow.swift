@@ -15,12 +15,12 @@ struct RowAction: Identifiable {
 
     @MainActor static let share = RowAction(title: "Share", symbol: "square.and.arrow.up", isShare: true)
 
-    /// An action that changes the library, then reloads the screens.
+    /// An action that changes where an episode is, then reloads the screens that show episodes.
     @MainActor
     static func change(_ title: String, _ symbol: String, destructive: Bool = false, _ model: AppModel,
                        _ work: @escaping (Library) async throws -> Void) -> RowAction {
         RowAction(title: title, symbol: symbol, destructive: destructive) {
-            Task { await model.change { try await work(model.library) } }
+            Task { await model.change(.episodes) { try await work(model.library) } }
         }
     }
 
@@ -124,7 +124,7 @@ struct EpisodeRow: View {
         let pausing = isLoaded && player.isPlaying
         return RowAction(title: pausing ? "Pause" : "Play", symbol: pausing ? "pause.fill" : "play.fill", filled: true) {
             Task {
-                await model.change {
+                await model.change(.episodes) {
                     if isLoaded { try await player.togglePlayPause() } else { try await player.play(episode.key) }
                 }
             }

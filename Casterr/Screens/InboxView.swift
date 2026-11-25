@@ -40,7 +40,7 @@ struct InboxView: View {
         .keepsRowSwipes()
         .navigationTitle("Inbox")
         .refreshable { await model.refresh() }
-        .task(id: model.revision) { await load() }
+        .reload(on: model.revision([.episodes, .feeds, .follows, .settings])) { await load() }
     }
 
     /// Says how long episodes wait here; the days open Settings at the Inbox section.
@@ -81,13 +81,13 @@ struct InboxView: View {
                 .cassyTipTarget("inboxRow.\(episode.key.rawValue)")
                 .swipeActions(edge: .leading) {
                     Button("Add to Queue", systemImage: "text.badge.plus") {
-                        Task { await model.change { try await model.library.addToQueue(episode.key) } }
+                        Task { await model.change(.episodes) { try await model.library.addToQueue(episode.key) } }
                     }
                     .tint(.accentColor)
                 }
                 .swipeActions(edge: .trailing) {
                     Button("Remove", systemImage: "minus.circle", role: .destructive) {
-                        Task { await model.change { try await model.library.dismiss(episode.key) } }
+                        Task { await model.change(.episodes) { try await model.library.dismiss(episode.key) } }
                     }
                 }
         }
@@ -199,7 +199,8 @@ private struct RuleCardRow: View {
     }
 
     private func act(_ work: @escaping () async throws -> Void) {
-        Task { await model.change(work) }
+        // A card sets the show's level, hides the card, or unfollows, which removes its Inbox episodes.
+        Task { await model.change([.follows, .episodes], work) }
     }
 }
 

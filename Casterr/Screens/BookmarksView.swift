@@ -109,7 +109,7 @@ struct BookmarksView: View {
                     Button("Done") { editing = nil }
                 }
             }
-            .task(id: "\(model.revision)|\(query)") { await load() }
+            .reload(on: "\(model.revision([.bookmarks, .feeds]))|\(query)") { await load() }
             .task(id: model.openingBookmark) { await open(model.openingBookmark, with: proxy) }
         }
     }
@@ -215,14 +215,14 @@ private struct BookmarkRow: View {
         }
         .swipeActions(edge: .trailing) {
             Button("Delete", systemImage: "trash", role: .destructive) {
-                Task { await model.change { try await model.library.deleteBookmark(bookmark.id) } }
+                Task { await model.change(.bookmarks) { try await model.library.deleteBookmark(bookmark.id) } }
             }
         }
     }
 
     private func play() {
         Task {
-            await model.change { try await player.play(bookmark.episodeKey) }
+            await model.change(.episodes) { try await player.play(bookmark.episodeKey) }
             player.seek(to: bookmark.position)
         }
     }
@@ -230,7 +230,7 @@ private struct BookmarkRow: View {
     private func save() {
         let text = note.trimmingCharacters(in: .whitespacesAndNewlines)
         guard text != bookmark.note else { return }
-        Task { await model.change { try await model.library.setNote(text, for: bookmark.id) } }
+        Task { await model.change(.bookmarks) { try await model.library.setNote(text, for: bookmark.id) } }
     }
 }
 

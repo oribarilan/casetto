@@ -57,7 +57,7 @@ final class SharedInbox {
         let duration = (try? await AVURLAsset(url: store.file(for: address) ?? source).load(.duration).seconds)
             .flatMap { $0.isFinite ? $0 : nil }
         let library = model.library
-        await model.change {
+        await model.change([.feeds, .episodes]) {
             try await library.addSharedEpisode(id: id, title: note.title, duration: duration, audioURL: address)
         }
     }
@@ -65,7 +65,7 @@ final class SharedInbox {
     private func queue(_ note: SharedNote) async {
         guard let episode = note.episode else { return }
         let feeds = model.feeds
-        let message = await model.change {
+        let message = await model.change([.feeds, .episodes]) {
             if try await feeds.playNext(episode) == nil {
                 Self.log.error("The shared episode \(episode.title) isn't in its feed")
             }

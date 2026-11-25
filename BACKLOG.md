@@ -51,27 +51,3 @@ Control playback and bookmark from the watch. Not started. It's on the after-MVP
 ## App Store name check (added 2026-11-24)
 
 Check the name Casterr for trademarks and on the App Store before launch. Not started. It's an open question in `podcast_app_concept.md` and must be settled before the public release.
-
-## Follow button lag (added 2026-11-24)
-
-The Follow button lags after a tap. In the simulator, following The Joe Rogan Experience (2,787 episodes) took about a second longer than a 9-episode show, so downloading and reading a huge feed is the likely cause. Not started.
-
-## Country name on Find Shows (added 2026-11-24)
-
-The country name in the "Popular now" heading on the Find Shows page should use the accent color, so it's clear it can be tapped. Not started.
-
-## What's New row in Settings (added 2026-11-24)
-
-The What's New row in Settings doesn't look tappable. Not started.
-
-## New episodes settings lag (added 2026-11-24)
-
-The new episodes settings on the show page are very laggy. Not started.
-
-## Show page description: Show more and Show less (added 2026-11-24)
-
-- The words should be "Show more" and "Show less" instead of "More" and "Less".
-- "More" shows even when there's nothing more to show. Show it only when the description is cut off.
-- Tapping anywhere on the description should toggle it, not only the small "More" or "Less" word.
-
-Not started.

@@ -7,10 +7,18 @@ struct NewEpisodesSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let showKey: ShowKey
-    let level: TriageLevel
+    /// The sheet's own copies, so a tap shows at once; the save and the app-wide reload follow.
+    @State private var level: TriageLevel
     /// Nil follows the global period.
-    let override: InboxExpiry?
+    @State private var override: InboxExpiry?
     let global: InboxExpiry
+
+    init(showKey: ShowKey, level: TriageLevel, override: InboxExpiry?, global: InboxExpiry) {
+        self.showKey = showKey
+        _level = State(initialValue: level)
+        _override = State(initialValue: override)
+        self.global = global
+    }
 
     private let tiles: [(TriageLevel, String, String, String)] = [
         (.inbox, "tray", "Inbox", "Wait for me to decide"),
@@ -48,7 +56,8 @@ struct NewEpisodesSheet: View {
         let (value, symbol, title, detail) = tile
         let selected = value == level
         return Button {
-            Task { await model.change { try await model.library.setLevel(showKey, to: value) } }
+            withAnimation(.snappy) { level = value }
+            Task { await model.change(.follows) { try await model.library.setLevel(showKey, to: value) } }
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Image(systemName: symbol).font(.title3).foregroundStyle(.tint)
@@ -72,7 +81,9 @@ struct NewEpisodesSheet: View {
             Text("Remove from your Inbox").font(.footnote).foregroundStyle(.secondary)
             Toggle(isOn: Binding(get: { override == nil }, set: { follow in
                 // Turning the default off starts this show at the current default, so it can stay there on purpose.
-                Task { await model.change { try await model.library.setExpiryOverride(showKey, to: follow ? nil : global) } }
+                let value: InboxExpiry? = follow ? nil : global
+                withAnimation(.snappy) { override = value }
+                Task { await model.change(.follows) { try await model.library.setExpiryOverride(showKey, to: value) } }
             })) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Use my default")
@@ -83,7 +94,8 @@ struct NewEpisodesSheet: View {
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14))
             if let override {
                 Picker("Remove after", selection: Binding(get: { override }, set: { value in
-                    Task { await model.change { try await model.library.setExpiryOverride(showKey, to: value) } }
+                    self.override = value
+                    Task { await model.change(.follows) { try await model.library.setExpiryOverride(showKey, to: value) } }
                 })) {
                     ForEach(InboxExpiry.choices, id: \.self) { Text($0.shortTitle).tag($0) }
                 }

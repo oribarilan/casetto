@@ -65,7 +65,7 @@ struct ShowsView: View {
         .alert("Import failed", isPresented: .constant(importError != nil), presenting: importError) { _ in
             Button("OK") { importError = nil }
         } message: { Text($0) }
-        .task(id: model.revision) { await load() }
+        .reload(on: model.revision([.follows, .feeds])) { await load() }
     }
 
     private func grid(_ rows: [Row]) -> some View {
@@ -257,7 +257,7 @@ private struct AddFeedView: View {
         defer { working = false }
         do {
             _ = try await model.feeds.subscribe(to: url)
-            await model.change {}
+            await model.change([.follows, .feeds, .episodes]) {}
             dismiss()
         } catch {
             message = switch error as? SubscribeError {
