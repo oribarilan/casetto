@@ -1,13 +1,14 @@
 ## 1. Warnings as errors
 
-- [ ] 1.1 Build the app for the simulator and run `swift build` in CasterrCore, and list every warning. Verify: the list is written in this task's notes below.
-- [ ] 1.2 Fix the warnings from 1.1 without changing behavior. Verify: both builds show no warnings, and the core tests pass.
-- [ ] 1.3 Add `SWIFT_TREAT_WARNINGS_AS_ERRORS: YES` to `project.yml` and `.treatAllWarnings(as: .error)` to both targets in `Package.swift`. Verify: `xcodegen`, the app build and `swift build` succeed.
+- [x] 1.1 Build the app for the simulator and run `swift build` in CasterrCore, and list every warning. Verify: the list is written in this task's notes below.
+  - Notes (clean builds, 2026-11-26): CasterrCore had none. The app had three: `AppModel.swift:112` (a `weak self` capture inside a closure that captured `self` strongly), `CarPlaySceneDelegate.swift:31` (the disconnect method matched no protocol method; the CarPlay backlog bug), and `ScreensTests.swift:1099` (the snapshot helper called a main-actor method from a nonisolated context). Apple's App Intents metadata tool also prints "Metadata extraction skipped" warnings; they don't come from the compiler, and warnings-as-errors doesn't apply to them.
+- [x] 1.2 Fix the warnings from 1.1 without changing behavior. Verify: both builds show no warnings, and the core tests pass.
+- [x] 1.3 Add `SWIFT_TREAT_WARNINGS_AS_ERRORS: YES` to `project.yml` and `.treatAllWarnings(as: .error)` to both targets in `Package.swift`. Verify: `xcodegen`, the app build and `swift build` succeed.
 
 ## 2. Split the large files
 
-- [ ] 2.1 Split `Library.swift` into `Library.swift` and `extension Library` files by area (types, subscriptions, triage, Queue, settings, bookmarks, feeds), moving code only. Verify: every file is under 700 lines, and the core tests pass.
-- [ ] 2.2 Split `ScreensTests.swift` into test files by screen area with a shared helper file, moving code only. Verify: every file is under 700 lines, and every UI test still runs and passes (apart from the known cold-start flakes).
+- [x] 2.1 Split `Library.swift` into `Library.swift` and `extension Library` files by area (types, subscriptions, triage, Queue, settings, bookmarks, feeds), moving code only. Verify: every file is under 700 lines, and the core tests pass.
+- [x] 2.2 Split `ScreensTests.swift` into test files by screen area with a shared helper file, moving code only. Verify: every file is under 700 lines, and every UI test still runs and passes (apart from the known cold-start flakes).
 
 ## 3. Format and lint
 
