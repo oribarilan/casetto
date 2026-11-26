@@ -1,10 +1,12 @@
 import SwiftUI
 import UIKit
 
-/// What the Inbox card does when the listener swipes it off: right queues, left removes.
+/// What the Inbox card does when the listener swipes it off (right queues, left removes), and whether more
+/// episodes wait under it.
 struct CardSwipe {
     var queue: () -> Void
     var remove: () -> Void
+    var more = false
 }
 
 /// Lets the Inbox card follow a sideways drag. Past a third of its width, or on a flick, it flies off and acts;

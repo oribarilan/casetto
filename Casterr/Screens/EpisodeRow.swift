@@ -110,6 +110,22 @@ struct EpisodeRow: View {
         } label: {
             if let card {
                 cardFace.modifier(CardDrag(swipe: card))
+                    // A turned card behind, when more episodes wait, so the card looks like the top of a pile.
+                    // It sits outside the drag, so it stays put while the top card moves.
+                    .background {
+                        if card.more {
+                            RoundedRectangle(cornerRadius: 24)
+                                // In dark mode the shadow doesn't show on black, so the card behind is a lighter grey.
+                                .fill(Color(uiColor: UIColor { $0.userInterfaceStyle == .dark
+                                    ? .systemGray5 : .secondarySystemGroupedBackground }))
+                                .stroke(Color(.separator).opacity(0.5), lineWidth: 0.5)
+                                .shadow(color: .black.opacity(0.1), radius: 6, y: 2)
+                                .scaleEffect(0.97)
+                                .rotationEffect(.degrees(4))
+                                .offset(y: 8)
+                                .accessibilityHidden(true)
+                        }
+                    }
             } else {
                 HStack(spacing: 12) {
                     ArtworkView(url: art?.artworkURL, title: art?.title ?? episode.title, size: 52)

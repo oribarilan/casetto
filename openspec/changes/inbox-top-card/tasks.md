@@ -9,6 +9,7 @@
 - [x] 2.2 Act past the point: fly off, light feedback at the point, `addToQueue` or `dismiss` through `model.change(.episodes)`, and the next episode takes the card at once while its row leaves the list. Verify: in the simulator, a right swipe queues the episode and the next one moves onto the card.
 - [ ] 2.3 Reduce Motion: no tilt, fade out in place of flying off. VoiceOver: one element with Add to Queue and Remove actions. Verify: both in the simulator.
 - [x] 2.4 Move the swipe tip to the card. Verify: testInboxSwipeTip.
+- [x] 2.6 Show a turned card behind the Inbox card when more episodes wait, fixed while the top card is dragged and hidden from VoiceOver. Set `MARKETING_VERSION` to 0.7.2 with a `## 0.7.2` CHANGELOG section. Verify: in the simulator, 3 episodes show the pile and 1 does not; testInboxCard passes.
 - [x] 2.5 Save the card tip under a new name, `inboxCardSwipe`, so listeners who saw the row tip see it once on the card. Set `MARKETING_VERSION` to 0.7.1 with a `## 0.7.1` CHANGELOG section. Verify: testInboxSwipeTip and testWhatsNew pass.
 
 ## 3. Tests and release bookkeeping

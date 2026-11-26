@@ -2,6 +2,10 @@
 
 What's new in each version of Casterr, newest first. The app shows these lines in What's New. AGENTS.md says how to add a version.
 
+## 0.7.2
+
+- When more episodes are waiting, the Inbox card sits on a little pile, so it looks like a card you can swipe away.
+
 ## 0.7.1
 
 - The Inbox card shows its swipe tip once, even if you saw the old tip on the Inbox rows.

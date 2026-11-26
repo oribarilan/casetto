@@ -45,6 +45,21 @@ While dragged, the card SHALL tilt toward the side it moves to. When it acts it 
 - **WHEN** Reduce Motion is on and the listener swipes the card
 - **THEN** the card doesn't tilt and fades out when it acts
 
+### Requirement: Inbox card on a pile
+When more episodes wait under the card, a second card SHALL show behind it, turned a little and peeking out below, so the card looks like the top of a pile that it comes off. The card on top MUST stay straight. The card behind MUST stay in place while the listener drags the card on top, and MUST NOT be read by VoiceOver.
+
+#### Scenario: More episodes waiting
+- **WHEN** the Inbox holds 3 episodes
+- **THEN** a turned card peeks out under the straight card on top
+
+#### Scenario: Last episode
+- **WHEN** the Inbox holds 1 episode
+- **THEN** no card shows behind the card
+
+#### Scenario: Drag the card
+- **WHEN** the listener drags the card sideways
+- **THEN** the card behind stays where it is
+
 ## MODIFIED Requirements
 
 ### Requirement: Inbox swipe tip

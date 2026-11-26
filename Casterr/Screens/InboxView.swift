@@ -33,10 +33,11 @@ struct InboxView: View {
             Section {
                 ForEach(shown.prefix(1), id: \.key) { episode in
                     row(episode, card: CardSwipe(queue: { swipeCard(episode, queue: true) },
-                                                 remove: { swipeCard(episode, queue: false) }))
+                                                 remove: { swipeCard(episode, queue: false) },
+                                                 more: shown.count > 1))
                         .listRowBackground(Color.clear)
-                        // Room for the card's shadow, which the row would cut off.
-                        .listRowInsets(EdgeInsets(top: 14, leading: 0, bottom: 18, trailing: 0))
+                        // Room for the card's shadow and the turned card behind it, which the row would cut off.
+                        .listRowInsets(EdgeInsets(top: 14, leading: 0, bottom: shown.count > 1 ? 30 : 18, trailing: 0))
                         .listRowSeparator(.hidden)
                 }
             } footer: {
