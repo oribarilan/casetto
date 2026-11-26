@@ -10,7 +10,7 @@ final class ScreensTests: XCTestCase {
     func testScreens() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES"]
         app.launch()
 
         // Queue is the home screen; empty state links to shows.
@@ -176,7 +176,7 @@ final class ScreensTests: XCTestCase {
     func testInbox() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-fastClock", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-fastClock", "-hasSeenOnboarding", "YES"]
         app.launch()
 
         // Subscribing puts the newest episode in the Inbox.
@@ -250,7 +250,7 @@ final class ScreensTests: XCTestCase {
     func testRuleCard() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-fastClock", "-ruleThresholdOne", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-fastClock", "-ruleThresholdOne", "-hasSeenOnboarding", "YES"]
         app.launch()
 
         XCTAssertTrue(app.buttons["Find Shows"].waitForExistence(timeout: 5))
@@ -287,7 +287,7 @@ final class ScreensTests: XCTestCase {
     func testOnboarding() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "NO"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "NO"]
         app.launch()
 
         // One welcome screen, then Find Shows.
@@ -335,7 +335,7 @@ final class ScreensTests: XCTestCase {
     func testCapture() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES"]
         app.launch()
 
         app.tabBars.buttons["Shows"].tap()
@@ -408,7 +408,7 @@ final class ScreensTests: XCTestCase {
     func testChapters() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES"]
         app.launch()
 
         app.tabBars.buttons["Shows"].tap()
@@ -541,7 +541,7 @@ final class ScreensTests: XCTestCase {
     private func openATPNowPlaying() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES"]
         app.launch()
         app.tabBars.buttons["Shows"].tap()
         subscribe(to: "https://atp.fm/rss")
@@ -580,7 +580,7 @@ final class ScreensTests: XCTestCase {
     func testSharedFile() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES"]
         let fixture = try XCTUnwrap(Bundle(for: Self.self).path(forResource: "shared-interview", ofType: "m4a"))
         app.launchEnvironment = ["SHARED_FIXTURE": fixture, "SHARED_FIXTURE_TITLE": "Interview with Dana"]
         app.launch()
@@ -629,7 +629,7 @@ final class ScreensTests: XCTestCase {
     func testSharedLinkAndSubscribe() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES"]
         app.launchEnvironment = ["SHARED_LINK": "https://podcasts.apple.com/us/podcast/two-hot-streaks/id617416468?i=1000801592580"]
         app.launch()
 
@@ -659,7 +659,7 @@ final class ScreensTests: XCTestCase {
     func testStarTip() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "NO", "-hasSeenTip.star", "NO"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "NO", "-hasSeenTip.star", "NO"]
         app.launch()
 
         let start = app.buttons["Let's add some shows"]
@@ -683,7 +683,7 @@ final class ScreensTests: XCTestCase {
     func testFindMoreShows() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES"]
         app.launch()
 
         app.tabBars.buttons["Shows"].tap()
@@ -745,7 +745,7 @@ final class ScreensTests: XCTestCase {
     func testClearCache() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES"]
         app.launch()
         // Find Shows keeps both charts and their art.
         app.tabBars.buttons["Shows"].tap()
@@ -773,7 +773,7 @@ final class ScreensTests: XCTestCase {
     func testInstantControls() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenTip.star", "YES", "-hasSeenOnboarding", "NO"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenTip.star", "YES", "-hasSeenOnboarding", "NO"]
         app.launch()
         // Onboarding's Find Shows stays open after a follow, unlike the Shows tab, which then shows the grid.
         app.buttons["Let's add some shows"].tap()
@@ -818,7 +818,7 @@ final class ScreensTests: XCTestCase {
     func testShowOlderEpisodes() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES"]
         app.launch()
         app.tabBars.buttons["Shows"].tap()
         subscribe(to: feed)
@@ -850,7 +850,7 @@ final class ScreensTests: XCTestCase {
     func testHeadphoneButtons() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES"]
         app.launch()
         app.navigationBars.buttons["Settings"].tap()
         let footer = app.staticTexts["buttonsFooter"]
@@ -873,7 +873,7 @@ final class ScreensTests: XCTestCase {
     func testWhatsNew() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES",
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES",
                                "-lastSeenVersion", "0.1"]
         app.launch()
         let toast = app.buttons["cassyToast"]
@@ -906,7 +906,7 @@ final class ScreensTests: XCTestCase {
     func testChartCountry() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES", "-AppleLocale", "en_IL"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES", "-AppleLocale", "en_IL"]
         app.launch()
         app.tabBars.buttons["Shows"].tap()
         XCTAssertTrue(waitForTopShows())
@@ -961,7 +961,7 @@ final class ScreensTests: XCTestCase {
     func testInboxCard() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES"]
         app.launch()
 
         app.tabBars.buttons["Shows"].tap()
@@ -1004,7 +1004,7 @@ final class ScreensTests: XCTestCase {
     func testInboxSwipeTip() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-fastClock", "-hasSeenOnboarding", "YES", "-hasSeenTip.inboxSwipe", "NO"]
+        app.launchArguments = ["-uiTesting", "-fastClock", "-hasSeenOnboarding", "YES", "-hasSeenTip.inboxCardSwipe", "NO"]
         app.launch()
 
         app.tabBars.buttons["Shows"].tap()

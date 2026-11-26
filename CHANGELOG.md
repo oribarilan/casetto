@@ -2,6 +2,10 @@
 
 What's new in each version of Casterr, newest first. The app shows these lines in What's New. AGENTS.md says how to add a version.
 
+## 0.7.1
+
+- The Inbox card shows its swipe tip once, even if you saw the old tip on the Inbox rows.
+
 ## 0.7
 
 - Your newest Inbox episode sits on a big card with its description: swipe it right to queue it or left to remove it.

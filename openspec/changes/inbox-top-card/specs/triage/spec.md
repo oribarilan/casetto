@@ -53,3 +53,7 @@ The first Inbox visit SHALL show a one-time tip on the card that teaches the swi
 #### Scenario: First visit
 - **WHEN** the listener opens the Inbox for the first time
 - **THEN** a tip on the card says "Swipe right to queue an episode, or left to remove it."
+
+#### Scenario: Seen the row tip before
+- **WHEN** the listener saw the swipe tip on an Inbox row in an earlier version and opens the Inbox with the card
+- **THEN** the tip shows once on the card

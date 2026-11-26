@@ -7,7 +7,7 @@ final class SmokeTests: XCTestCase {
     @MainActor
     func testSubscribePlayAndQueue() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES"]
         app.launch()
 
         app.tabBars.buttons["Shows"].tap()

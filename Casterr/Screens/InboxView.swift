@@ -149,7 +149,7 @@ struct InboxView: View {
         expiry = (try? await model.library.globalExpiry()) ?? .standard
         daysLeft = (try? await model.library.inboxDaysLeft()) ?? [:]
         if tip == nil, let first = items.first {
-            tip = CassyTip.once("inboxSwipe", target: "inboxRow.\(first.key.rawValue)",
+            tip = CassyTip.once("inboxCardSwipe", target: "inboxRow.\(first.key.rawValue)",
                                 text: "Swipe right to queue an episode, or left to remove it.")
         }
         var loadedCards: [(card: RuleCard, title: String)] = []
