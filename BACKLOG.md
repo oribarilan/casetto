@@ -71,3 +71,7 @@ Add strict formatters and linters, and treat warnings as errors. Not started. Fi
 ## Bug reports from Settings (added 2026-11-26)
 
 Add a way to make a bug report from Settings, with guidance on how to get the file, so the listener can share it in a GitHub issue. The app should give that guidance and link to the issues page. Update the GitHub issue template (`.github/ISSUE_TEMPLATE/bug.yml` exists already) to say what to include and how to attach the file. The report must be anonymous, and the app and the template must tell the listener clearly what it contains and that it carries nothing personal. Not started.
+
+## Flaky UI tests at cold start (added 2026-11-26)
+
+Two UI test steps sometimes fail on the first run after the simulator starts, and pass when run again: testCapture, and tapping "Add by Feed Address" in the Shows tab's Add menu (seen in testInboxSwipeTip and testInboxCard). In the second case, the button isn't found in the menu yet. Not started. A fix could wait for the menu to finish opening before tapping, and find out why testCapture fails on a cold start.
