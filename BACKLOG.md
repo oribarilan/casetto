@@ -51,3 +51,19 @@ Control playback and bookmark from the watch. Not started. It's on the after-MVP
 ## App Store name check (added 2026-11-24)
 
 Check the name Casterr for trademarks and on the App Store before launch. Not started. It's an open question in `podcast_app_concept.md` and must be settled before the public release.
+
+## Long press actions (added 2026-11-26)
+
+Support long press on items, for example in the Inbox, the Queue, and Shows, to open their actions. Not started.
+
+## Clear a show when unfollowing (added 2026-11-26)
+
+When the listener unfollows a show, offer to clear it from Casterr, for example to remove its episodes from the Queue. Not started. The flow and design are still open.
+
+## Small files and a pre-push hook (added 2026-11-26)
+
+Keep files small and give each file and class a single responsibility. Add guidance to `AGENTS.md` with a limit, for example 700 lines at most, and a git pre-push hook that checks it. Not started. Two files are over 700 lines today: `CasterrUITests/ScreensTests.swift` (1122) and `CasterrCore/Sources/CasterrCore/Storage/Library.swift` (891).
+
+## Strict formatters and linters (added 2026-11-26)
+
+Add strict formatters and linters, and treat warnings as errors. Not started.
