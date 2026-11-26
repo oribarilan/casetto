@@ -54,16 +54,20 @@ Check the name Casterr for trademarks and on the App Store before launch. Not st
 
 ## Long press actions (added 2026-11-26)
 
-Support long press on items, for example in the Inbox, the Queue, and Shows, to open their actions. Not started.
+Support long press on items, for example in the Inbox, the Queue, and Shows, to open their actions. Not started. Findings: [docs/backlog/long-press.md](docs/backlog/long-press.md).
 
 ## Clear a show when unfollowing (added 2026-11-26)
 
-When the listener unfollows a show, offer to clear it from Casterr, for example to remove its episodes from the Queue. Not started. The flow and design are still open.
+When the listener unfollows a show, offer to clear it from Casterr, for example to remove its episodes from the Queue. Not started. The flow and design are still open. Findings: [docs/backlog/unfollow-clear.md](docs/backlog/unfollow-clear.md). On 2026-11-26 the app froze once around an unfollow and needed a force close; it didn't happen again, and the findings say what to capture next time.
 
 ## Small files and a pre-push hook (added 2026-11-26)
 
-Keep files small and give each file and class a single responsibility. Add guidance to `AGENTS.md` with a limit, for example 700 lines at most, and a git pre-push hook that checks it. Not started. Two files are over 700 lines today: `CasterrUITests/ScreensTests.swift` (1122) and `CasterrCore/Sources/CasterrCore/Storage/Library.swift` (891).
+Keep files small and give each file and class a single responsibility. Add guidance to `AGENTS.md` with a limit, for example 700 lines at most, and a git pre-push hook that checks it. Not started. Two files are over 700 lines today: `CasterrUITests/ScreensTests.swift` (1122) and `CasterrCore/Sources/CasterrCore/Storage/Library.swift` (891). Findings: [docs/backlog/code-hygiene.md](docs/backlog/code-hygiene.md).
 
 ## Strict formatters and linters (added 2026-11-26)
 
-Add strict formatters and linters, and treat warnings as errors. Not started.
+Add strict formatters and linters, and treat warnings as errors. Not started. Findings: [docs/backlog/code-hygiene.md](docs/backlog/code-hygiene.md).
+
+## Bug reports from Settings (added 2026-11-26)
+
+Add a way to make a bug report from Settings, with guidance on how to get the file, so the listener can share it in a GitHub issue. The app should give that guidance and link to the issues page. Update the GitHub issue template (`.github/ISSUE_TEMPLATE/bug.yml` exists already) to say what to include and how to attach the file. The report must be anonymous, and the app and the template must tell the listener clearly what it contains and that it carries nothing personal. Not started.
