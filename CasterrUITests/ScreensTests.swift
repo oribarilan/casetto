@@ -1095,6 +1095,7 @@ final class ScreensTests: XCTestCase {
         choice.tap()
     }
 
+    @MainActor
     private func snapshot(_ name: String) {
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = name

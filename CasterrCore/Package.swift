@@ -15,13 +15,13 @@ let package = Package(
         .target(
             name: "CasterrCore",
             dependencies: ["FeedKit"],
-            swiftSettings: [.enableUpcomingFeature("ApproachableConcurrency")]
+            swiftSettings: [.enableUpcomingFeature("ApproachableConcurrency"), .treatAllWarnings(as: .error)]
         ),
         .testTarget(
             name: "CasterrCoreTests",
             dependencies: ["CasterrCore"],
             resources: [.copy("Fixtures")],
-            swiftSettings: [.enableUpcomingFeature("ApproachableConcurrency")]
+            swiftSettings: [.enableUpcomingFeature("ApproachableConcurrency"), .treatAllWarnings(as: .error)]
         ),
     ]
 )

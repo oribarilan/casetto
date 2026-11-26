@@ -7,6 +7,8 @@ settings:
   base:
     # The app's version. Bump it with every listener-facing change, with a matching CHANGELOG.md section.
     MARKETING_VERSION: "0.8"
+    # Every warning stops the build. Fix it; don't silence it.
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
 packages:
   CasterrCore:
     path: CasterrCore

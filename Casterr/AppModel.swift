@@ -108,11 +108,11 @@ final class AppModel {
             refreshing = false
             refreshProgress = nil
         }
-        let summary = try? await feeds.refreshAll { done, total in
-            Task { @MainActor [weak self] in
-                guard let self, let current = refreshProgress else { return }
+        let summary = try? await feeds.refreshAll { [weak self] done, total in
+            Task { @MainActor in
+                guard let self, let current = self.refreshProgress else { return }
                 // Reports can arrive out of order; the line only moves forward.
-                refreshProgress = max(current, total == 0 ? 1 : Double(done) / Double(total))
+                self.refreshProgress = max(current, total == 0 ? 1 : Double(done) / Double(total))
             }
         }
         try? await library.mergeDuplicates()

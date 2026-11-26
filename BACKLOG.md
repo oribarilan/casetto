@@ -4,7 +4,7 @@ Work we started and parked, and ideas we haven't started. Each entry says why it
 
 ## CarPlay (parked 2026-11-20)
 
-The code is in the active change `openspec/changes/add-carplay`. It builds and ships inert. It waits for a check in the simulator's CarPlay display, and real cars wait for Apple's CarPlay audio entitlement. Fix this first: `templateApplicationScene(_:didDisconnect:)` matches no protocol method, so disconnect never runs. The Swift name is `didDisconnectInterfaceController:`.
+The code is in the active change `openspec/changes/add-carplay`. It builds and ships inert. It waits for a check in the simulator's CarPlay display, and real cars wait for Apple's CarPlay audio entitlement. The disconnect method now matches Apple's protocol (`templateApplicationScene(_:didDisconnectInterfaceController:)`, fixed in the code-hygiene change), so disconnect should run; it is not yet tested in a CarPlay display.
 
 ## Smart bookmarks (parked 2026-11-21)
 
