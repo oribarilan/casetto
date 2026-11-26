@@ -2,6 +2,10 @@
 
 What's new in each version of Casterr, newest first. The app shows these lines in What's New. AGENTS.md says how to add a version.
 
+## 0.8
+
+- Tapping the Queue tab always opens your Queue, even if you left the Inbox or Settings open there.
+
 ## 0.7.2
 
 - When more episodes are waiting, the Inbox card sits on a little pile, so it looks like a card you can swipe away.

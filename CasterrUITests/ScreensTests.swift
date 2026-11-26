@@ -1032,6 +1032,50 @@ final class ScreensTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Inbox zero!"].waitForExistence(timeout: 5))
     }
 
+    /// A tap on Queue opens the Queue, Shows keeps its page, and a second tap on the open tab goes back to its main page.
+    @MainActor
+    func testTabTaps() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES"]
+        app.launch()
+        let queueTab = app.tabBars.buttons["Queue"], showsTab = app.tabBars.buttons["Shows"]
+        let settings = app.navigationBars["Settings"]
+
+        // Second tap on Queue.
+        app.navigationBars["Queue"].buttons["Settings"].tap()
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        queueTab.tap()
+        XCTAssertTrue(settings.waitForNonExistence(timeout: 5), "Second tap on Queue stayed in Settings")
+
+        // Back to the Queue from another tab.
+        app.navigationBars["Queue"].buttons["Settings"].tap()
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        showsTab.tap()
+        queueTab.tap()
+        XCTAssertTrue(settings.waitForNonExistence(timeout: 5), "Queue tab reopened Settings")
+        XCTAssertTrue(app.navigationBars["Queue"].exists)
+
+        // Shows keeps its place.
+        showsTab.tap()
+        subscribe(to: feed)
+        XCTAssertTrue(app.navigationBars["Add Show"].waitForNonExistence(timeout: 30))
+        let tile = app.buttons["Planet Money, NPR"]
+        XCTAssertTrue(tile.waitForExistence(timeout: 30))
+        tile.tap()
+        let showPage = app.buttons["newEpisodesRow"]
+        XCTAssertTrue(showPage.waitForExistence(timeout: 5))
+        queueTab.tap()
+        XCTAssertTrue(app.navigationBars["Queue"].waitForExistence(timeout: 5))
+        showsTab.tap()
+        XCTAssertTrue(showPage.waitForExistence(timeout: 5), "Shows lost its show page")
+
+        // Second tap on the open tab.
+        showsTab.tap()
+        XCTAssertTrue(showPage.waitForNonExistence(timeout: 5), "Second tap on Shows stayed on the show page")
+        XCTAssertTrue(tile.exists)
+    }
+
     @MainActor
     private func subscribe(to address: String) {
         app.navigationBars["Shows"].buttons["Add"].tap()

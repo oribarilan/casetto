@@ -143,3 +143,7 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 - With Reduce Motion on, the card doesn't tilt and fades out when it acts.
 - With VoiceOver on, the card reads like a row and its actions include Add to Queue and Remove.
 - The card looks right in light and dark mode.
+
+## Tab taps
+
+- On the Shows tab, pull to refresh, then tap Cassy's message. The Inbox opens in the Queue tab.

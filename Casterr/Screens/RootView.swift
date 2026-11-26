@@ -12,7 +12,13 @@ struct RootView: View {
 
     var body: some View {
         @Bindable var model = model
-        TabView(selection: $model.tab) {
+        // A tap on Queue always opens the Queue itself; Shows and Bookmarks keep the page the listener left.
+        // iOS goes back to a tab's main page on a second tap. Only taps pass through this setter, so pages
+        // the app opens by itself, such as the Inbox from the refresh message, stay open.
+        TabView(selection: Binding(get: { model.tab }, set: { tab in
+            if tab == .queue { model.queuePath = [] }
+            model.tab = tab
+        })) {
             Tab("Queue", systemImage: "list.bullet", value: AppTab.queue) {
                 NavigationStack(path: $model.queuePath) { QueueView().routes() }
             }
