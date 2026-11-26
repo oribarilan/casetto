@@ -2,6 +2,11 @@
 
 What's new in each version of Casterr, newest first. The app shows these lines in What's New. AGENTS.md says how to add a version.
 
+## 0.7
+
+- Your newest Inbox episode sits on a big card with its description: swipe it right to queue it or left to remove it.
+- The rest of your new episodes wait under it, and the next one moves up onto the card.
+
 ## 0.6.1
 
 - The Queue no longer scrolls up and down on its own when you open the app.

@@ -17,6 +17,11 @@ struct InboxView: View {
     /// The one-time tip that teaches the swipes, on the first row.
     @State private var tip: CassyTip?
     @State private var loaded = false
+    /// Episodes swiped off the card, hidden until the save lands so the next one takes the card at once.
+    @State private var swiped: Set<EpisodeKey> = []
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var shown: [EpisodeInfo] { items.filter { !swiped.contains($0.key) } }
 
     var body: some View {
         List {
@@ -26,13 +31,29 @@ struct InboxView: View {
                 }
             }
             Section {
-                episodeRows
+                ForEach(shown.prefix(1), id: \.key) { episode in
+                    row(episode, card: CardSwipe(queue: { swipeCard(episode, queue: true) },
+                                                 remove: { swipeCard(episode, queue: false) }))
+                        .listRowBackground(Color.clear)
+                        // Room for the card's shadow, which the row would cut off.
+                        .listRowInsets(EdgeInsets(top: 14, leading: 0, bottom: 18, trailing: 0))
+                        .listRowSeparator(.hidden)
+                }
             } footer: {
-                if !items.isEmpty { expiryLine }
+                if shown.count == 1 { expiryLine }
+            }
+            if shown.count > 1 {
+                Section {
+                    ForEach(shown.dropFirst(), id: \.key) { row($0) }
+                } header: {
+                    Text("Also new · \(shown.count - 1)")
+                } footer: {
+                    expiryLine
+                }
             }
         }
         .overlay {
-            if loaded && items.isEmpty && cards.isEmpty {
+            if loaded && shown.isEmpty && cards.isEmpty {
                 CassyEmptyState(job: .success, title: "Inbox zero!", message: "Everything's sorted. Go stretch your legs.") {}
             }
         }
@@ -69,16 +90,20 @@ struct InboxView: View {
         }
     }
 
-    private var episodeRows: some View {
-        ForEach(items, id: \.key) { episode in
-            EpisodeRow(episode: episode, identifier: "inboxItem", move: moves[episode.key],
-                       starred: starredShows.contains(episode.showKey),
-                       download: model.downloadState(episode), progress: progress[episode.key] ?? 0,
-                       art: art[episode.showKey], metaNote: countdown(daysLeft[episode.key]),
-                       isOpen: openRow == episode.key,
-                       toggle: { openRow = openRow == episode.key ? nil : episode.key },
-                       actions: actions(episode))
-                .cassyTipTarget("inboxRow.\(episode.key.rawValue)")
+    /// The newest episode on its card, which swipes itself, or a row with the List's swipes.
+    @ViewBuilder private func row(_ episode: EpisodeInfo, card: CardSwipe? = nil) -> some View {
+        let row = EpisodeRow(episode: episode, identifier: card == nil ? "inboxItem" : "inboxCard", move: moves[episode.key],
+                             starred: starredShows.contains(episode.showKey),
+                             download: model.downloadState(episode), progress: progress[episode.key] ?? 0,
+                             art: art[episode.showKey], metaNote: countdown(daysLeft[episode.key]),
+                             isOpen: openRow == episode.key,
+                             toggle: { openRow = openRow == episode.key ? nil : episode.key },
+                             actions: actions(episode), card: card)
+            .cassyTipTarget("inboxRow.\(episode.key.rawValue)")
+        if card != nil {
+            row
+        } else {
+            row
                 .swipeActions(edge: .leading) {
                     Button("Add to Queue", systemImage: "text.badge.plus") {
                         Task { await model.change(.episodes) { try await model.library.addToQueue(episode.key) } }
@@ -93,6 +118,20 @@ struct InboxView: View {
         }
     }
 
+    /// The card has flown off: the next episode takes it at once, and its row leaves the list.
+    private func swipeCard(_ episode: EpisodeInfo, queue: Bool) {
+        // Changed from a task, as on the show page: a change made in the gesture inserts the new card without its animation.
+        Task {
+            withAnimation(reduceMotion ? nil : .snappy) {
+                swiped.insert(episode.key)
+                if openRow == episode.key { openRow = nil }
+            }
+            await model.change(.episodes) {
+                if queue { try await model.library.addToQueue(episode.key) } else { try await model.library.dismiss(episode.key) }
+            }
+        }
+    }
+
     /// Play Next, Add to Queue, Share, Show, Remove. No Played: Remove covers "not for me", and the line fits six.
     private func actions(_ episode: EpisodeInfo) -> [RowAction] {
         [.playNext(episode.key, model), .addToQueue(episode.key, model), .share, .show(episode.showKey, model),
@@ -102,6 +141,7 @@ struct InboxView: View {
     private func load() async {
         let keys = (try? await model.library.inbox()) ?? []
         items = await model.episodes(keys)
+        swiped.formIntersection(keys)
         moves = await model.moves(of: keys)
         progress = await model.progress(of: keys)
         starredShows = Set(((try? await model.library.subscriptions()) ?? []).filter(\.starred).map(\.showKey))

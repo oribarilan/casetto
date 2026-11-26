@@ -46,6 +46,8 @@ To animate a control between two looks, use one view and change its modifiers (f
 
 A button in a List row that adds List rows must not change the state in its action. In that case the List adds the rows without animation. Change the state in a `Task` that the action starts, as `act` in `ShowView` does.
 
+When one row view has two looks, put the `if` inside the row, for example in the button label, as `EpisodeRow` does for the Inbox card. Do not put an `if` or a conditional modifier around the whole row. If you do, a List that adds rows above a visible row scrolls to keep that row in view.
+
 The simulator does not show most stalls. To check that an animation is smooth, measure a Release build on the listener's iPhone:
 
 1. Build and install: `xcodebuild build -scheme Casterr -configuration Release -destination "id=<phone>" -derivedDataPath <dir> -allowProvisioningUpdates DEVELOPMENT_TEAM=<team>`, then `xcrun devicectl device install app --device <phone> <app>`.

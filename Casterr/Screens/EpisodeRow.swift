@@ -85,6 +85,8 @@ struct EpisodeRow: View {
     var toggle: () -> Void = {}
     /// The actions after Play, in order. Those that don't apply are left out by the screen.
     var actions: [RowAction] = []
+    /// The Inbox card: a bigger look with the description, swiped sideways by its own drag.
+    var card: CardSwipe?
 
     var body: some View {
         // In a List, each view in this group is its own row. The line is a second row, which the List inserts
@@ -100,18 +102,59 @@ struct EpisodeRow: View {
         }
     }
 
+    // The row's outer view stays the same for a plain row and the card: an `if` around the whole row made
+    // the show page's List scroll to keep "Show older episodes" in view when it added rows above it.
     private var header: some View {
         Button {
             animate(toggle)
         } label: {
-            HStack(spacing: 12) {
-                ArtworkView(url: art?.artworkURL, title: art?.title ?? episode.title, size: 52)
-                details
+            if let card {
+                cardFace.modifier(CardDrag(swipe: card))
+            } else {
+                HStack(spacing: 12) {
+                    ArtworkView(url: art?.artworkURL, title: art?.title ?? episode.title, size: 52)
+                    details
+                }
             }
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(identifier)
         .accessibilityHint(isOpen ? "Hides actions" : "Shows actions")
+        .accessibilityActions {
+            if let card {
+                Button("Add to Queue", action: card.queue)
+                Button("Remove", action: card.remove)
+            }
+        }
+    }
+
+    private var cardFace: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 14) {
+                ArtworkView(url: art?.artworkURL, title: art?.title ?? episode.title, size: 88)
+                VStack(alignment: .leading, spacing: 4) {
+                    if let show = art?.title {
+                        Text(show)
+                            .font(.caption.weight(.heavy))
+                            .foregroundStyle(Color.tangerineText)
+                            .lineLimit(1)
+                    }
+                    details
+                }
+            }
+            if let summary = episode.plainSummary {
+                Text(summary)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 24))
+        .shadow(color: .black.opacity(0.1), radius: 10, y: 3)
+        .contentShape(.rect(cornerRadius: 24))
     }
 
     private func animate(_ change: () -> Void) {
@@ -212,6 +255,7 @@ struct EpisodeRow: View {
                 .font(.caption.bold())
             }
             Text(episode.title)
+                .font(card == nil ? .body : .headline)
                 .lineLimit(2)
                 .foregroundStyle(played ? .secondary : .primary)
             HStack {

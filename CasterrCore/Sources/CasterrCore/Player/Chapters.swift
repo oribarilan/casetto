@@ -77,6 +77,14 @@ public enum ShowNotesChapters {
 }
 
 enum HTMLText {
+    /// The text of an HTML description on one line, or nil when nothing is left.
+    static func plain(_ html: String?) -> String? {
+        guard let html else { return nil }
+        let text = decodingEntities(html.replacing(/<[^>]+>/, with: " "))
+            .replacing(/\s+/, with: " ").trimmingCharacters(in: .whitespaces)
+        return text.isEmpty ? nil : text
+    }
+
     static func decodingEntities(_ text: String) -> String {
         var text = text
         for (entity, character) in ["&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": "\"", "&#39;": "'", "&apos;": "'", "&nbsp;": " "] {

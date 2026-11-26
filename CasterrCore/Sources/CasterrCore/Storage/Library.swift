@@ -28,12 +28,7 @@ public struct ShowInfo: Equatable, Sendable {
     public var lastRefreshSuccess: Date?
 
     /// The feed's description without HTML tags or entities, with runs of whitespace collapsed.
-    public var plainSummary: String? {
-        guard let summary else { return nil }
-        var text = HTMLText.decodingEntities(summary.replacing(/<[^>]+>/, with: " "))
-        text = text.replacing(/\s+/, with: " ").trimmingCharacters(in: .whitespaces)
-        return text.isEmpty ? nil : text
-    }
+    public var plainSummary: String? { HTMLText.plain(summary) }
     public var lastRefreshError: String?
     /// The show's page from its feed.
     public var webPage: URL?
@@ -74,6 +69,8 @@ public struct EpisodeInfo: Equatable, Sendable {
     public var publishDate: Date?
     public var duration: TimeInterval?
     public var summary: String?
+    /// The episode's description without HTML tags or entities, with runs of whitespace collapsed.
+    public var plainSummary: String? { HTMLText.plain(summary) }
     /// The episode's own page from its feed.
     public var webPage: URL?
     /// The file size the feed lists, often missing or wrong.

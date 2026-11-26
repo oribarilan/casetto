@@ -135,3 +135,11 @@ Checks that need a real iPhone. They came from changes that are otherwise done a
 
 - On a show you don't follow, tap Follow: the New episodes rows appear at once and fade in while the episodes slide down, with no jump, and the button fades to a grey Following as the plus spins into the check. Unfollow: the rows fade out and the episodes slide up. Pick a new choice in each menu: the value cross-fades. With Reduce Motion on, nothing slides or spins.
 - Follow, Following and the round Star look right in light and dark mode, and the filled star is tangerine.
+
+## Inbox card
+
+- With three or more episodes in the Inbox, drag the card sideways: it follows the finger and tilts, and Queue or Remove fades in. Let go halfway: it springs back. Drag past a third of the width: a light tap of feedback, then let go and it flies off, the next episode takes the card, and the rows slide up without a stutter.
+- Start a drag up or down on the card: the Inbox scrolls, and the card doesn't move.
+- With Reduce Motion on, the card doesn't tilt and fades out when it acts.
+- With VoiceOver on, the card reads like a row and its actions include Add to Queue and Remove.
+- The card looks right in light and dark mode.
