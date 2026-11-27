@@ -1,0 +1,18 @@
+#!/bin/sh
+# Stops a push when swift-format finds a problem or a Swift file is over 700 lines.
+# Turn it on once after cloning: git config core.hooksPath .githooks
+# It checks the files in the working tree, so commit or stash other changes first.
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+if ! xcrun swift-format lint --strict --recursive --parallel .; then
+    echo "pre-push: swift-format found problems. Run 'swift format -i -r -p .', then fix what is left by hand." >&2
+    exit 1
+fi
+
+long=$(git ls-files '*.swift' | xargs wc -l | awk '$2 != "total" && $1 > 700')
+if [ -n "$long" ]; then
+    echo "pre-push: these Swift files are over 700 lines. Split them by responsibility:" >&2
+    echo "$long" >&2
+    exit 1
+fi

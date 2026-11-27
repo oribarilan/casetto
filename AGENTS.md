@@ -56,6 +56,19 @@ The simulator does not show most stalls. To check that an animation is smooth, m
 
 Measure before and after a change, with the same taps on the same show.
 
+## Code style
+
+Format and lint all Swift code with swift-format. The configuration is in `.swift-format`. Do not change it to make a finding go away.
+
+- To format, run `swift format -i -r -p .`.
+- To lint, run `swift format lint --strict -r -p .`. The lint must show no findings. Fix each finding that the formatter does not fix.
+
+Warnings are errors in all targets (`SWIFT_TREAT_WARNINGS_AS_ERRORS` in `project.yml`, `treatAllWarnings(as: .error)` in `CasterrCore/Package.swift`). Fix each warning. Do not silence a warning and do not remove these settings.
+
+Keep each Swift file at 700 lines or less. Give each file and each type one responsibility. When a type gets too large, move its parts into extensions in separate files, as `Library` does (`Library+Queue.swift`, `Library+Triage.swift`, and others). Put shared test helpers in `CasterrUITests/UITestCase.swift`.
+
+The pre-push hook (`.githooks/pre-push`) runs the lint and the 700-line check. After you clone the repository, turn on the hook with `git config core.hooksPath .githooks`. Do not push with `--no-verify`. If the hook stops a push, fix the problem and push again.
+
 ## Versions and What's New
 
 The app version is `MARKETING_VERSION` in `project.yml`. It is the only place for the version. `CHANGELOG.md` has one section for each version, newest first. The app bundles `CHANGELOG.md` and shows its sections in What's New, so every line in it is text that the listener reads.

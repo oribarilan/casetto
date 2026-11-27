@@ -14,7 +14,7 @@ public enum SubscribeOutcome: Equatable, Sendable {
     case alreadySubscribed(ShowKey)
 }
 
-public struct OPMLImportReport: Equatable, Sendable {
+public struct OPMLImportReport: Equatable, Sendable, Identifiable {
     public struct Failure: Equatable, Sendable {
         public var title: String?
         public var url: String?
@@ -24,6 +24,9 @@ public struct OPMLImportReport: Equatable, Sendable {
     public var subscribed: [ShowKey] = []
     public var alreadySubscribed: [ShowKey] = []
     public var failures: [Failure] = []
+
+    /// Tells one report from another, so the app can show it in a sheet.
+    public var id: String { "\(subscribed.count)|\(alreadySubscribed.count)|\(failures.count)" }
 }
 
 /// Subscribing, importing, refreshing and unsubscribing: the feed side of `Library`.
@@ -114,9 +117,11 @@ public struct FeedService: Sendable {
     ) async throws -> RefreshSummary {
         let subscriptions = try await library.subscriptions()
         progress(0, subscriptions.count)
-        let results = await forEach(subscriptions, onEach: { progress($0, subscriptions.count) }) { subscription in
-            await refresh(subscription)
-        }
+        let results = await forEach(
+            subscriptions,
+            onEach: { progress($0, subscriptions.count) },
+            { subscription in await refresh(subscription) }
+        )
         var summary = results.reduce(RefreshSummary(), +)
         summary.expired = try await library.expireInbox()
         return summary

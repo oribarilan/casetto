@@ -38,6 +38,26 @@ Run the UI tests on a simulator. They need a network connection, because they fo
 xcodebuild -project Casterr.xcodeproj -scheme Casterr -destination 'platform=iOS Simulator,name=iPhone 18 Pro' test
 ```
 
+### Code style
+
+The code is formatted and linted with swift-format, which comes with Xcode. Its settings are in `.swift-format`: the defaults, with 4-space indents and 120-character lines.
+
+```sh
+swift format -i -r -p .              # format every Swift file in place
+swift format lint --strict -r -p .   # list what's left; every finding is an error
+```
+
+Warnings are errors in every target, so a build with a warning fails. Fix the warning rather than silencing it.
+
+Keep each Swift file under 700 lines, and give each file and each type one job. When a type grows, split it into extensions in their own files, the way `Library` is split in `CasterrCore/Sources/CasterrCore/Storage/`.
+
+A pre-push hook checks the lint and the 700-line limit before every push. Turn it on once after cloning, and have `git blame` skip the commit that formatted the whole codebase:
+
+```sh
+git config core.hooksPath .githooks
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
 ### iCloud sync
 
 Sync is built but off until you give it your own iCloud container, which needs a paid Apple Developer account:

@@ -12,17 +12,17 @@
 
 ## 3. Format and lint
 
-- [ ] 3.1 Add `.swift-format` with 4-space indents and 120-character lines, and reformat every Swift file with `swift format -i -r -p`. Verify: the app builds and the core tests pass.
-- [ ] 3.2 Fix the remaining `swift format lint --strict` findings in CasterrCore by hand. Verify: lint is clean there, and the core tests pass.
-- [ ] 3.3 Fix the remaining findings in the app, the share extension and the UI tests. Verify: `swift format lint --strict -r -p .` is clean and the app builds.
-- [ ] 3.4 Add `.git-blame-ignore-revs` naming the reformat commit, once it exists. Verify: `git blame --ignore-revs-file .git-blame-ignore-revs` skips it.
+- [x] 3.1 Add `.swift-format` with 4-space indents and 120-character lines, and reformat every Swift file with `swift format -i -r -p`. Verify: the app builds and the core tests pass.
+- [x] 3.2 Fix the remaining `swift format lint --strict` findings in CasterrCore by hand. Verify: lint is clean there, and the core tests pass.
+- [x] 3.3 Fix the remaining findings in the app, the share extension and the UI tests. Verify: `swift format lint --strict -r -p .` is clean and the app builds.
+- [x] 3.4 Add `.git-blame-ignore-revs` naming the reformat commit, once it exists. Verify: `git blame --ignore-revs-file .git-blame-ignore-revs` skips it.
 
 ## 4. Hook and guidance
 
-- [ ] 4.1 Add `.githooks/pre-push`, which runs the strict lint and the 700-line check and stops the push when either fails. Verify: it passes on a clean tree, and fails with a file over 700 lines and with a lint error.
-- [ ] 4.2 In `CONTRIBUTING.md`, add a "Code style" part to "Build your own copy": the one-time `git config core.hooksPath .githooks`, the format command (`swift format -i -r -p .`), the lint command (`swift format lint --strict -r -p .`), what the pre-push hook checks, that warnings are errors, and the 700-line limit. Verify: the steps work on a fresh clone.
-- [ ] 4.3 Add a "Code style" section to `AGENTS.md` in ASD-STE100 style: format with swift-format and keep the lint clean (the commands, and that `.swift-format` holds the config); fix every warning, because warnings are errors; keep each Swift file under 700 lines, and give each file and each type one responsibility, splitting a type with extensions when it grows; turn on the hook after a clone; do not skip the hook with `--no-verify`. Verify: the section is in AGENTS.md and an agent can follow it without other files.
-- [ ] 4.4 Run the core tests and the UI tests. Verify: all pass, apart from the known cold-start flakes.
+- [x] 4.1 Add `.githooks/pre-push`, which runs the strict lint and the 700-line check and stops the push when either fails. Verify: it passes on a clean tree, and fails with a file over 700 lines and with a lint error.
+- [x] 4.2 In `CONTRIBUTING.md`, add a "Code style" part to "Build your own copy": the one-time `git config core.hooksPath .githooks`, the format command (`swift format -i -r -p .`), the lint command (`swift format lint --strict -r -p .`), what the pre-push hook checks, that warnings are errors, and the 700-line limit. Verify: the steps work on a fresh clone.
+- [x] 4.3 Add a "Code style" section to `AGENTS.md` in ASD-STE100 style: format with swift-format and keep the lint clean (the commands, and that `.swift-format` holds the config); fix every warning, because warnings are errors; keep each Swift file under 700 lines, and give each file and each type one responsibility, splitting a type with extensions when it grows; turn on the hook after a clone; do not skip the hook with `--no-verify`. Verify: the section is in AGENTS.md and an agent can follow it without other files.
+- [x] 4.4 Run the core tests and the UI tests. Verify: all pass, apart from the known cold-start flakes.
 
 ## Workflow follow-up
 

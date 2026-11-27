@@ -200,10 +200,6 @@ private struct ShowTile: View {
     }
 }
 
-extension OPMLImportReport: @retroactive Identifiable {
-    public var id: String { "\(subscribed.count)|\(alreadySubscribed.count)|\(failures.count)" }
-}
-
 private struct ImportReportView: View {
     @Environment(\.dismiss) private var dismiss
     let report: OPMLImportReport

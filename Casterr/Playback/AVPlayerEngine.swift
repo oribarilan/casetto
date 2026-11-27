@@ -150,7 +150,7 @@ final class AVPlayerEngine: AudioEngine {
     }
 
     private func observe(_ item: AVPlayerItem) {
-        notificationTasks.forEach { $0.cancel() }
+        for task in notificationTasks { task.cancel() }
         statusObservation = item.observe(\.status) { [weak self] item, _ in
             if item.status == .readyToPlay {
                 Task { @MainActor in
