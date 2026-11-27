@@ -24,7 +24,9 @@ private struct BookmarkToast: View {
     var body: some View {
         if let bookmark = model.lastBookmark {
             HStack {
-                Button { open(bookmark, editNote: false) } label: {
+                Button {
+                    open(bookmark, editNote: false)
+                } label: {
                     HStack {
                         CassyView(job: .success, size: 36).accessibilityHidden(true)
                         Text("Bookmarked at \(bookmark.position.clock)")
@@ -71,12 +73,15 @@ struct BookmarksView: View {
                     let canPlay = known[group[0].episodeKey] != nil
                     Section {
                         header(group)
-                        ForEach(group, id: \.id) { BookmarkRow(bookmark: $0, canPlay: canPlay, editing: $editing).id($0.id) }
+                        ForEach(group, id: \.id) {
+                            BookmarkRow(bookmark: $0, canPlay: canPlay, editing: $editing).id($0.id)
+                        }
                     } footer: {
                         if !canPlay {
-                            Text(group[0].episodeKey.rawValue.hasPrefix(ShowKey.shared.rawValue + "|")
-                                 ? "This shared file isn't on this iPhone, so it can't play."
-                                 : "No longer in the feed, so it can't play.")
+                            Text(
+                                group[0].episodeKey.rawValue.hasPrefix(ShowKey.shared.rawValue + "|")
+                                    ? "This shared file isn't on this iPhone, so it can't play."
+                                    : "No longer in the feed, so it can't play.")
                         }
                     }
                 }
@@ -84,8 +89,10 @@ struct BookmarksView: View {
             .overlay {
                 if loaded && groups.isEmpty {
                     if query.isEmpty {
-                        CassyEmptyState(job: .asleep, title: "Nothing saved yet",
-                                        message: "Tap the bookmark while you listen and I'll keep the moment.") {}
+                        CassyEmptyState(
+                            job: .asleep, title: "Nothing saved yet",
+                            message: "Tap the bookmark while you listen and I'll keep the moment."
+                        ) {}
                     } else {
                         ContentUnavailableView.search(text: query)
                     }
@@ -98,8 +105,10 @@ struct BookmarksView: View {
             .toolbar {
                 if !groups.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
-                        ShareLink(item: MarkdownExport(episodes: groups),
-                                  preview: SharePreview(BookmarkMarkdown.fileName(episodes: groups))) {
+                        ShareLink(
+                            item: MarkdownExport(episodes: groups),
+                            preview: SharePreview(BookmarkMarkdown.fileName(episodes: groups))
+                        ) {
                             Label("Export All", systemImage: "square.and.arrow.up")
                         }
                     }
@@ -141,8 +150,10 @@ struct BookmarksView: View {
                 Text(group[0].showTitle).font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer()
-            ShareLink(item: MarkdownExport(episodes: [group]),
-                      preview: SharePreview(BookmarkMarkdown.fileName(group))) {
+            ShareLink(
+                item: MarkdownExport(episodes: [group]),
+                preview: SharePreview(BookmarkMarkdown.fileName(group))
+            ) {
                 Label("Export", systemImage: "square.and.arrow.up")
             }
             .labelStyle(.iconOnly)
@@ -196,18 +207,20 @@ private struct BookmarkRow: View {
             .disabled(!canPlay)
             .accessibilityLabel("Play from \(bookmark.position.clock)")
             .accessibilityIdentifier("bookmarkPlay")
-            TextField("Note", text: $note, prompt: Text("Add a note").foregroundStyle(Color.tangerineText.opacity(0.75)),
-                      axis: .vertical)
-                .focused(editing, equals: bookmark.id)
-                .submitLabel(.done)
-                .accessibilityIdentifier("bookmarkNoteField")
-                .onChange(of: note) {
-                    // Return ends editing instead of starting a new line.
-                    if note.contains("\n") {
-                        note = note.replacingOccurrences(of: "\n", with: "")
-                        editing.wrappedValue = nil
-                    }
+            TextField(
+                "Note", text: $note, prompt: Text("Add a note").foregroundStyle(Color.tangerineText.opacity(0.75)),
+                axis: .vertical
+            )
+            .focused(editing, equals: bookmark.id)
+            .submitLabel(.done)
+            .accessibilityIdentifier("bookmarkNoteField")
+            .onChange(of: note) {
+                // Return ends editing instead of starting a new line.
+                if note.contains("\n") {
+                    note = note.replacingOccurrences(of: "\n", with: "")
+                    editing.wrappedValue = nil
                 }
+            }
         }
         .task(id: bookmark.note) { note = bookmark.note }
         .onChange(of: editing.wrappedValue == bookmark.id) { _, isEditing in

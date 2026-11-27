@@ -69,7 +69,8 @@ public struct FeedService: Sendable {
         }
         guard let showKey = ShowKey(feedURL: found.feedURL) else { return nil }
         let feed = try await fetchAndParse(found.feedURL)
-        guard let episode = feed.episodes.first(where: { found.guid != nil && $0.guid == found.guid })
+        guard
+            let episode = feed.episodes.first(where: { found.guid != nil && $0.guid == found.guid })
                 ?? feed.episodes.first(where: { found.audioURL != nil && $0.audioURL == found.audioURL })
         else { return nil }
         try await library.saveFeed(feed, for: showKey)
@@ -97,7 +98,8 @@ public struct FeedService: Sendable {
             case .success(.subscribed(let key)): report.subscribed.append(key)
             case .success(.alreadySubscribed(let key)): report.alreadySubscribed.append(key)
             case .failure(let error):
-                report.failures.append(.init(title: feed.title, url: feed.url.absoluteString, reason: Self.describe(error)))
+                report.failures.append(
+                    .init(title: feed.title, url: feed.url.absoluteString, reason: Self.describe(error)))
             }
         }
         return report

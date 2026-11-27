@@ -39,7 +39,8 @@ final class ShareViewController: UIViewController {
         card.state = outcome
         guard case .added = outcome else { return }
         CFNotificationCenterPostNotification(
-            CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName(SharedDrop.notification as CFString), nil, nil, true)
+            CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName(SharedDrop.notification as CFString), nil,
+            nil, true)
         try? await Task.sleep(for: .seconds(1.5))
         finish()
     }
@@ -52,8 +53,10 @@ final class ShareViewController: UIViewController {
                 guard let url else { return continuation.resume(returning: nil) }
                 let copy = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
                     .appending(path: url.lastPathComponent)
-                try? FileManager.default.createDirectory(at: copy.deletingLastPathComponent(), withIntermediateDirectories: true)
-                continuation.resume(returning: (try? FileManager.default.copyItem(at: url, to: copy)) != nil ? copy : nil)
+                try? FileManager.default.createDirectory(
+                    at: copy.deletingLastPathComponent(), withIntermediateDirectories: true)
+                continuation.resume(
+                    returning: (try? FileManager.default.copyItem(at: url, to: copy)) != nil ? copy : nil)
             }
         }
         guard let staged else { return .failed(ShareCard.unplayable) }
@@ -61,7 +64,8 @@ final class ShareViewController: UIViewController {
         let asset = AVURLAsset(url: staged)
         guard (try? await asset.load(.isPlayable)) == true else { return .failed(ShareCard.unplayable) }
         let tag = try? await AVMetadataItem.metadataItems(
-            from: asset.load(.commonMetadata), filteredByIdentifier: .commonIdentifierTitle).first?.load(.stringValue)
+            from: asset.load(.commonMetadata), filteredByIdentifier: .commonIdentifierTitle
+        ).first?.load(.stringValue)
         let title = tag.flatMap { $0.isEmpty ? nil : $0 } ?? staged.deletingPathExtension().lastPathComponent
         do {
             try drop.drop(.file(staged.lastPathComponent, title: title), file: staged)
@@ -78,7 +82,9 @@ final class ShareViewController: UIViewController {
         }
         guard let url, let link = ApplePodcastsLink(url) else { return .failed(ShareCard.wrongKind) }
         do {
-            guard let episode = try await AppleDirectory().episode(for: link) else { return .failed(ShareCard.notFound) }
+            guard let episode = try await AppleDirectory().episode(for: link) else {
+                return .failed(ShareCard.notFound)
+            }
             try drop.drop(.link(episode))
             return .added(episode.title)
         } catch is DirectoryError {

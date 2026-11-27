@@ -12,8 +12,10 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private var artwork: [URL: UIImage] = [:]
     private var model: AppModel { .shared }
 
-    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
-                                  didConnect interfaceController: CPInterfaceController) {
+    func templateApplicationScene(
+        _ templateApplicationScene: CPTemplateApplicationScene,
+        didConnect interfaceController: CPInterfaceController
+    ) {
         self.interfaceController = interfaceController
         // Apple's rule: the car never tells the driver to use the phone.
         queue.emptyViewTitleVariants = ["Your Queue is empty"]
@@ -22,14 +24,18 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         showNowPlayingButtons(bookmarked: false)
         watching = Task { [weak self] in
             let model = AppModel.shared
-            for await _ in Observations({ (model.revision([.episodes, .feeds, .downloads]), model.player.episode?.key, model.player.isPlaying) }) {
+            for await _ in Observations({
+                (model.revision([.episodes, .feeds, .downloads]), model.player.episode?.key, model.player.isPlaying)
+            }) {
                 await self?.reloadQueue()
             }
         }
     }
 
-    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
-                                  didDisconnectInterfaceController interfaceController: CPInterfaceController) {
+    func templateApplicationScene(
+        _ templateApplicationScene: CPTemplateApplicationScene,
+        didDisconnectInterfaceController interfaceController: CPInterfaceController
+    ) {
         watching?.cancel()
         watching = nil
         self.interfaceController = nil
@@ -44,8 +50,9 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let art = (try? await model.library.showArt()) ?? [:]
         let items = episodes.map { episode in
             let show = art[episode.showKey]
-            let item = CPListItem(text: episode.title, detailText: show?.title,
-                                  image: show?.artworkURL.flatMap { artwork[$0] })
+            let item = CPListItem(
+                text: episode.title, detailText: show?.title,
+                image: show?.artworkURL.flatMap { artwork[$0] })
             item.isPlaying = model.player.isPlaying && model.player.episode?.key == episode.key
             item.handler = { [weak self] _, completion in
                 Task {
@@ -63,7 +70,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     private func loadArtwork(_ url: URL, into item: CPListItem) async {
         guard let (data, _) = try? await URLSession.shared.data(from: url),
-              let image = UIImage(data: data) else { return }
+            let image = UIImage(data: data)
+        else { return }
         artwork[url] = image
         item.setImage(image)
     }

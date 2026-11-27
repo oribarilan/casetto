@@ -26,14 +26,16 @@ struct QueueView: View {
             }
             ForEach(Array(items.enumerated()), id: \.element.key) { index, episode in
                 let state = index == 0 ? firstState(episode) : nil
-                EpisodeRow(episode: episode, identifier: "queueItem",
-                           label: state?.caption, move: moves[episode.key], starred: starredShows.contains(episode.showKey),
-                           download: model.downloadState(episode), progress: progress[episode.key] ?? 0,
-                           art: art[episode.showKey],
-                           captionSymbol: state?.symbol, animateSymbol: state?.caption == "Playing",
-                           isOpen: openRow == episode.key,
-                           toggle: { openRow = openRow == episode.key ? nil : episode.key },
-                           actions: actions(episode, upNext: index < 2))
+                EpisodeRow(
+                    episode: episode, identifier: "queueItem",
+                    label: state?.caption, move: moves[episode.key], starred: starredShows.contains(episode.showKey),
+                    download: model.downloadState(episode), progress: progress[episode.key] ?? 0,
+                    art: art[episode.showKey],
+                    captionSymbol: state?.symbol, animateSymbol: state?.caption == "Playing",
+                    isOpen: openRow == episode.key,
+                    toggle: { openRow = openRow == episode.key ? nil : episode.key },
+                    actions: actions(episode, upNext: index < 2)
+                )
                 .swipeActions(edge: .trailing) {
                     // "Remove", not "Delete": the episode leaves the Queue and stays on its show page.
                     Button("Remove", systemImage: "minus.circle", role: .destructive) { remove(episode) }
@@ -51,15 +53,19 @@ struct QueueView: View {
             if loaded && items.isEmpty {
                 if inboxCount > 0 {
                     // Something is waiting, so point at it instead of suggesting new shows.
-                    CassyEmptyState(job: .idle, title: inboxTitle,
-                                    message: "Have a look and queue what you want to hear.") {
+                    CassyEmptyState(
+                        job: .idle, title: inboxTitle,
+                        message: "Have a look and queue what you want to hear."
+                    ) {
                         Button("Open Inbox") { model.queuePath = [.inbox] }
                             .filledButton()
                             .buttonBorderShape(.capsule)
                     }
                 } else {
-                    CassyEmptyState(job: .asleep, title: "Silence. Lovely, but let's fix that.",
-                                    message: "Star the shows you never miss and I'll queue their new episodes right here.") {
+                    CassyEmptyState(
+                        job: .asleep, title: "Silence. Lovely, but let's fix that.",
+                        message: "Star the shows you never miss and I'll queue their new episodes right here."
+                    ) {
                         Button("Find Shows") { model.tab = .shows }
                             .filledButton()
                             .buttonBorderShape(.capsule)
@@ -82,7 +88,9 @@ struct QueueView: View {
         }
         // Hand off to Cassy right away instead of holding the system spinner.
         .refreshable { Task { await model.refresh() } }
-        .reload(on: "\(model.revision([.episodes, .feeds, .follows]))|\(player.episode?.key.rawValue ?? "")") { await load() }
+        .reload(on: "\(model.revision([.episodes, .feeds, .follows]))|\(player.episode?.key.rawValue ?? "")") {
+            await load()
+        }
     }
 
     /// Play Next (not on the first two rows, where it would change nothing), Played, Download
@@ -90,9 +98,9 @@ struct QueueView: View {
     private func actions(_ episode: EpisodeInfo, upNext: Bool) -> [RowAction] {
         (upNext ? [] : [.playNext(episode.key, model)]) + [.played(episode.key, model)]
             + RowAction.downloadOnCellular(episode, model) + [
-            .share, .show(episode.showKey, model),
-            RowAction(title: "Remove", symbol: "minus.circle", destructive: true) { remove(episode) },
-        ]
+                .share, .show(episode.showKey, model),
+                RowAction(title: "Remove", symbol: "minus.circle", destructive: true) { remove(episode) },
+            ]
     }
 
     private func remove(_ episode: EpisodeInfo) {
@@ -155,4 +163,3 @@ private struct RefreshLine: View {
             .accessibilityHidden(progress == nil)
     }
 }
-

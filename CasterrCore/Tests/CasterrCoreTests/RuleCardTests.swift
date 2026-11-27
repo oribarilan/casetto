@@ -1,6 +1,7 @@
 import Foundation
 import Synchronization
 import Testing
+
 @testable import CasterrCore
 
 private let start = Date(timeIntervalSince1970: 1_800_000_000)
@@ -10,7 +11,8 @@ private let day: TimeInterval = 86_400
 /// An episode released `daysAgo` days before `now`, first played `playedAfter` days after release.
 private func episode(_ daysAgo: Double, playedAfter: Double? = nil, place: Place? = nil) -> RuleCard.Episode {
     let published = now.addingTimeInterval(-daysAgo * day)
-    return RuleCard.Episode(published: published, firstPlayedAt: playedAfter.map { published.addingTimeInterval($0 * day) }, place: place)
+    return RuleCard.Episode(
+        published: published, firstPlayedAt: playedAfter.map { published.addingTimeInterval($0 * day) }, place: place)
 }
 
 private func evaluate(_ episodes: [RuleCard.Episode]) -> RuleCard.Kind? {
@@ -39,18 +41,22 @@ struct RuleCardEvaluationTests {
     }
 
     @Test func threeExpiriesEarnIgnored() {
-        let episodes = (1...3).map { episode(Double($0) * 7, place: .archive(.expired)) } + [episode(28, playedAfter: 0.1)]
+        let episodes =
+            (1...3).map { episode(Double($0) * 7, place: .archive(.expired)) } + [episode(28, playedAfter: 0.1)]
         #expect(evaluate(episodes) == .ignored)
     }
 
     @Test func aDismissalAmongTheNewestBreaksIgnored() {
-        let episodes = [episode(7, place: .archive(.expired)), episode(14, place: .archive(.dismissed)),
-                        episode(21, place: .archive(.expired))]
+        let episodes = [
+            episode(7, place: .archive(.expired)), episode(14, place: .archive(.dismissed)),
+            episode(21, place: .archive(.expired)),
+        ]
         #expect(evaluate(episodes) == nil)
     }
 
     @Test func ignoredWinsOverAutoQueue() {
-        let episodes = (1...3).map { episode(Double($0) * 7, playedAfter: 0.1, place: .archive(.expired)) }
+        let episodes =
+            (1...3).map { episode(Double($0) * 7, playedAfter: 0.1, place: .archive(.expired)) }
             + [episode(28, playedAfter: 0.1)]
         #expect(evaluate(episodes) == .ignored)
     }
@@ -74,10 +80,13 @@ private func released(_ n: Int) -> Date {
 }
 
 private func feed(_ numbers: ClosedRange<Int>) -> ParsedShow {
-    ParsedShow(title: "Show", episodes: numbers.map { n in
-        ParsedEpisode(guid: "ep\(n)", title: "Episode \(n)", audioURL: URL(string: "https://cdn.example.com/\(n).mp3")!,
-                      publishDate: released(n))
-    })
+    ParsedShow(
+        title: "Show",
+        episodes: numbers.map { n in
+            ParsedEpisode(
+                guid: "ep\(n)", title: "Episode \(n)", audioURL: URL(string: "https://cdn.example.com/\(n).mp3")!,
+                publishDate: released(n))
+        })
 }
 
 /// A library subscribed to a weekly show at the Inbox level. Episode 3 arrived on subscribe and

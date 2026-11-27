@@ -47,7 +47,9 @@ public enum CassyAnimation: String, CaseIterable, Sendable {
     public static let pause: ClosedRange<Double> = 0.7...1.2
 
     /// A random idle loop that isn't the one just played.
-    public static func nextIdleLoop(after previous: CassyAnimation?, using generator: inout some RandomNumberGenerator) -> CassyAnimation {
+    public static func nextIdleLoop(after previous: CassyAnimation?, using generator: inout some RandomNumberGenerator)
+        -> CassyAnimation
+    {
         idleLoops.filter { $0 != previous }.randomElement(using: &generator)!
     }
 }

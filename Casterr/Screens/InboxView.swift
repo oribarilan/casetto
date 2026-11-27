@@ -32,13 +32,17 @@ struct InboxView: View {
             }
             Section {
                 ForEach(shown.prefix(1), id: \.key) { episode in
-                    row(episode, card: CardSwipe(queue: { swipeCard(episode, queue: true) },
-                                                 remove: { swipeCard(episode, queue: false) },
-                                                 more: shown.count > 1))
-                        .listRowBackground(Color.clear)
-                        // Room for the card's shadow and the turned card behind it, which the row would cut off.
-                        .listRowInsets(EdgeInsets(top: 14, leading: 0, bottom: shown.count > 1 ? 30 : 18, trailing: 0))
-                        .listRowSeparator(.hidden)
+                    row(
+                        episode,
+                        card: CardSwipe(
+                            queue: { swipeCard(episode, queue: true) },
+                            remove: { swipeCard(episode, queue: false) },
+                            more: shown.count > 1)
+                    )
+                    .listRowBackground(Color.clear)
+                    // Room for the card's shadow and the turned card behind it, which the row would cut off.
+                    .listRowInsets(EdgeInsets(top: 14, leading: 0, bottom: shown.count > 1 ? 30 : 18, trailing: 0))
+                    .listRowSeparator(.hidden)
                 }
             } footer: {
                 if shown.count == 1 { expiryLine }
@@ -55,7 +59,9 @@ struct InboxView: View {
         }
         .overlay {
             if loaded && shown.isEmpty && cards.isEmpty {
-                CassyEmptyState(job: .success, title: "Inbox zero!", message: "Everything's sorted. Go stretch your legs.") {}
+                CassyEmptyState(
+                    job: .success, title: "Inbox zero!", message: "Everything's sorted. Go stretch your legs."
+                ) {}
             }
         }
         .cassyTips($tip)
@@ -67,12 +73,18 @@ struct InboxView: View {
 
     /// Says how long episodes wait here; the days open Settings at the Inbox section.
     private var expiryLine: some View {
-        Button { model.queuePath.append(.settings(.inbox)) } label: {
+        Button {
+            model.queuePath.append(.settings(.inbox))
+        } label: {
             switch expiry {
             case .never:
-                Text("Unplayed episodes stay in your Inbox until you remove them. \(Text("Change ›").foregroundStyle(Color.tangerineText))")
+                Text(
+                    "Unplayed episodes stay in your Inbox until you remove them. \(Text("Change ›").foregroundStyle(Color.tangerineText))"
+                )
             case .days:
-                Text("Unplayed episodes are removed after \(Text("\(expiry.title) ›").foregroundStyle(Color.tangerineText))")
+                Text(
+                    "Unplayed episodes are removed after \(Text("\(expiry.title) ›").foregroundStyle(Color.tangerineText))"
+                )
             }
         }
         .buttonStyle(.plain)
@@ -93,14 +105,16 @@ struct InboxView: View {
 
     /// The newest episode on its card, which swipes itself, or a row with the List's swipes.
     @ViewBuilder private func row(_ episode: EpisodeInfo, card: CardSwipe? = nil) -> some View {
-        let row = EpisodeRow(episode: episode, identifier: card == nil ? "inboxItem" : "inboxCard", move: moves[episode.key],
-                             starred: starredShows.contains(episode.showKey),
-                             download: model.downloadState(episode), progress: progress[episode.key] ?? 0,
-                             art: art[episode.showKey], metaNote: countdown(daysLeft[episode.key]),
-                             isOpen: openRow == episode.key,
-                             toggle: { openRow = openRow == episode.key ? nil : episode.key },
-                             actions: actions(episode), card: card)
-            .cassyTipTarget("inboxRow.\(episode.key.rawValue)")
+        let row = EpisodeRow(
+            episode: episode, identifier: card == nil ? "inboxItem" : "inboxCard", move: moves[episode.key],
+            starred: starredShows.contains(episode.showKey),
+            download: model.downloadState(episode), progress: progress[episode.key] ?? 0,
+            art: art[episode.showKey], metaNote: countdown(daysLeft[episode.key]),
+            isOpen: openRow == episode.key,
+            toggle: { openRow = openRow == episode.key ? nil : episode.key },
+            actions: actions(episode), card: card
+        )
+        .cassyTipTarget("inboxRow.\(episode.key.rawValue)")
         if card != nil {
             row
         } else {
@@ -128,15 +142,21 @@ struct InboxView: View {
                 if openRow == episode.key { openRow = nil }
             }
             await model.change(.episodes) {
-                if queue { try await model.library.addToQueue(episode.key) } else { try await model.library.dismiss(episode.key) }
+                if queue {
+                    try await model.library.addToQueue(episode.key)
+                } else {
+                    try await model.library.dismiss(episode.key)
+                }
             }
         }
     }
 
     /// Play Next, Add to Queue, Share, Show, Remove. No Played: Remove covers "not for me", and the line fits six.
     private func actions(_ episode: EpisodeInfo) -> [RowAction] {
-        [.playNext(episode.key, model), .addToQueue(episode.key, model), .share, .show(episode.showKey, model),
-         .change("Remove", "minus.circle", destructive: true, model) { try await $0.dismiss(episode.key) }]
+        [
+            .playNext(episode.key, model), .addToQueue(episode.key, model), .share, .show(episode.showKey, model),
+            .change("Remove", "minus.circle", destructive: true, model) { try await $0.dismiss(episode.key) },
+        ]
     }
 
     private func load() async {
@@ -150,8 +170,9 @@ struct InboxView: View {
         expiry = (try? await model.library.globalExpiry()) ?? .standard
         daysLeft = (try? await model.library.inboxDaysLeft()) ?? [:]
         if tip == nil, let first = items.first {
-            tip = CassyTip.once("inboxCardSwipe", target: "inboxRow.\(first.key.rawValue)",
-                                text: "Swipe right to queue an episode, or left to remove it.")
+            tip = CassyTip.once(
+                "inboxCardSwipe", target: "inboxRow.\(first.key.rawValue)",
+                text: "Swipe right to queue an episode, or left to remove it.")
         }
         var loadedCards: [(card: RuleCard, title: String)] = []
         for card in (try? await model.library.ruleCards()) ?? [] {

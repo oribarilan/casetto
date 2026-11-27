@@ -181,7 +181,8 @@ public final class Player {
         guard isPlaying else { return (0, 0) }
         let readings = engine.loudness(from: position - 5, to: position + 5)
         guard let latest = readings.last?.time,
-              let peak = readings.filter({ $0.time > latest - 3 }).map(\.level).max(), peak > 0 else { return (0, 0) }
+            let peak = readings.filter({ $0.time > latest - 3 }).map(\.level).max(), peak > 0
+        else { return (0, 0) }
         func mean(_ from: TimeInterval, _ to: TimeInterval) -> Double {
             let slice = readings.filter { $0.time > latest - from && $0.time <= latest - to }.map(\.level)
             return slice.isEmpty ? 0 : Double(min(1, slice.reduce(0, +) / Float(slice.count) / peak))
@@ -306,7 +307,8 @@ public final class Player {
     private func failed(_ error: any Error) {
         isPlaying = false
         let offline = (error as? URLError)?.code == .notConnectedToInternet
-        errorMessage = offline
+        errorMessage =
+            offline
             ? "You're offline, and this one isn't downloaded yet."
             : "This episode wouldn't play. Its audio may have moved."
     }

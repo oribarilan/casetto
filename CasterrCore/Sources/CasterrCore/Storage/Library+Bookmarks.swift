@@ -30,11 +30,17 @@ extension Library {
     public func bookmarks(matching text: String = "") throws -> [BookmarkInfo] {
         let term = text.trimmingCharacters(in: .whitespaces)
         return try modelContext.fetch(FetchDescriptor<Bookmark>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)]))
-            .filter { term.isEmpty || [$0.note, $0.episodeTitle, $0.showTitle].contains { $0.localizedStandardContains(term) } }
-            .map { BookmarkInfo(
-                id: $0.id, episodeKey: EpisodeKey(rawValue: $0.episodeKey), position: $0.position, note: $0.note,
-                createdAt: $0.createdAt, showTitle: $0.showTitle, episodeTitle: $0.episodeTitle, audioURL: $0.audioURL
-            ) }
+            .filter {
+                term.isEmpty
+                    || [$0.note, $0.episodeTitle, $0.showTitle].contains { $0.localizedStandardContains(term) }
+            }
+            .map {
+                BookmarkInfo(
+                    id: $0.id, episodeKey: EpisodeKey(rawValue: $0.episodeKey), position: $0.position, note: $0.note,
+                    createdAt: $0.createdAt, showTitle: $0.showTitle, episodeTitle: $0.episodeTitle,
+                    audioURL: $0.audioURL
+                )
+            }
     }
 
     private func bookmark(_ id: UUID) throws -> Bookmark? {

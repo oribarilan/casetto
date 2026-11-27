@@ -1,7 +1,7 @@
 import AVFoundation
 import CasterrCore
-import os
 import SwiftUI
+import os
 
 /// Picks up what was shared to Casterr: when the app becomes active, and right away when the
 /// share extension signals. Files move into `SharedStore`; links are queued through `FeedService`.
@@ -76,9 +76,10 @@ final class SharedInbox {
     /// The Shared with Casterr show's art: Cassy on tangerine, drawn once.
     private func drawCassyArt(_ store: SharedStore) async {
         guard !FileManager.default.fileExists(atPath: store.cassyArt.path(percentEncoded: false)) else { return }
-        let renderer = ImageRenderer(content: CassyView(job: .success, size: 420)
-            .frame(width: 600, height: 600)
-            .background(Color.tangerine))
+        let renderer = ImageRenderer(
+            content: CassyView(job: .success, size: 420)
+                .frame(width: 600, height: 600)
+                .background(Color.tangerine))
         renderer.scale = 1
         try? renderer.uiImage?.pngData()?.write(to: store.cassyArt)
     }
@@ -90,12 +91,16 @@ final class SharedInbox {
         guard ProcessInfo.processInfo.arguments.contains("-uiTesting") else { return }
         if let path = environment["SHARED_FIXTURE"] {
             let file = URL(filePath: path)
-            try? drop.drop(.file(file.lastPathComponent, title: environment["SHARED_FIXTURE_TITLE"]
-                                     ?? file.deletingPathExtension().lastPathComponent), file: file)
+            try? drop.drop(
+                .file(
+                    file.lastPathComponent,
+                    title: environment["SHARED_FIXTURE_TITLE"]
+                        ?? file.deletingPathExtension().lastPathComponent), file: file)
             unsetenv("SHARED_FIXTURE")
         }
         if let link = environment["SHARED_LINK"].flatMap(URL.init(string:)).flatMap(ApplePodcastsLink.init),
-           let episode = try? await AppleDirectory().episode(for: link) {
+            let episode = try? await AppleDirectory().episode(for: link)
+        {
             try? drop.drop(.link(episode))
             unsetenv("SHARED_LINK")
         }

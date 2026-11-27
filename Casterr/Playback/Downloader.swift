@@ -67,14 +67,16 @@ final class Downloader: NSObject, URLSessionDownloadDelegate, @unchecked Sendabl
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         // iOS deletes `location` when this method returns, so move the file now.
         guard let key = downloadTask.taskDescription, let audioURL = downloadTask.originalRequest?.url,
-              let response = downloadTask.response as? HTTPURLResponse, (200..<300).contains(response.statusCode)
+            let response = downloadTask.response as? HTTPURLResponse, (200..<300).contains(response.statusCode)
         else { return }
         try? store.save(location, for: EpisodeKey(rawValue: key), audioURL: audioURL)
         NotificationCenter.default.post(name: Self.didSave, object: nil)
     }
 
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64,
-                    totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+    func urlSession(
+        _ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64,
+        totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64
+    ) {
         guard let key = downloadTask.taskDescription else { return }
         let size = totalBytesExpectedToWrite > 0 ? totalBytesExpectedToWrite : nil
         let share = size.map { Double(totalBytesWritten) / Double($0) }

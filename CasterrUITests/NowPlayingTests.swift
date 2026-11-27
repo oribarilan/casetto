@@ -36,7 +36,10 @@ final class NowPlayingTests: UITestCase {
         app.typeText("great point\n")
 
         // The Bookmarks tab lists it with a play button, and it exports alone or with all.
-        let saved = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == 'great point'"), object: noteField)], timeout: 5)
+        let saved = XCTWaiter().wait(
+            for: [
+                XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == 'great point'"), object: noteField)
+            ], timeout: 5)
         XCTAssertEqual(saved, .completed, "note is \(noteField.value ?? "nil")")
         let play = app.buttons["bookmarkPlay"]
         XCTAssertTrue(play.exists && play.label.hasPrefix("Play from"), play.debugDescription)
@@ -49,7 +52,8 @@ final class NowPlayingTests: UITestCase {
         noteField.typeText(" again")
         noteField.typeText("\n")
         let edited = NSPredicate(format: "value == 'great point again'")
-        let result = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: edited, object: noteField)], timeout: 5)
+        let result = XCTWaiter().wait(
+            for: [XCTNSPredicateExpectation(predicate: edited, object: noteField)], timeout: 5)
         XCTAssertEqual(result, .completed, "note is \(noteField.value ?? "nil")")
 
         // Search covers notes.
@@ -99,7 +103,9 @@ final class NowPlayingTests: UITestCase {
         XCTAssertTrue(pill.label.hasPrefix("Chapter 1 of "), pill.label)
         snapshot("17 Chapter Pill")
         pill.tap()
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label ENDSWITH 'min left'")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "label ENDSWITH 'min left'")).firstMatch.waitForExistence(
+                timeout: 5))
         snapshot("18 Chapters")
 
         // Jump to the third chapter: the elapsed time moves to its start.
@@ -110,13 +116,17 @@ final class NowPlayingTests: UITestCase {
         let elapsed = app.staticTexts["elapsed"]
         XCTAssertTrue(elapsed.waitForExistence(timeout: 5))
         let atStart = NSPredicate(format: "label == %@ OR label BEGINSWITH %@", start, String(start.dropLast()))
-        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: atStart, object: elapsed)], timeout: 5), .completed,
-                       "elapsed is \(elapsed.label), chapter starts at \(start)")
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: atStart, object: elapsed)], timeout: 5),
+            .completed,
+            "elapsed is \(elapsed.label), chapter starts at \(start)")
         XCTAssertTrue(pill.label.hasPrefix("Chapter 3 of "), pill.label)
         sleep(3)
         snapshot("19 Chapter Pill After Jump")
         pill.tap()
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label ENDSWITH 'min left'")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "label ENDSWITH 'min left'")).firstMatch.waitForExistence(
+                timeout: 5))
         snapshot("20 Chapters After Jump")
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).tap()
 
@@ -127,8 +137,11 @@ final class NowPlayingTests: UITestCase {
         XCTAssertTrue(thisChapter.waitForExistence(timeout: 5), "no This chapter for an episode with chapters")
         snapshot("20b Sleep Timer With Chapters")
         thisChapter.tap()
-        let untilChapterEnd = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == 'Pauses at the end of the chapter'"), object: timer)
-        XCTAssertEqual(XCTWaiter().wait(for: [untilChapterEnd], timeout: 5), .completed, "sleep timer says \(timer.value ?? "nil")")
+        let untilChapterEnd = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == 'Pauses at the end of the chapter'"), object: timer)
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [untilChapterEnd], timeout: 5), .completed, "sleep timer says \(timer.value ?? "nil")"
+        )
     }
 
     /// Now Playing's share menu offers Share Episode and Share Clip, and Share Episode opens the share sheet.
@@ -202,7 +215,10 @@ final class NowPlayingTests: UITestCase {
         let longer = try clipTimes(times.label).length
         XCTAssertGreaterThan(longer, length + 3, times.label)
         let movedGrip = end.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        movedGrip.press(forDuration: 0.2, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0)).withOffset(CGVector(dx: 0, dy: end.frame.midY)))
+        movedGrip.press(
+            forDuration: 0.2,
+            thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0)).withOffset(
+                CGVector(dx: 0, dy: end.frame.midY)))
         XCTAssertEqual(try clipTimes(times.label).length, 60, times.label)
         snapshot("29 Clip At Sixty")
     }
@@ -228,15 +244,24 @@ final class NowPlayingTests: UITestCase {
         let share = app.buttons["nowPlayingShare"]
         XCTAssertTrue(share.waitForExistence(timeout: 10), "no share button")
         // Wait for the duration, which the editor needs.
-        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "label != '0:00'"),
-                                                                        object: app.staticTexts["elapsed"])], timeout: 30), .completed)
+        XCTAssertEqual(
+            XCTWaiter().wait(
+                for: [
+                    XCTNSPredicateExpectation(
+                        predicate: NSPredicate(format: "label != '0:00'"),
+                        object: app.staticTexts["elapsed"])
+                ], timeout: 30), .completed)
     }
 
     /// "12:04.4 – 12:33.8 · 0:29" as start, end and whole seconds of length.
     private func clipTimes(_ label: String) throws -> (start: TimeInterval, end: TimeInterval, length: Int) {
-        let parts = label.components(separatedBy: CharacterSet(charactersIn: "–·")).map { $0.trimmingCharacters(in: .whitespaces) }
+        let parts = label.components(separatedBy: CharacterSet(charactersIn: "–·")).map {
+            $0.trimmingCharacters(in: .whitespaces)
+        }
         XCTAssertEqual(parts.count, 3, label)
-        return (try XCTUnwrap(seconds(parts[0])), try XCTUnwrap(seconds(parts[1])), Int(try XCTUnwrap(seconds(parts[2]))))
+        return (
+            try XCTUnwrap(seconds(parts[0])), try XCTUnwrap(seconds(parts[1])), Int(try XCTUnwrap(seconds(parts[2])))
+        )
     }
 
     /// Seconds in "1:02:03", "12:04" or "12:04.4".
@@ -257,7 +282,8 @@ final class NowPlayingTests: UITestCase {
         let footer = app.staticTexts["buttonsFooter"]
         for _ in 0..<6 where !footer.isHittable { app.swipeUp() }
         XCTAssertTrue(footer.waitForExistence(timeout: 5), "no Headphone and car buttons footer")
-        XCTAssertTrue(footer.label.hasPrefix("Double press bookmarks, with a chime. Triple press skips back 15."), footer.label)
+        XCTAssertTrue(
+            footer.label.hasPrefix("Double press bookmarks, with a chime. Triple press skips back 15."), footer.label)
         snapshot("29 Headphone Buttons")
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Triple press'")).firstMatch.tap()
         let skipForward = app.buttons["Skip forward 30"]

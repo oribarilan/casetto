@@ -13,8 +13,8 @@ public struct ShowKey: Hashable, Sendable {
     /// Returns nil for URLs that are not http or https or that have no host.
     public init?(feedURL: URL) {
         guard var components = URLComponents(url: feedURL, resolvingAgainstBaseURL: false),
-              let scheme = components.scheme?.lowercased(), scheme == "http" || scheme == "https",
-              let host = components.host, !host.isEmpty
+            let scheme = components.scheme?.lowercased(), scheme == "http" || scheme == "https",
+            let host = components.host, !host.isEmpty
         else { return nil }
 
         components.scheme = "https"

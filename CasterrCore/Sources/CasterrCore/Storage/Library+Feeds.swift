@@ -39,8 +39,13 @@ extension Library {
     /// Inserts or updates the show and its episodes, matched by key.
     public func saveFeed(_ feed: ParsedShow, for showKey: ShowKey) throws {
         let raw = showKey.rawValue
-        let show = try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == raw })).first
-            ?? { let new = ShowRecord(key: raw, title: feed.title); modelContext.insert(new); return new }()
+        let show =
+            try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == raw })).first
+            ?? {
+                let new = ShowRecord(key: raw, title: feed.title)
+                modelContext.insert(new)
+                return new
+            }()
         show.title = feed.title
         show.author = feed.author
         show.artworkURL = feed.artworkURL
@@ -56,12 +61,14 @@ extension Library {
         )
         for parsed in feed.episodes {
             let key = EpisodeKey(show: showKey, guid: parsed.guid, audioURL: parsed.audioURL).rawValue
-            let record = existing[key] ?? {
-                let new = EpisodeRecord(key: key, showKey: raw, title: parsed.title, audioURL: parsed.audioURL)
-                modelContext.insert(new)
-                existing[key] = new
-                return new
-            }()
+            let record =
+                existing[key]
+                ?? {
+                    let new = EpisodeRecord(key: key, showKey: raw, title: parsed.title, audioURL: parsed.audioURL)
+                    modelContext.insert(new)
+                    existing[key] = new
+                    return new
+                }()
             record.title = parsed.title
             record.audioURL = parsed.audioURL
             record.publishDate = parsed.publishDate
@@ -83,27 +90,32 @@ extension Library {
     /// Every show's title and artwork address, in one fetch, for drawing art in lists.
     public func showArt() throws -> [ShowKey: ShowArt] {
         let feeds = try currentFeeds()
-        return Dictionary(try modelContext.fetch(FetchDescriptor<ShowRecord>()).map {
-            let key = ShowKey(rawValue: $0.key)
-            return (key, ShowArt(title: $0.title, artworkURL: $0.artworkURL, feedURL: feeds[key] ?? $0.feedURL))
-        }, uniquingKeysWith: { first, _ in first })
+        return Dictionary(
+            try modelContext.fetch(FetchDescriptor<ShowRecord>()).map {
+                let key = ShowKey(rawValue: $0.key)
+                return (key, ShowArt(title: $0.title, artworkURL: $0.artworkURL, feedURL: feeds[key] ?? $0.feedURL))
+            }, uniquingKeysWith: { first, _ in first })
     }
 
     /// Each followed show's current feed address.
     private func currentFeeds() throws -> [ShowKey: URL] {
-        Dictionary(try modelContext.fetch(FetchDescriptor<Subscription>()).compactMap { record in
-            record.feedURL.map { (ShowKey(rawValue: record.showKey), $0) }
-        }, uniquingKeysWith: { first, _ in first })
+        Dictionary(
+            try modelContext.fetch(FetchDescriptor<Subscription>()).compactMap { record in
+                record.feedURL.map { (ShowKey(rawValue: record.showKey), $0) }
+            }, uniquingKeysWith: { first, _ in first })
     }
 
     public func show(_ showKey: ShowKey) throws -> ShowInfo? {
         let raw = showKey.rawValue
         return try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == raw })).first
-            .map { ShowInfo(
-                key: showKey, title: $0.title, author: $0.author, artworkURL: $0.artworkURL, summary: $0.summary,
-                lastRefreshSuccess: $0.lastRefreshSuccess, lastRefreshError: $0.lastRefreshError, webPage: $0.webPage,
-                feedURL: try subscription(showKey)?.feedURL ?? $0.feedURL
-            ) }
+            .map {
+                ShowInfo(
+                    key: showKey, title: $0.title, author: $0.author, artworkURL: $0.artworkURL, summary: $0.summary,
+                    lastRefreshSuccess: $0.lastRefreshSuccess, lastRefreshError: $0.lastRefreshError,
+                    webPage: $0.webPage,
+                    feedURL: try subscription(showKey)?.feedURL ?? $0.feedURL
+                )
+            }
     }
 
     /// Newest first; episodes without a date come last.
@@ -120,7 +132,8 @@ extension Library {
     /// Adds a file shared to Casterr to the built-in show and plays it next, like Play next.
     /// `id` makes the key unique; `audioURL` is the file's stable address, not its path.
     @discardableResult
-    public func addSharedEpisode(id: String, title: String, duration: TimeInterval?, audioURL: URL) throws -> EpisodeKey {
+    public func addSharedEpisode(id: String, title: String, duration: TimeInterval?, audioURL: URL) throws -> EpisodeKey
+    {
         let showRaw = ShowKey.shared.rawValue
         if try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == showRaw })).isEmpty {
             modelContext.insert(ShowRecord(key: showRaw, title: Self.sharedShowTitle))
@@ -162,20 +175,25 @@ extension Library {
     /// Remembers where an unfollowed show's feed came from, so Subscribe works later.
     public func setFeedURL(_ url: URL, for showKey: ShowKey) throws {
         let raw = showKey.rawValue
-        try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == raw })).first?.feedURL = url
+        try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == raw })).first?.feedURL =
+            url
         try modelContext.save()
     }
 
     public func cachedFeedURL(of showKey: ShowKey) throws -> URL? {
         let raw = showKey.rawValue
-        return try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == raw })).first?.feedURL
+        return try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == raw })).first?
+            .feedURL
     }
 
     /// Points the Shared with Casterr show at its art. Called on each pickup, since the file's path can change.
     public func setSharedShowArtwork(_ url: URL) throws {
         let raw = ShowKey.shared.rawValue
-        guard let show = try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == raw })).first,
-              show.artworkURL != url else { return }
+        guard
+            let show = try modelContext.fetch(FetchDescriptor<ShowRecord>(predicate: #Predicate { $0.key == raw }))
+                .first,
+            show.artworkURL != url
+        else { return }
         show.artworkURL = url
         try modelContext.save()
     }
@@ -205,7 +223,8 @@ extension Library {
     private func info(_ record: EpisodeRecord) -> EpisodeInfo {
         EpisodeInfo(
             key: EpisodeKey(rawValue: record.key), showKey: ShowKey(rawValue: record.showKey), title: record.title,
-            audioURL: record.audioURL, publishDate: record.publishDate, duration: record.duration, summary: record.summary,
+            audioURL: record.audioURL, publishDate: record.publishDate, duration: record.duration,
+            summary: record.summary,
             webPage: record.webPage, byteLength: record.byteLength
         )
     }

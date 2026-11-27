@@ -17,7 +17,8 @@ extension Library {
             return RefreshSummary()
         }
         let destination = (TriageLevel(rawValue: subscription.level) ?? .inbox).destination
-        let fresh = records
+        let fresh =
+            records
             .compactMap { record in record.publishDate.map { (key: EpisodeKey(rawValue: record.key), date: $0) } }
             .filter { $0.date > after }
             .sorted { $0.date < $1.date }
@@ -44,20 +45,25 @@ extension Library {
             uniquingKeysWith: { first, _ in first }
         )
         var cards: [RuleCard] = []
-        for subscription in try modelContext.fetch(FetchDescriptor<Subscription>(sortBy: [SortDescriptor(\.subscribedAt)]))
+        for subscription in try modelContext.fetch(
+            FetchDescriptor<Subscription>(sortBy: [SortDescriptor(\.subscribedAt)]))
         where subscription.level == TriageLevel.inbox.rawValue {
             let show = ShowKey(rawValue: subscription.showKey)
             var episodes: [RuleCard.Episode] = []
             for record in try episodeRecords(of: show) {
                 guard let published = record.publishDate else { continue }
                 let state = states[record.key]
-                episodes.append(RuleCard.Episode(
-                    published: published, firstPlayedAt: state?.firstPlayedAt,
-                    place: try state.flatMap { try Place(storedPlace: $0.place, archiveReason: $0.archiveReason) }
-                ))
+                episodes.append(
+                    RuleCard.Episode(
+                        published: published, firstPlayedAt: state?.firstPlayedAt,
+                        place: try state.flatMap { try Place(storedPlace: $0.place, archiveReason: $0.archiveReason) }
+                    ))
             }
-            guard let kind = RuleCard.evaluate(episodes: episodes, now: now, thresholds: ruleThresholds) else { continue }
-            let hiddenUntil = kind == .autoQueue ? subscription.autoQueueCardHiddenUntil : subscription.ignoredCardHiddenUntil
+            guard let kind = RuleCard.evaluate(episodes: episodes, now: now, thresholds: ruleThresholds) else {
+                continue
+            }
+            let hiddenUntil =
+                kind == .autoQueue ? subscription.autoQueueCardHiddenUntil : subscription.ignoredCardHiddenUntil
             if hiddenUntil.map({ $0 > now }) ?? false { continue }
             cards.append(RuleCard(show: show, kind: kind))
         }
@@ -100,7 +106,9 @@ extension Library {
     public func inboxDaysLeft() throws -> [EpisodeKey: Int] {
         let global = InboxExpiry(storedDays: try settings().expiryDays)
         let overrides = try modelContext.fetch(FetchDescriptor<Subscription>()).compactMap { record in
-            record.expiryDaysOverride.map { (show: ShowKey(rawValue: record.showKey), expiry: InboxExpiry(storedDays: $0)) }
+            record.expiryDaysOverride.map {
+                (show: ShowKey(rawValue: record.showKey), expiry: InboxExpiry(storedDays: $0))
+            }
         }
         let now = clock()
         var left: [EpisodeKey: Int] = [:]
@@ -120,7 +128,9 @@ extension Library {
     public func expireInbox() throws -> Int {
         let global = InboxExpiry(storedDays: try settings().expiryDays)
         let overrides = try modelContext.fetch(FetchDescriptor<Subscription>()).compactMap { record in
-            record.expiryDaysOverride.map { (show: ShowKey(rawValue: record.showKey), expiry: InboxExpiry(storedDays: $0)) }
+            record.expiryDaysOverride.map {
+                (show: ShowKey(rawValue: record.showKey), expiry: InboxExpiry(storedDays: $0))
+            }
         }
         let now = clock()
         var expired = 0
@@ -128,7 +138,8 @@ extension Library {
             let key = EpisodeKey(rawValue: state.episodeKey)
             let expiry = overrides.first { key.belongs(to: $0.show) }?.expiry ?? global
             guard case .days(let days) = expiry, let enteredAt = state.movedAt,
-                  expiry.hasExpired(enteredAt: enteredAt, now: now) else { continue }
+                expiry.hasExpired(enteredAt: enteredAt, now: now)
+            else { continue }
             try relocate(state, to: .archive(.expired), reason: .expired(days: days))
             expired += 1
         }

@@ -35,7 +35,8 @@ final class SettingsTests: UITestCase {
         app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES"]
         app.launch()
-        let queueTab = app.tabBars.buttons["Queue"], showsTab = app.tabBars.buttons["Shows"]
+        let queueTab = app.tabBars.buttons["Queue"]
+        let showsTab = app.tabBars.buttons["Shows"]
         let settings = app.navigationBars["Settings"]
 
         // Second tap on Queue.

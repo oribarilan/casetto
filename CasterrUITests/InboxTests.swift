@@ -6,7 +6,9 @@ final class InboxTests: UITestCase {
     func testInbox() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-fastClock", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = [
+            "-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-fastClock", "-hasSeenOnboarding", "YES",
+        ]
         app.launch()
 
         // Subscribing puts the newest episode in the Inbox.
@@ -80,7 +82,10 @@ final class InboxTests: UITestCase {
     func testRuleCard() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-fastClock", "-ruleThresholdOne", "-hasSeenOnboarding", "YES"]
+        app.launchArguments = [
+            "-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-fastClock", "-ruleThresholdOne", "-hasSeenOnboarding",
+            "YES",
+        ]
         app.launch()
 
         XCTAssertTrue(app.buttons["Find Shows"].waitForExistence(timeout: 5))
@@ -152,7 +157,8 @@ final class InboxTests: UITestCase {
 
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["Inbox · 1 new"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.buttons.matching(identifier: "queueItem").count, 1, "the swiped-right episode should be queued")
+        XCTAssertEqual(
+            app.buttons.matching(identifier: "queueItem").count, 1, "the swiped-right episode should be queued")
     }
 
     /// The first Inbox visit teaches the swipes with a one-time tip on the card.
@@ -160,7 +166,9 @@ final class InboxTests: UITestCase {
     func testInboxSwipeTip() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-fastClock", "-hasSeenOnboarding", "YES", "-hasSeenTip.inboxCardSwipe", "NO"]
+        app.launchArguments = [
+            "-uiTesting", "-fastClock", "-hasSeenOnboarding", "YES", "-hasSeenTip.inboxCardSwipe", "NO",
+        ]
         app.launch()
 
         app.tabBars.buttons["Shows"].tap()

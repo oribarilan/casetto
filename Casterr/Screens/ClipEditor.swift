@@ -1,8 +1,8 @@
-import LinkPresentation
 import AVFoundation
 import CasterrCore
-import os
+import LinkPresentation
 import SwiftUI
+import os
 
 /// What the clip editor works on, taken from the player when the listener taps Share Clip.
 struct ClipRequest: Identifiable {
@@ -62,9 +62,11 @@ struct ClipEditor: View {
                 ClipFrame(art: art, side: 220, bars: clipBars)
                     .clipShape(.rect(cornerRadius: 18))
                     .accessibilityHidden(true)
-                Text("\(clip.lowerBound.clockTenths) – \(clip.upperBound.clockTenths) · \((clip.upperBound - clip.lowerBound).rounded().clock)")
-                    .font(.system(.subheadline, design: .rounded, weight: .heavy).monospacedDigit())
-                    .accessibilityIdentifier("clipTimes")
+                Text(
+                    "\(clip.lowerBound.clockTenths) – \(clip.upperBound.clockTenths) · \((clip.upperBound - clip.lowerBound).rounded().clock)"
+                )
+                .font(.system(.subheadline, design: .rounded, weight: .heavy).monospacedDigit())
+                .accessibilityIdentifier("clipTimes")
                 bars
                 Spacer(minLength: 0)
                 buttons
@@ -105,10 +107,12 @@ struct ClipEditor: View {
                     .frame(maxWidth: .infinity, minHeight: 84)
                     .accessibilityIdentifier("clipProblem")
             case .ready(let span):
-                ClipBars(window: window, bars: span.bars, clip: clip, now: window.position,
-                         drag: { drag($0, to: $1, gaps: span.gaps) },
-                         adjust: { edge, seconds in adjust(edge, by: seconds) })
-                    .frame(height: 84)
+                ClipBars(
+                    window: window, bars: span.bars, clip: clip, now: window.position,
+                    drag: { drag($0, to: $1, gaps: span.gaps) },
+                    adjust: { edge, seconds in adjust(edge, by: seconds) }
+                )
+                .frame(height: 84)
             }
             HStack {
                 Text(window.span.lowerBound.clock)
@@ -126,8 +130,10 @@ struct ClipEditor: View {
     }
 
     private var hint: some View {
-        let snapped = Text(snap?.gap == nil ? "" : snap?.edge == .start ? "Start snapped to a pause. " : "End snapped to a pause. ")
-            .foregroundStyle(Color.tangerineText)
+        let snapped = Text(
+            snap?.gap == nil ? "" : snap?.edge == .start ? "Start snapped to a pause. " : "End snapped to a pause. "
+        )
+        .foregroundStyle(Color.tangerineText)
         let rest = Text("Drag the edges; they snap to pauses between words.").foregroundStyle(.secondary)
         return Text("\(snapped)\(rest)")
             .font(.caption.weight(.semibold))
@@ -138,12 +144,15 @@ struct ClipEditor: View {
 
     private var buttons: some View {
         HStack(spacing: 12) {
-            Button(previewer == nil ? "Preview" : "Stop", systemImage: previewer == nil ? "play.fill" : "stop.fill", action: togglePreview)
-                .font(.headline.weight(.heavy))
-                .padding(.horizontal, 20)
-                .frame(height: 52)
-                .background(.white.opacity(0.14), in: .capsule)
-                .accessibilityIdentifier("clipPreview")
+            Button(
+                previewer == nil ? "Preview" : "Stop", systemImage: previewer == nil ? "play.fill" : "stop.fill",
+                action: togglePreview
+            )
+            .font(.headline.weight(.heavy))
+            .padding(.horizontal, 20)
+            .frame(height: 52)
+            .background(.white.opacity(0.14), in: .capsule)
+            .accessibilityIdentifier("clipPreview")
             Button(action: share) {
                 Group {
                     if exporting { ProgressView().tint(.white) } else { Text("Share") }
@@ -194,7 +203,9 @@ struct ClipEditor: View {
     /// The chapter's picture, else the show's art. Nil draws Cassy on tangerine.
     private func loadArt() async -> UIImage? {
         if let data = request.chapterArt, let image = UIImage(data: data) { return image }
-        guard let url = request.show?.artworkURL, let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
+        guard let url = request.show?.artworkURL, let (data, _) = try? await URLSession.shared.data(from: url) else {
+            return nil
+        }
         return UIImage(data: data)
     }
 
@@ -207,7 +218,9 @@ struct ClipEditor: View {
         // At the 5 or 60 s limit the edge stops short of the gap, so it didn't snap.
         let edgeTime = edge == .start ? clip.lowerBound : clip.upperBound
         let gap = snapped != stepped && edgeTime == snapped ? snapped : nil
-        if let gap, gap != snap?.gap { Self.log.debug("Snapped the \(edge == .start ? "start" : "end") to the gap at \(gap)") }
+        if let gap, gap != snap?.gap {
+            Self.log.debug("Snapped the \(edge == .start ? "start" : "end") to the gap at \(gap)")
+        }
         snap = (edge, gap)
     }
 
@@ -247,7 +260,8 @@ struct ClipEditor: View {
         // Two frames, unplayed and played; the video reveals the second over the first as the clip plays.
         let renderer = ImageRenderer(content: ClipFrame(art: art, side: CGFloat(ClipVideo.side), bars: clipBars))
         renderer.scale = 1
-        let playedRenderer = ImageRenderer(content: ClipFrame(art: art, side: CGFloat(ClipVideo.side), bars: clipBars, played: true))
+        let playedRenderer = ImageRenderer(
+            content: ClipFrame(art: art, side: CGFloat(ClipVideo.side), bars: clipBars, played: true))
         playedRenderer.scale = 1
         let caption = ShareText.episode(request.episode, show: request.show)
         Task {
@@ -287,7 +301,9 @@ private final class ClipItem: NSObject, UIActivityItemSource {
 
     func activityViewControllerPlaceholderItem(_ controller: UIActivityViewController) -> Any { share.video }
 
-    func activityViewController(_ controller: UIActivityViewController, itemForActivityType type: UIActivity.ActivityType?) -> Any? {
+    func activityViewController(
+        _ controller: UIActivityViewController, itemForActivityType type: UIActivity.ActivityType?
+    ) -> Any? {
         share.video
     }
 
@@ -310,17 +326,21 @@ private struct ClipBars: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let width = geometry.size.width, height = geometry.size.height
+            let width = geometry.size.width
+            let height = geometry.size.height
             let span = window.span
-            let x = { (time: TimeInterval) in CGFloat((time - span.lowerBound) / (span.upperBound - span.lowerBound)) * width }
+            let x = { (time: TimeInterval) in
+                CGFloat((time - span.lowerBound) / (span.upperBound - span.lowerBound)) * width
+            }
             let time = { (x: CGFloat) in span.lowerBound + Double(x / width) * (span.upperBound - span.lowerBound) }
             ZStack(alignment: .topLeading) {
                 Canvas { context, size in
                     let step = size.width / CGFloat(bars.count)
                     for (index, bar) in bars.enumerated() {
                         let barHeight = max(3, CGFloat(bar) * (size.height - 12))
-                        let rect = CGRect(x: CGFloat(index) * step + step * 0.2, y: (size.height - barHeight) / 2,
-                                          width: step * 0.6, height: barHeight)
+                        let rect = CGRect(
+                            x: CGFloat(index) * step + step * 0.2, y: (size.height - barHeight) / 2,
+                            width: step * 0.6, height: barHeight)
                         let middle = time(rect.midX)
                         let color: Color = clip.contains(middle) ? .white.opacity(0.85) : .white.opacity(0.35)
                         context.fill(Path(roundedRect: rect, cornerRadius: step * 0.3), with: .color(color))
@@ -344,16 +364,20 @@ private struct ClipBars: View {
     }
 
     /// A tangerine grip on the frame's edge, with a wide touch area, that VoiceOver adjusts a second at a time.
-    private func handle(_ edge: ClipWindow.Edge, at x: CGFloat, height: CGFloat, time: @escaping (CGFloat) -> TimeInterval) -> some View {
+    private func handle(
+        _ edge: ClipWindow.Edge, at x: CGFloat, height: CGFloat, time: @escaping (CGFloat) -> TimeInterval
+    ) -> some View {
         let edgeTime = edge == .start ? clip.lowerBound : clip.upperBound
         return Capsule().fill(Color.tangerine)
             .frame(width: 8, height: 32)
             .frame(width: 44, height: height)
             .contentShape(.rect)
             .offset(x: x - 22)
-            .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .named("bars")).onChanged { value in
-                drag(edge, time(value.location.x))
-            })
+            .gesture(
+                DragGesture(minimumDistance: 0, coordinateSpace: .named("bars")).onChanged { value in
+                    drag(edge, time(value.location.x))
+                }
+            )
             .accessibilityElement()
             .accessibilityLabel(edge == .start ? "Clip start" : "Clip end")
             .accessibilityValue("\(edge == .start ? "Starts" : "Ends") at \(edgeTime.rounded().clock)")

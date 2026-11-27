@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import CasterrCore
 
 struct ShowKeyTests {
@@ -56,13 +57,15 @@ struct EpisodeKeyTests {
     }
 
     @Test func blankGUIDCountsAsMissing() {
-        #expect(EpisodeKey(show: show, guid: "  ", audioURL: audio)
-            == EpisodeKey(show: show, guid: nil, audioURL: audio))
+        #expect(
+            EpisodeKey(show: show, guid: "  ", audioURL: audio)
+                == EpisodeKey(show: show, guid: nil, audioURL: audio))
     }
 
     @Test func sameGUIDInDifferentShowsIsDifferent() {
         let other = ShowKey(feedURL: URL(string: "https://other.com/feed")!)!
-        #expect(EpisodeKey(show: show, guid: "1", audioURL: audio)
-            != EpisodeKey(show: other, guid: "1", audioURL: audio))
+        #expect(
+            EpisodeKey(show: show, guid: "1", audioURL: audio)
+                != EpisodeKey(show: other, guid: "1", audioURL: audio))
     }
 }

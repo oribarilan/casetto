@@ -79,7 +79,9 @@ final class SmokeTests: XCTestCase {
         // The played episode is playing at the top of the Queue.
         app.swipeDown(velocity: .fast)
         app.tabBars.buttons["Queue"].tap()
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Playing'")).firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Playing'")).firstMatch.waitForExistence(
+                timeout: 10))
 
         // Turning voice boost on in Settings reaches a show that follows the default.
         app.navigationBars.buttons["Settings"].tap()

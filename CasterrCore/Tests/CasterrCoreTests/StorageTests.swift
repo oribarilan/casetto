@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import Testing
+
 @testable import CasterrCore
 
 private let show = ShowKey(feedURL: URL(string: "https://example.com/feed")!)!
@@ -23,8 +24,9 @@ struct UserDataSchemaTests {
         #expect(entity.uniquenessConstraints.isEmpty, "\(entity.name) has uniqueness constraints")
         for attribute in entity.attributes {
             #expect(!attribute.isUnique, "\(entity.name).\(attribute.name) is unique")
-            #expect(attribute.isOptional || attribute.defaultValue != nil,
-                    "\(entity.name).\(attribute.name) has no default and isn't optional")
+            #expect(
+                attribute.isOptional || attribute.defaultValue != nil,
+                "\(entity.name).\(attribute.name) has no default and isn't optional")
         }
     }
 }
@@ -42,7 +44,8 @@ struct SubscriptionStoreTests {
         try await library.addSubscription(show, feedURL: feedURL)
         let moved = URL(string: "https://new-host.com/feed")!
         try await library.updateFeedURL(show, to: moved)
-        #expect(try await library.subscriptions() == [SubscriptionInfo(showKey: show, feedURL: moved, speedOverride: nil)])
+        #expect(
+            try await library.subscriptions() == [SubscriptionInfo(showKey: show, feedURL: moved, speedOverride: nil)])
     }
 
     @Test func unsubscribeKeepsQueuedEpisodes() async throws {
@@ -299,14 +302,16 @@ struct SharedShowTests {
         await library.useClock { Date(timeIntervalSince1970: 1_000) }
         let older = try await library.addSharedEpisode(id: "1", title: "Older", duration: nil, audioURL: memo)
         await library.useClock { Date(timeIntervalSince1970: 2_000) }
-        let newer = try await library.addSharedEpisode(id: "2", title: "Newer", duration: nil, audioURL: URL(string: "casterr-shared:///b.mp3")!)
+        let newer = try await library.addSharedEpisode(
+            id: "2", title: "Newer", duration: nil, audioURL: URL(string: "casterr-shared:///b.mp3")!)
         #expect(try await library.episodes(of: .shared).map(\.key) == [newer, older])
     }
 
     @Test func deleteRemovesItFromTheQueueAndTheShow() async throws {
         let library = try Library.open(inMemory: true)
         let a = try await library.addSharedEpisode(id: "1", title: "A", duration: nil, audioURL: memo)
-        let b = try await library.addSharedEpisode(id: "2", title: "B", duration: nil, audioURL: URL(string: "casterr-shared:///b.mp3")!)
+        let b = try await library.addSharedEpisode(
+            id: "2", title: "B", duration: nil, audioURL: URL(string: "casterr-shared:///b.mp3")!)
         try await library.deleteSharedEpisode(a)
         #expect(try await library.queue() == [b])
         #expect(try await library.episodes(of: .shared).map(\.key) == [b])
@@ -354,7 +359,8 @@ struct PlayableQueueTests {
 
     @Test func playNextLandsAfterTheVisibleNowPlaying() async throws {
         let (library, _, k) = try await setUp()
-        try await library.addSharedEpisode(id: "x", title: "X", duration: nil, audioURL: URL(string: "casterr-shared:///x.mp3")!)
+        try await library.addSharedEpisode(
+            id: "x", title: "X", duration: nil, audioURL: URL(string: "casterr-shared:///x.mp3")!)
         let shared = try #require(try await library.episodes(of: .shared).first?.key)
         #expect(try await library.playableQueue() == [k[0], shared, k[1], k[2]])
     }

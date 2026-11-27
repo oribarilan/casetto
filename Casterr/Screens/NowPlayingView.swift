@@ -21,10 +21,10 @@ struct NowPlayingView: View {
                 Button(player.show?.title ?? "") {
                     if let show = player.show?.key { openShow(show) }
                 }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("nowPlayingShow")
-                    .accessibilityHint("Opens the show page")
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("nowPlayingShow")
+                .accessibilityHint("Opens the show page")
                 ChapterPill()
                     .padding(.top, 6)
             }
@@ -53,12 +53,16 @@ struct NowPlayingView: View {
             .font(.title)
 
             HStack {
-                Button { controlSheet = .speed } label: {
+                Button {
+                    controlSheet = .speed
+                } label: {
                     Text(player.speed.title).roundControl()
                 }
                 .accessibilityIdentifier("speed")
                 Spacer()
-                Button { controlSheet = .voiceBoost } label: {
+                Button {
+                    controlSheet = .voiceBoost
+                } label: {
                     Image(systemName: "waveform").roundControl(on: player.voiceBoost)
                 }
                 .accessibilityIdentifier("voiceBoost")
@@ -75,7 +79,9 @@ struct NowPlayingView: View {
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(alignment: .topTrailing) { shareMenu.padding(.trailing, 18).padding(.top, 8) }
-        .background(LinearGradient(colors: [tint, tint.mix(with: .black, by: 0.45)], startPoint: .top, endPoint: .bottom))
+        .background(
+            LinearGradient(colors: [tint, tint.mix(with: .black, by: 0.45)], startPoint: .top, endPoint: .bottom)
+        )
         .tint(.white)
         .environment(\.colorScheme, .dark)
         .task(id: player.show?.artworkURL) { await loadTint() }
@@ -130,8 +136,9 @@ struct NowPlayingView: View {
     /// The background comes from the artwork's average color, darkened for white text.
     private func loadTint() async {
         guard let url = player.show?.artworkURL,
-              let (data, _) = try? await URLSession.shared.data(from: url),
-              let art = UIImage(data: data), let image = art.cgImage else { return }
+            let (data, _) = try? await URLSession.shared.data(from: url),
+            let art = UIImage(data: data), let image = art.cgImage
+        else { return }
         showArt = art
         let rgb = ArtworkTint.color(of: image)
         withAnimation { tint = Color(red: rgb.red, green: rgb.green, blue: rgb.blue) }
@@ -163,7 +170,9 @@ private struct ChapterPill: View {
         let progress = player.chapterProgress
         if let index = progress.current {
             let chapter = player.chapters[index]
-            Button { showingList = true } label: {
+            Button {
+                showingList = true
+            } label: {
                 HStack(spacing: 4) {
                     Text(chapter.title).fontWeight(.semibold).lineLimit(1)
                     Text("· \(index + 1) of \(player.chapters.count)").foregroundStyle(.secondary)
@@ -216,7 +225,8 @@ private struct ChapterList: View {
                                     .foregroundStyle(isPlayed ? .secondary : .primary)
                                     .multilineTextAlignment(alignment == .trailing ? .trailing : .leading)
                                 if isPlaying, let minutes = progress.minutesLeft {
-                                    Text("\(minutes) min left").font(.caption.weight(.semibold)).foregroundStyle(Color.tangerine)
+                                    Text("\(minutes) min left").font(.caption.weight(.semibold)).foregroundStyle(
+                                        Color.tangerine)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: Alignment(horizontal: alignment, vertical: .center))
@@ -224,18 +234,26 @@ private struct ChapterList: View {
                         .contentShape(.rect)
                     }
                     .buttonStyle(.plain)
-                    .listRowBackground(ProgressFill(
-                        fraction: progress.fractions[index],
-                        color: isPlaying ? Color.tangerine.opacity(0.25) : .primary.opacity(0.07)
-                    ))
+                    .listRowBackground(
+                        ProgressFill(
+                            fraction: progress.fractions[index],
+                            color: isPlaying ? Color.tangerine.opacity(0.25) : .primary.opacity(0.07)
+                        )
+                    )
                     .accessibilityLabel("\(chapter.title), starts at \(chapter.start.clock)")
-                    .accessibilityValue(isPlaying ? "Playing\(progress.minutesLeft.map { ", \($0) min left" } ?? "")" : isPlayed ? "Played" : "")
+                    .accessibilityValue(
+                        isPlaying
+                            ? "Playing\(progress.minutesLeft.map { ", \($0) min left" } ?? "")"
+                            : isPlayed ? "Played" : ""
+                    )
                     .id(index)
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 // Keep the chapter before the playing one in view, so the list shows where you came from.
-                .onAppear { if let current = progress.current, current > 1 { proxy.scrollTo(current - 1, anchor: .top) } }
+                .onAppear {
+                    if let current = progress.current, current > 1 { proxy.scrollTo(current - 1, anchor: .top) }
+                }
             }
             .navigationTitle("Chapters")
             .navigationBarTitleDisplayMode(.inline)
@@ -258,11 +276,12 @@ private struct ProgressFill: View {
     }
 }
 
-private extension String {
+extension String {
     /// True when the first letter is Hebrew or Arabic, so the title lines up on the right.
-    var isRightToLeft: Bool {
+    fileprivate var isRightToLeft: Bool {
         guard let scalar = unicodeScalars.first(where: { CharacterSet.letters.contains($0) }) else { return false }
-        return (0x0590...0x08FF).contains(scalar.value) || (0xFB1D...0xFDFF).contains(scalar.value) || (0xFE70...0xFEFF).contains(scalar.value)
+        return (0x0590...0x08FF).contains(scalar.value) || (0xFB1D...0xFDFF).contains(scalar.value)
+            || (0xFE70...0xFEFF).contains(scalar.value)
     }
 }
 
@@ -332,10 +351,12 @@ private struct SpeedSheet: View {
 
     var body: some View {
         let speed = override ?? global
-        ControlSheet(title: "Speed", value: Text(speed.title),
-                     // Turning the default off keeps the default speed as the show's own.
-                     followsDefault: Binding(get: { override == nil }, set: { save($0 ? nil : global) }),
-                     defaultValue: global.title) {
+        ControlSheet(
+            title: "Speed", value: Text(speed.title),
+            // Turning the default off keeps the default speed as the show's own.
+            followsDefault: Binding(get: { override == nil }, set: { save($0 ? nil : global) }),
+            defaultValue: global.title
+        ) {
             Slider(value: Binding(get: { speed.value }, set: { save(PlaybackSpeed($0)) }), in: 1.0...2.0, step: 0.1) {
                 Text("Speed")
             } minimumValueLabel: {
@@ -379,9 +400,11 @@ private struct VoiceBoostSheet: View {
 
     var body: some View {
         let isOn = choice ?? global
-        ControlSheet(title: "Voice boost", value: Text(isOn ? "On" : "Off"), note: "Evens out loud and quiet voices.",
-                     followsDefault: Binding(get: { choice == nil }, set: { save($0 ? nil : global) }),
-                     defaultValue: global ? "On" : "Off") {
+        ControlSheet(
+            title: "Voice boost", value: Text(isOn ? "On" : "Off"), note: "Evens out loud and quiet voices.",
+            followsDefault: Binding(get: { choice == nil }, set: { save($0 ? nil : global) }),
+            defaultValue: global ? "On" : "Off"
+        ) {
             Picker("Voice boost", selection: Binding(get: { isOn }, set: { save($0) })) {
                 Text("On").tag(true)
                 Text("Off").tag(false)
@@ -459,8 +482,9 @@ private struct SleepTimerSheet: View {
                         choice("\(minutes) min", label: "\(minutes) minutes", timer: .duration(.seconds(minutes * 60)))
                     }
                     if !player.chapters.isEmpty {
-                        choice("This chapter", detail: player.chapterProgress.minutesLeft.map { "\($0) min left" },
-                               timer: .endOfChapter)
+                        choice(
+                            "This chapter", detail: player.chapterProgress.minutesLeft.map { "\($0) min left" },
+                            timer: .endOfChapter)
                     }
                     choice("End of episode", detail: episodeMinutesLeft.map { "\($0) min left" }, timer: .endOfEpisode)
                 }
@@ -501,7 +525,9 @@ private struct SleepTimerSheet: View {
         } label: {
             VStack(alignment: .leading, spacing: 1) {
                 Text(title).font(.subheadline.weight(.semibold))
-                if let detail { Text(detail).font(.caption).foregroundStyle(isOn ? Color.black.opacity(0.6) : .secondary) }
+                if let detail {
+                    Text(detail).font(.caption).foregroundStyle(isOn ? Color.black.opacity(0.6) : .secondary)
+                }
             }
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .padding(.horizontal, 12)
@@ -520,9 +546,9 @@ extension PlaybackSpeed {
     var title: String { "\(value.formatted(.number.precision(.fractionLength(1))))×" }
 }
 
-private extension View {
+extension View {
     /// The round buttons under the play controls. White when the control is on.
-    func roundControl(on: Bool = false) -> some View {
+    fileprivate func roundControl(on: Bool = false) -> some View {
         font(.subheadline.weight(.semibold))
             .padding(.horizontal, 14)
             .frame(minWidth: 52, minHeight: 44)

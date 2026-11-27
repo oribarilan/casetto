@@ -21,8 +21,6 @@ public struct SharedNote: Codable, Equatable, Sendable {
     }
 }
 
-
-
 /// The folder in the App Group where the extension drops shared items and the app picks them up.
 /// Each item is a folder holding `item.json` (written last) and, for a file, the file itself.
 public struct SharedDrop: Sendable {
@@ -54,12 +52,15 @@ public struct SharedDrop: Sendable {
 
     /// Items with a note, oldest first.
     public func pending() -> [(folder: URL, note: SharedNote)] {
-        let folders = (try? FileManager.default.contentsOfDirectory(
-            at: inbox, includingPropertiesForKeys: [.creationDateKey], options: .skipsHiddenFiles)) ?? []
-        return folders
+        let folders =
+            (try? FileManager.default.contentsOfDirectory(
+                at: inbox, includingPropertiesForKeys: [.creationDateKey], options: .skipsHiddenFiles)) ?? []
+        return
+            folders
             .compactMap { folder -> (URL, SharedNote, Date)? in
                 guard let data = try? Data(contentsOf: folder.appending(path: "item.json")),
-                      let note = try? JSONDecoder().decode(SharedNote.self, from: data) else { return nil }
+                    let note = try? JSONDecoder().decode(SharedNote.self, from: data)
+                else { return nil }
                 let created = (try? folder.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast
                 return (folder, note, created)
             }

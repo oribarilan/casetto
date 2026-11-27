@@ -49,8 +49,10 @@ struct ShowsView: View {
                 Button("Add by Feed Address", systemImage: "link") { addingFeed = true }
                 Button("Import OPML File", systemImage: "square.and.arrow.down") { importingOPML = true }
                 Divider()
-                ShareLink(item: OPMLExport(library: model.library),
-                          preview: SharePreview("Casterr Shows")) {
+                ShareLink(
+                    item: OPMLExport(library: model.library),
+                    preview: SharePreview("Casterr Shows")
+                ) {
                     Label("Export OPML File", systemImage: "square.and.arrow.up")
                 }
             }
@@ -59,17 +61,22 @@ struct ShowsView: View {
         .sheet(isPresented: $addingFeed) { AddFeedView() }
         .sheet(isPresented: $findingShows) { FindShowsView { findingShows = false } }
         .sheet(item: $importReport) { ImportReportView(report: $0) }
-        .fileImporter(isPresented: $importingOPML, allowedContentTypes: [.xml, UTType(filenameExtension: "opml") ?? .xml]) { result in
+        .fileImporter(
+            isPresented: $importingOPML, allowedContentTypes: [.xml, UTType(filenameExtension: "opml") ?? .xml]
+        ) { result in
             Task { await importOPML(result) }
         }
         .alert("Import failed", isPresented: .constant(importError != nil), presenting: importError) { _ in
             Button("OK") { importError = nil }
-        } message: { Text($0) }
+        } message: {
+            Text($0)
+        }
         .reload(on: model.revision([.follows, .feeds])) { await load() }
     }
 
     private func grid(_ rows: [Row]) -> some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: 3), spacing: 16) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: 3), spacing: 16)
+        {
             ForEach(rows, id: \.key) { show in
                 NavigationLink(value: Route.show(show.key)) { ShowTile(show: show) }
                     .buttonStyle(.plain)
@@ -96,17 +103,21 @@ struct ShowsView: View {
         var loaded: [Row] = []
         for subscription in subscriptions {
             let show = try? await library.show(subscription.showKey)
-            loaded.append(Row(key: subscription.showKey,
-                              title: show?.title ?? subscription.feedURL.absoluteString,
-                              author: show?.author, artworkURL: show?.artworkURL,
-                              starred: subscription.starred,
-                              failing: show?.lastRefreshError != nil))
+            loaded.append(
+                Row(
+                    key: subscription.showKey,
+                    title: show?.title ?? subscription.feedURL.absoluteString,
+                    author: show?.author, artworkURL: show?.artworkURL,
+                    starred: subscription.starred,
+                    failing: show?.lastRefreshError != nil))
         }
         shows = loaded.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
         // Files shared to Casterr follow the shows you subscribe to, once there's at least one.
         if let shared = try? await library.show(.shared), !((try? await library.episodes(of: .shared)) ?? []).isEmpty {
-            shows.append(Row(key: .shared, title: shared.title, author: nil, artworkURL: shared.artworkURL,
-                             starred: false, failing: false))
+            shows.append(
+                Row(
+                    key: .shared, title: shared.title, author: nil, artworkURL: shared.artworkURL,
+                    starred: false, failing: false))
         }
         self.loaded = true
     }
@@ -172,7 +183,10 @@ private struct ShowTile: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel([show.title, show.author].compactMap(\.self).joined(separator: ", "))
-        .accessibilityValue([show.starred ? "Starred" : nil, show.failing ? "Feed not answering" : nil].compactMap(\.self).joined(separator: ", "))
+        .accessibilityValue(
+            [show.starred ? "Starred" : nil, show.failing ? "Feed not answering" : nil].compactMap(\.self).joined(
+                separator: ", ")
+        )
         .accessibilityAddTraits(.isButton)
     }
 
@@ -260,12 +274,13 @@ private struct AddFeedView: View {
             await model.change([.follows, .feeds, .episodes]) {}
             dismiss()
         } catch {
-            message = switch error as? SubscribeError {
-            case .invalidURL: "That isn't a web address."
-            case .notAPodcast: "That address isn't a podcast feed."
-            case .unreachable: "Couldn't reach that feed. Check the address and your connection."
-            case nil: error.localizedDescription
-            }
+            message =
+                switch error as? SubscribeError {
+                case .invalidURL: "That isn't a web address."
+                case .notAPodcast: "That address isn't a podcast feed."
+                case .unreachable: "Couldn't reach that feed. Check the address and your connection."
+                case nil: error.localizedDescription
+                }
         }
     }
 }

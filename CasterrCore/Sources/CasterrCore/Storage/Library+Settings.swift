@@ -50,8 +50,10 @@ extension Library {
     /// A stored value this build doesn't know, from a newer device, reads as the default.
     public func buttonActions() throws -> (double: ButtonAction, triple: ButtonAction) {
         let settings = try settings()
-        return (ButtonAction(rawValue: settings.doublePress) ?? .doublePressDefault,
-                ButtonAction(rawValue: settings.triplePress) ?? .triplePressDefault)
+        return (
+            ButtonAction(rawValue: settings.doublePress) ?? .doublePressDefault,
+            ButtonAction(rawValue: settings.triplePress) ?? .triplePressDefault
+        )
     }
 
     public func setButtonAction(_ action: ButtonAction, forDoublePress double: Bool) throws {

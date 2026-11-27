@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import CasterrCore
 
 private let showKey = ShowKey(feedURL: URL(string: "https://atp.fm/rss")!)!
@@ -8,8 +9,9 @@ private let audio = URL(string: "https://cdn.atp.fm/718.mp3")!
 private let atp = ShowInfo(key: showKey, title: "Accidental Tech Podcast", webPage: URL(string: "https://atp.fm"))
 
 private func episode(webPage: URL? = URL(string: "https://atp.fm/718")) -> EpisodeInfo {
-    EpisodeInfo(key: EpisodeKey(show: showKey, guid: "718", audioURL: audio), showKey: showKey,
-                title: "718: The Warp Zone", audioURL: audio, webPage: webPage)
+    EpisodeInfo(
+        key: EpisodeKey(show: showKey, guid: "718", audioURL: audio), showKey: showKey,
+        title: "718: The Warp Zone", audioURL: audio, webPage: webPage)
 }
 
 struct ShareTextTests {
@@ -25,8 +27,9 @@ struct ShareTextTests {
         // "71" is "NzE=" in base64; Podlink's URL-safe form drops the padding.
         let key = EpisodeKey(show: showKey, guid: "71", audioURL: audio)
         let info = EpisodeInfo(key: key, showKey: showKey, title: "71", audioURL: audio)
-        #expect(ShareText.episode(info, showTitle: nil, feedURL: feedURL).url
-            == URL(string: "https://pod.link/\(feedB64)/episode/NzE"))
+        #expect(
+            ShareText.episode(info, showTitle: nil, feedURL: feedURL).url
+                == URL(string: "https://pod.link/\(feedB64)/episode/NzE"))
     }
 
     @Test func urlUnsafeCharactersBecomeDashAndUnderscore() {
@@ -39,7 +42,8 @@ struct ShareTextTests {
     @Test func anEpisodeWithNoGUIDLinksToTheShow() {
         let key = EpisodeKey(show: showKey, guid: nil, audioURL: audio)
         let info = EpisodeInfo(key: key, showKey: showKey, title: "x", audioURL: audio)
-        #expect(ShareText.episode(info, showTitle: nil, feedURL: feedURL).url == URL(string: "https://pod.link/\(feedB64)"))
+        #expect(
+            ShareText.episode(info, showTitle: nil, feedURL: feedURL).url == URL(string: "https://pod.link/\(feedB64)"))
     }
 
     @Test func withoutAFeedItSendsTheEpisodesPageOrAudio() {

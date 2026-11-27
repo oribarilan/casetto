@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import CasterrCore
 
 struct FeedParserTests {
@@ -47,7 +48,10 @@ struct FeedParserTests {
     @Test func readsEachEpisodesOwnWebPage() throws {
         let show = try FeedParser.parse(fixture("own-links.xml"))
         #expect(show.webPage == URL(string: "https://example.com/own"))
-        #expect(show.episodes.map(\.webPage) == [URL(string: "https://example.com/own/2"), URL(string: "https://example.com/own/1")])
+        #expect(
+            show.episodes.map(\.webPage) == [
+                URL(string: "https://example.com/own/2"), URL(string: "https://example.com/own/1"),
+            ])
     }
 
     @Test func dropsEpisodeLinksThatPointAtTheShowPage() throws {

@@ -41,7 +41,8 @@ public enum BackABeat {
             speechStopped = last.start
             runs.removeLast()
         }
-        let earliest = speechStopped - farthest, latest = speechStopped - nearest
+        let earliest = speechStopped - farthest
+        let latest = speechStopped - nearest
         let gap = runs.last { QuietGaps.isGap($0) && $0.end > earliest && $0.start < latest }
         return gap.map { max(0, min(max($0.middle, earliest), latest)) } ?? pausedAt
     }

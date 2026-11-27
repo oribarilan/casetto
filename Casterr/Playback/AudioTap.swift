@@ -1,9 +1,9 @@
-import AudioToolbox
 import AVFoundation
+import AudioToolbox
 import CasterrCore
 import MediaToolbox
-import os
 import Synchronization
+import os
 
 /// Hears the audio as it plays. It keeps the loudness of the last 15 seconds for Back a Beat and,
 /// while voice boost is on, runs the audio through Apple's dynamics processor after measuring it.
@@ -30,7 +30,8 @@ final class AudioTap: Sendable {
             init: { _, clientInfo, storage in storage.pointee = clientInfo },
             finalize: { tap in Unmanaged<AudioTap>.fromOpaque(MTAudioProcessingTapGetStorage(tap)).release() },
             prepare: { tap, maxFrames, format in
-                let me = AudioTap.from(tap), format = format.pointee
+                let me = AudioTap.from(tap)
+                let format = format.pointee
                 me.ring.withLock { $0.prepare(format) }
                 let ready = me.unit.prepare(format: format, maxFrames: UInt32(maxFrames))
                 me.boost.withLock { $0 = Boost(ready: ready) }
@@ -46,19 +47,22 @@ final class AudioTap: Sendable {
                 else { return }
                 let me = AudioTap.from(tap)
                 let list = UnsafeMutableAudioBufferListPointer(buffers)
-                let count = Int(framesOut.pointee), start = range.start.seconds
+                let count = Int(framesOut.pointee)
+                let start = range.start.seconds
                 // Unchecked: the buffer pointer is only used inside the locks, on this thread.
                 let rate = Double(bitPattern: me.rate.load(ordering: .relaxed))
                 me.ring.withLockUnchecked { $0.add(list, frames: count, at: start, rate: rate) }
                 let isOn = me.boostOn.load(ordering: .relaxed)
-                if let amount = me.boost.withLockUnchecked({ $0.process(list, frames: count, isOn: isOn, unit: me.unit) }) {
+                if let amount = me.boost.withLockUnchecked({
+                    $0.process(list, frames: count, isOn: isOn, unit: me.unit)
+                }) {
                     me.compression.store(amount.bitPattern, ordering: .relaxed)
                 }
             }
         )
         var tap: MTAudioProcessingTap?
         guard MTAudioProcessingTapCreate(nil, &callbacks, kMTAudioProcessingTapCreationFlag_PostEffects, &tap) == noErr,
-              let tap
+            let tap
         else {
             Unmanaged.passUnretained(self).release()
             return nil
@@ -104,7 +108,9 @@ private struct Boost {
     var sampleTime: Float64 = 0
 
     /// Boosts the audio in place while on and returns the compression in dB, or nil when it left the audio alone.
-    mutating func process(_ list: UnsafeMutableAudioBufferListPointer, frames: Int, isOn: Bool, unit: DynamicsUnit) -> Float? {
+    mutating func process(_ list: UnsafeMutableAudioBufferListPointer, frames: Int, isOn: Bool, unit: DynamicsUnit)
+        -> Float?
+    {
         defer { wasOn = isOn }
         guard isOn, ready, let au = unit.unit else { return nil }
         if !wasOn { AudioUnitReset(au, kAudioUnitScope_Global, 0) }
@@ -146,9 +152,12 @@ private final class DynamicsUnit: @unchecked Sendable {
             AudioComponentInstanceNew(component, &newUnit)
         }
         unit = newUnit
-        var callback = AURenderCallbackStruct(inputProc: feedUnit, inputProcRefCon: Unmanaged.passUnretained(self).toOpaque())
+        var callback = AURenderCallbackStruct(
+            inputProc: feedUnit, inputProcRefCon: Unmanaged.passUnretained(self).toOpaque())
         if let newUnit {
-            AudioUnitSetProperty(newUnit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &callback, UInt32(MemoryLayout<AURenderCallbackStruct>.size))
+            AudioUnitSetProperty(
+                newUnit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &callback,
+                UInt32(MemoryLayout<AURenderCallbackStruct>.size))
         }
     }
 
@@ -158,13 +167,20 @@ private final class DynamicsUnit: @unchecked Sendable {
 
     /// Initializes the unit for the tap's format. False when the format can't be boosted.
     func prepare(format: AudioStreamBasicDescription, maxFrames: UInt32) -> Bool {
-        guard let unit, format.mFormatFlags & kAudioFormatFlagIsFloat != 0, format.mBitsPerChannel == 32 else { return false }
+        guard let unit, format.mFormatFlags & kAudioFormatFlagIsFloat != 0, format.mBitsPerChannel == 32 else {
+            return false
+        }
         var streamFormat = format
         var frames = maxFrames
         let formatSize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-        let ready = AudioUnitSetProperty(unit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &streamFormat, formatSize) == noErr
-            && AudioUnitSetProperty(unit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, 0, &streamFormat, formatSize) == noErr
-            && AudioUnitSetProperty(unit, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &frames, UInt32(MemoryLayout<UInt32>.size)) == noErr
+        let ready =
+            AudioUnitSetProperty(
+                unit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &streamFormat, formatSize) == noErr
+            && AudioUnitSetProperty(
+                unit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, 0, &streamFormat, formatSize) == noErr
+            && AudioUnitSetProperty(
+                unit, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &frames,
+                UInt32(MemoryLayout<UInt32>.size)) == noErr
             && AudioUnitInitialize(unit) == noErr
         guard ready else { return false }
         for (parameter, value) in Self.settings {
@@ -227,7 +243,8 @@ private struct Ring {
                 let width = Int(buffer.mNumberChannels)
                 for channel in 0..<width {
                     let index = frame * width + channel
-                    let sample = isFloat
+                    let sample =
+                        isFloat
                         ? Double(data.assumingMemoryBound(to: Float.self)[index])
                         : Double(data.assumingMemoryBound(to: Int16.self)[index]) / Double(Int16.max)
                     sum += sample * sample
@@ -266,7 +283,8 @@ private struct Ring {
 private let feedUnit: AURenderCallback = { refCon, _, _, _, _, ioData in
     let unit = Unmanaged<DynamicsUnit>.fromOpaque(refCon).takeUnretainedValue()
     guard let ioData, let input = unit.input else { return kAudioUnitErr_NoConnection }
-    let from = UnsafeMutableAudioBufferListPointer(input), to = UnsafeMutableAudioBufferListPointer(ioData)
+    let from = UnsafeMutableAudioBufferListPointer(input)
+    let to = UnsafeMutableAudioBufferListPointer(ioData)
     for index in 0..<min(from.count, to.count) {
         guard let source = from[index].mData, let target = to[index].mData else { continue }
         if source != target { memcpy(target, source, Int(min(from[index].mDataByteSize, to[index].mDataByteSize))) }

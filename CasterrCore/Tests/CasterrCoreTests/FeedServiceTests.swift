@@ -1,6 +1,7 @@
 import Foundation
 import Synchronization
 import Testing
+
 @testable import CasterrCore
 
 /// Routes by URL, with no shared state:
@@ -119,9 +120,10 @@ struct OPMLImportTests {
 
     @Test func failingFeedsAreReportedAndTheRestSubscribe() async throws {
         let (service, _) = try makeService()
-        let report = try await service.importOPML(opml([
-            "https://example.com/a.xml", "https://example.com/offline.xml", "https://example.com/not-podcast.xml",
-        ]))
+        let report = try await service.importOPML(
+            opml([
+                "https://example.com/a.xml", "https://example.com/offline.xml", "https://example.com/not-podcast.xml",
+            ]))
         #expect(report.subscribed == [ShowKey(feedURL: url("https://example.com/a.xml"))!])
         #expect(Set(report.failures.map(\.reason)) == ["Couldn't reach the feed", "Not a podcast feed"])
     }
@@ -287,7 +289,9 @@ struct SharedLinkTests {
 
     @Test func matchesByAudioAddressWithoutAGUID() async throws {
         let (service, _) = try makeService()
-        let found = DirectoryEpisode(title: "Side C", feedURL: otherAddress, guid: nil, audioURL: URL(string: "https://example.com/tape-hiss/3.mp3")!)
+        let found = DirectoryEpisode(
+            title: "Side C", feedURL: otherAddress, guid: nil,
+            audioURL: URL(string: "https://example.com/tape-hiss/3.mp3")!)
         #expect(try await service.playNext(found) != nil)
     }
 

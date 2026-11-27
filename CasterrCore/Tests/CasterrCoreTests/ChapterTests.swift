@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import CasterrCore
 
 struct ShowNotesChaptersTests {
@@ -51,15 +52,17 @@ struct ShowNotesChaptersTests {
 }
 
 struct ChapterProgressTests {
-    let chapters = [Chapter(start: 0, title: "פתיחה"), Chapter(start: 150, title: "וויקלי סינק"),
-                    Chapter(start: 351, title: "ג׳נסן שובב"), Chapter(start: 1225, title: "וויקס")]
+    let chapters = [
+        Chapter(start: 0, title: "פתיחה"), Chapter(start: 150, title: "וויקלי סינק"),
+        Chapter(start: 351, title: "ג׳נסן שובב"), Chapter(start: 1225, title: "וויקס"),
+    ]
 
     @Test func insideTheThirdChapter() {
         let progress = ChapterProgress(chapters: chapters, position: 612, duration: 3442)
         #expect(progress.current == 2)
         #expect(progress.fractions[0] == 1 && progress.fractions[1] == 1 && progress.fractions[3] == 0)
         #expect(abs(progress.fractions[2] - 0.2986) < 0.001)
-        #expect(progress.minutesLeft == 11) // 10:13 left
+        #expect(progress.minutesLeft == 11)  // 10:13 left
     }
 
     @Test func atABoundaryTheNextChapterStartsEmpty() {

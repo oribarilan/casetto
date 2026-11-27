@@ -1,12 +1,14 @@
 import Foundation
 import Testing
+
 @testable import CasterrCore
 
 private let show = ShowKey(feedURL: URL(string: "https://example.com/feed")!)!
 
 private func episode(_ n: Int, title: String = "Episode") -> EpisodeInfo {
-    EpisodeInfo(key: EpisodeKey(show: show, guid: "ep\(n)", audioURL: URL(string: "https://cdn.example.com/\(n).mp3")!),
-                showKey: show, title: "\(title) \(n)", audioURL: URL(string: "https://cdn.example.com/\(n).mp3")!)
+    EpisodeInfo(
+        key: EpisodeKey(show: show, guid: "ep\(n)", audioURL: URL(string: "https://cdn.example.com/\(n).mp3")!),
+        showKey: show, title: "\(title) \(n)", audioURL: URL(string: "https://cdn.example.com/\(n).mp3")!)
 }
 
 struct BookmarkStoreTests {
@@ -47,38 +49,46 @@ struct BookmarkStoreTests {
 }
 
 struct BookmarkMarkdownTests {
-    private func bookmark(_ position: TimeInterval, note: String = "", show: String = "Tape Hiss",
-                          episode: String = "Side A") -> BookmarkInfo {
-        BookmarkInfo(id: UUID(), episodeKey: EpisodeKey(rawValue: "k"), position: position, note: note, createdAt: .now,
-                     showTitle: show, episodeTitle: episode, audioURL: URL(string: "https://cdn.example.com/a.mp3"))
+    private func bookmark(
+        _ position: TimeInterval, note: String = "", show: String = "Tape Hiss",
+        episode: String = "Side A"
+    ) -> BookmarkInfo {
+        BookmarkInfo(
+            id: UUID(), episodeKey: EpisodeKey(rawValue: "k"), position: position, note: note, createdAt: .now,
+            showTitle: show, episodeTitle: episode, audioURL: URL(string: "https://cdn.example.com/a.mp3"))
     }
 
     @Test func rendersTitlesAndBookmarksInPositionOrder() {
-        let text = BookmarkMarkdown.render([bookmark(3723, note: "late"), bookmark(754, note: "great point"), bookmark(5)])
-        #expect(text == """
-        # Side A
+        let text = BookmarkMarkdown.render([
+            bookmark(3723, note: "late"), bookmark(754, note: "great point"), bookmark(5),
+        ])
+        #expect(
+            text == """
+                # Side A
 
-        Tape Hiss
-        <https://cdn.example.com/a.mp3>
+                Tape Hiss
+                <https://cdn.example.com/a.mp3>
 
-        - 0:05
-        - 12:34 great point
-        - 1:02:03 late
+                - 0:05
+                - 12:34 great point
+                - 1:02:03 late
 
-        """)
+                """)
     }
 
     @Test func rendersSeveralEpisodesInOneFile() {
         let first = [bookmark(754, note: "great point")]
         let second = [bookmark(5, show: "Deep Field", episode: "Ocean Floor")]
-        #expect(BookmarkMarkdown.render(episodes: [first, second])
+        #expect(
+            BookmarkMarkdown.render(episodes: [first, second])
                 == BookmarkMarkdown.render(first) + "\n" + BookmarkMarkdown.render(second))
         #expect(BookmarkMarkdown.fileName(episodes: [first, second]) == "Bookmarks.md")
         #expect(BookmarkMarkdown.fileName(episodes: [second]) == "Deep Field - Ocean Floor.md")
     }
 
     @Test func fileNameDropsUnsafeCharacters() {
-        #expect(BookmarkMarkdown.fileName([bookmark(0, show: "AC/DC: Live", episode: "Who? \"Me\"")])
+        #expect(
+            BookmarkMarkdown.fileName([bookmark(0, show: "AC/DC: Live", episode: "Who? \"Me\"")])
                 == "AC-DC- Live - Who- -Me-.md")
     }
 }

@@ -67,8 +67,8 @@ public enum FeedParser {
     /// Returns nil for items without an audio enclosure. An enclosure with no type counts as audio.
     private static func episode(_ item: RSSFeedItem) -> ParsedEpisode? {
         guard let enclosure = item.enclosure?.attributes,
-              enclosure.type?.hasPrefix("audio/") ?? true,
-              let audioURL = url(enclosure.url)
+            enclosure.type?.hasPrefix("audio/") ?? true,
+            let audioURL = url(enclosure.url)
         else { return nil }
 
         return ParsedEpisode(

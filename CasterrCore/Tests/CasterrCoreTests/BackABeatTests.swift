@@ -1,10 +1,13 @@
 import Foundation
 import Testing
+
 @testable import CasterrCore
 
 /// Readings every 10 ms from `start` to `end` at `level`, with `quiet` stretches at `quietLevel`.
-func speech(from start: TimeInterval, to end: TimeInterval, level: Float = 0.3,
-            quiet: [ClosedRange<TimeInterval>] = [], quietLevel: Float = 0.005) -> [Loudness] {
+func speech(
+    from start: TimeInterval, to end: TimeInterval, level: Float = 0.3,
+    quiet: [ClosedRange<TimeInterval>] = [], quietLevel: Float = 0.005
+) -> [Loudness] {
     stride(from: 0, to: Int(((end - start) / Loudness.slice).rounded()), by: 1).map { index in
         let time = start + Double(index) * Loudness.slice
         let isQuiet = quiet.contains { $0.contains(time + 0.0001) }
@@ -13,7 +16,7 @@ func speech(from start: TimeInterval, to end: TimeInterval, level: Float = 0.3,
 }
 
 struct BackABeatTests {
-    let pausedAt: TimeInterval = 1390 // 23:10
+    let pausedAt: TimeInterval = 1390  // 23:10
 
     @Test func resumesInTheMiddleOfAGap() {
         let readings = speech(from: 1382, to: 1390, quiet: [1386.9...1387.09])
@@ -201,8 +204,9 @@ struct BackABeatEdgeTests {
             }
             let readings = speech(from: 0, to: 21, quiet: gaps)
             let point = BackABeat.resumePoint(pausedAt: pause, readings: readings)
-            #expect(point == pause || (point >= 0 && point < pause - BackABeat.nearest + Loudness.slice),
-                    "paused at \(pause), resumed at \(point)")
+            #expect(
+                point == pause || (point >= 0 && point < pause - BackABeat.nearest + Loudness.slice),
+                "paused at \(pause), resumed at \(point)")
         }
     }
 }

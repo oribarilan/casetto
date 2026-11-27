@@ -1,12 +1,14 @@
 import Foundation
 import Testing
+
 @testable import CasterrCore
 
 struct SavedChartsTests {
     private let charts = SavedCharts(folder: .temporaryDirectory.appending(path: "charts-\(UUID().uuidString)"))
-    private let show = DirectoryShow(id: "1", title: "Planet Money", author: "NPR",
-                                     artworkURL: URL(string: "https://example.com/pm.jpg"),
-                                     feedURL: URL(string: "https://feeds.npr.org/510289/podcast.xml")!)
+    private let show = DirectoryShow(
+        id: "1", title: "Planet Money", author: "NPR",
+        artworkURL: URL(string: "https://example.com/pm.jpg"),
+        feedURL: URL(string: "https://feeds.npr.org/510289/podcast.xml")!)
 
     @Test func savedChartReadsBackPerCountry() {
         charts.save([show], for: "il")

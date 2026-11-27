@@ -34,10 +34,17 @@ struct SettingsView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Remove unplayed episodes after")
-                        Picker("Remove unplayed episodes after", selection: Binding(get: { expiry }, set: { value in
-                            expiry = value
-                            Task { await model.change(.settings) { try await model.library.setGlobalExpiry(value) } }
-                        })) {
+                        Picker(
+                            "Remove unplayed episodes after",
+                            selection: Binding(
+                                get: { expiry },
+                                set: { value in
+                                    expiry = value
+                                    Task {
+                                        await model.change(.settings) { try await model.library.setGlobalExpiry(value) }
+                                    }
+                                })
+                        ) {
                             ForEach(InboxExpiry.choices, id: \.self) { Text($0.shortTitle).tag($0) }
                         }
                         .pickerStyle(.segmented)
@@ -54,10 +61,19 @@ struct SettingsView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Keep downloaded")
-                        Picker("Keep downloaded", selection: Binding(get: { downloads }, set: { value in
-                            downloads = value
-                            Task { await model.change(.settings) { try await model.library.setDownloadCount(value) } }
-                        })) {
+                        Picker(
+                            "Keep downloaded",
+                            selection: Binding(
+                                get: { downloads },
+                                set: { value in
+                                    downloads = value
+                                    Task {
+                                        await model.change(.settings) {
+                                            try await model.library.setDownloadCount(value)
+                                        }
+                                    }
+                                })
+                        ) {
                             ForEach(DownloadCount.choices, id: \.self) { Text($0 == 0 ? "Off" : "\($0)").tag($0) }
                         }
                         .pickerStyle(.segmented)
@@ -78,35 +94,48 @@ struct SettingsView: View {
                 .id(SettingsSection.downloads)
 
                 Section {
-                    Picker("Default speed", selection: Binding(get: { speed }, set: { value in
-                        speed = value
-                        Task {
-                            await model.change(.settings) {
-                                try await model.library.setGlobalSpeed(PlaybackSpeed(value))
-                                try await player.reloadSpeed()
-                            }
-                        }
-                    })) {
+                    Picker(
+                        "Default speed",
+                        selection: Binding(
+                            get: { speed },
+                            set: { value in
+                                speed = value
+                                Task {
+                                    await model.change(.settings) {
+                                        try await model.library.setGlobalSpeed(PlaybackSpeed(value))
+                                        try await player.reloadSpeed()
+                                    }
+                                }
+                            })
+                    ) {
                         ForEach(Array(stride(from: 1.0, through: 2.0, by: 0.1)), id: \.self) { value in
-                            Text("\(value, format: .number.precision(.fractionLength(1)))×").tag((value * 10).rounded() / 10)
+                            Text("\(value, format: .number.precision(.fractionLength(1)))×").tag(
+                                (value * 10).rounded() / 10)
                         }
                     }
                     .listRowBackground(rowBackground(.playback))
-                    Toggle("Voice boost", isOn: Binding(get: { voiceBoost }, set: { isOn in
-                        voiceBoost = isOn
-                        Task {
-                            await model.change(.settings) {
-                                try await model.library.setGlobalVoiceBoost(isOn)
-                                try await player.reloadVoiceBoost()
-                            }
-                        }
-                    }))
+                    Toggle(
+                        "Voice boost",
+                        isOn: Binding(
+                            get: { voiceBoost },
+                            set: { isOn in
+                                voiceBoost = isOn
+                                Task {
+                                    await model.change(.settings) {
+                                        try await model.library.setGlobalVoiceBoost(isOn)
+                                        try await player.reloadVoiceBoost()
+                                    }
+                                }
+                            })
+                    )
                     .accessibilityIdentifier("voiceBoostDefault")
                     .listRowBackground(rowBackground(.playback))
                 } header: {
                     Text("Playback")
                 } footer: {
-                    Text("Voice boost evens out loud and quiet voices. A show can have its own speed and voice boost from Now Playing.")
+                    Text(
+                        "Voice boost evens out loud and quiet voices. A show can have its own speed and voice boost from Now Playing."
+                    )
                 }
                 .id(SettingsSection.playback)
 
@@ -137,7 +166,9 @@ struct SettingsView: View {
                 } header: {
                     Text("Storage")
                 } footer: {
-                    Text("Keep downloaded decides which episodes stay downloaded. Clear Cache deletes saved show art and popular lists, which download again when needed.")
+                    Text(
+                        "Keep downloaded decides which episodes stay downloaded. Clear Cache deletes saved show art and popular lists, which download again when needed."
+                    )
                 }
 
                 Section {
@@ -172,10 +203,19 @@ struct SettingsView: View {
     }
 
     private func buttonPicker(_ title: String, selection: Binding<ButtonAction>, double: Bool) -> some View {
-        Picker(title, selection: Binding(get: { selection.wrappedValue }, set: { action in
-            selection.wrappedValue = action
-            Task { await model.change(.settings) { try await model.library.setButtonAction(action, forDoublePress: double) } }
-        })) {
+        Picker(
+            title,
+            selection: Binding(
+                get: { selection.wrappedValue },
+                set: { action in
+                    selection.wrappedValue = action
+                    Task {
+                        await model.change(.settings) {
+                            try await model.library.setButtonAction(action, forDoublePress: double)
+                        }
+                    }
+                })
+        ) {
             ForEach(ButtonAction.allCases, id: \.self) { Text($0.title).tag($0) }
         }
         .listRowBackground(rowBackground(.buttons))

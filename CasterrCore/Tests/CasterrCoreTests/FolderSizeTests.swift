@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import CasterrCore
 
 struct FolderSizeTests {
@@ -13,6 +14,7 @@ struct FolderSizeTests {
     }
 
     @Test func missingFolderIsZero() {
-        #expect(FileManager.default.size(ofFolder: .temporaryDirectory.appending(path: "none-\(UUID().uuidString)")) == 0)
+        #expect(
+            FileManager.default.size(ofFolder: .temporaryDirectory.appending(path: "none-\(UUID().uuidString)")) == 0)
     }
 }

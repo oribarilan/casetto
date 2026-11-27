@@ -1,6 +1,7 @@
 import Foundation
 import Synchronization
 import Testing
+
 @testable import CasterrCore
 
 /// A clock the tests move forward by hand.
@@ -19,12 +20,14 @@ private func episode(_ n: Int, of show: ShowKey = showA) -> EpisodeKey {
 }
 
 private func feed(_ numbers: ClosedRange<Int>) -> ParsedShow {
-    ParsedShow(title: "Show", episodes: numbers.map { n in
-        ParsedEpisode(
-            guid: "ep\(n)", title: "Episode \(n)", audioURL: URL(string: "https://cdn.example.com/\(n).mp3")!,
-            publishDate: Date(timeIntervalSince1970: 1_700_000_000 + Double(n) * 86_400)
-        )
-    })
+    ParsedShow(
+        title: "Show",
+        episodes: numbers.map { n in
+            ParsedEpisode(
+                guid: "ep\(n)", title: "Episode \(n)", audioURL: URL(string: "https://cdn.example.com/\(n).mp3")!,
+                publishDate: Date(timeIntervalSince1970: 1_700_000_000 + Double(n) * 86_400)
+            )
+        })
 }
 
 /// A library subscribed to `show`, whose feed holds episodes 1 to `count`, as `FeedService.subscribe` leaves it.
@@ -132,10 +135,11 @@ struct PlayNextTests {
         try await library.setLevel(showB, to: .playNext)
         try await release(4, of: showA, in: library)
         try await release(5, of: showB, in: library)
-        #expect(try await library.queue() == [
-            episode(1, of: showB), episode(4), episode(5, of: showB),
-            episode(2, of: showB), episode(3, of: showB), episode(4, of: showB),
-        ])
+        #expect(
+            try await library.queue() == [
+                episode(1, of: showB), episode(4), episode(5, of: showB),
+                episode(2, of: showB), episode(3, of: showB), episode(4, of: showB),
+            ])
     }
 
     @Test func emptyQueueGetsTheEpisodeAsItsOnlyItem() async throws {
@@ -260,7 +264,8 @@ struct SnapshotTests {
         try await library.setProgress(episode(1), to: 90)
         try await library.markPlayed(episode(2))
         let snapshots = try await library.snapshots(of: [episode(1), episode(2), episode(3)])
-        #expect(snapshots[episode(1)] == EpisodeSnapshot(place: .queue, move: LastMove(reason: .listener), progress: 90))
+        #expect(
+            snapshots[episode(1)] == EpisodeSnapshot(place: .queue, move: LastMove(reason: .listener), progress: 90))
         #expect(snapshots[episode(2)]?.place == .archive(.played))
         #expect(snapshots[episode(3)] == EpisodeSnapshot(place: .inbox, move: LastMove(reason: .arrived), progress: 0))
     }

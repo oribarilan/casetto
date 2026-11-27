@@ -20,7 +20,8 @@ public enum DownloadSize {
     public static func caption(_ episodes: [EpisodeInfo], count: Int) -> String? {
         let bytes = estimate(Array(episodes.prefix(max(count, 0))))
         guard count > 0, bytes > 0 else { return nil }
-        let size = bytes >= 1_000_000_000
+        let size =
+            bytes >= 1_000_000_000
             ? (Double(bytes) / 1_000_000_000).formatted(.number.precision(.fractionLength(1))) + " GB"
             : "\(max(1, Int((Double(bytes) / 1_000_000).rounded()))) MB"
         return "About \(size) for the top \(count == 1 ? "episode" : "\(count)")."

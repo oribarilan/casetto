@@ -38,7 +38,8 @@ final class AVPlayerEngine: AudioEngine {
 
     func load(_ url: URL, at position: TimeInterval) {
         // A downloaded file opens with precise timing, so seeks land where they report (VBR MP3s can drift otherwise).
-        let item = AVPlayerItem(asset: AVURLAsset(url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: url.isFileURL]))
+        let item = AVPlayerItem(
+            asset: AVURLAsset(url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: url.isFileURL]))
         item.audioTimePitchAlgorithm = .timeDomain
         observe(item)
         seekTarget = nil
@@ -120,15 +121,23 @@ final class AVPlayerEngine: AudioEngine {
         let url = asset.url
         Task {
             guard let locale = try? await asset.load(.availableChapterLocales).first,
-                  let groups = try? await asset.loadChapterMetadataGroups(withTitleLocale: locale, containingItemsWithCommonKeys: [.commonKeyArtwork])
+                let groups = try? await asset.loadChapterMetadataGroups(
+                    withTitleLocale: locale, containingItemsWithCommonKeys: [.commonKeyArtwork])
             else { return }
             var chapters: [Chapter] = []
             for (index, group) in groups.enumerated() {
-                let title = try? await AVMetadataItem.metadataItems(from: group.items, filteredByIdentifier: .commonIdentifierTitle).first?.load(.stringValue)
-                let artwork = try? await AVMetadataItem.metadataItems(from: group.items, filteredByIdentifier: .commonIdentifierArtwork).first?.load(.dataValue)
-                chapters.append(Chapter(start: group.timeRange.start.seconds, title: title ?? "Chapter \(index + 1)", artwork: artwork))
+                let title = try? await AVMetadataItem.metadataItems(
+                    from: group.items, filteredByIdentifier: .commonIdentifierTitle
+                ).first?.load(.stringValue)
+                let artwork = try? await AVMetadataItem.metadataItems(
+                    from: group.items, filteredByIdentifier: .commonIdentifierArtwork
+                ).first?.load(.dataValue)
+                chapters.append(
+                    Chapter(
+                        start: group.timeRange.start.seconds, title: title ?? "Chapter \(index + 1)", artwork: artwork))
             }
-            chapterLog.debug("The file has \(chapters.count) chapters, \(chapters.filter { $0.artwork != nil }.count) with pictures")
+            chapterLog.debug(
+                "The file has \(chapters.count) chapters, \(chapters.filter { $0.artwork != nil }.count) with pictures")
             guard item === player.currentItem, !chapters.isEmpty else { return }
             onChapters?(url, chapters)
         }
@@ -162,7 +171,9 @@ final class AVPlayerEngine: AudioEngine {
                 }
             },
             Task { [weak self] in
-                for await note in center.notifications(named: AVPlayerItem.failedToPlayToEndTimeNotification, object: item) {
+                for await note in center.notifications(
+                    named: AVPlayerItem.failedToPlayToEndTimeNotification, object: item)
+                {
                     let error = note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? any Error
                     self?.onFailure?(error ?? URLError(.unknown))
                 }

@@ -1,12 +1,13 @@
 import Foundation
 import Testing
+
 @testable import CasterrCore
 
 struct ClipWindowTests {
     let hour: TimeInterval = 3600
 
     @Test func opensAroundNowInTheMiddle() {
-        let window = ClipWindow(position: 739, duration: hour) // 12:19
+        let window = ClipWindow(position: 739, duration: hour)  // 12:19
         #expect(window.span == 679...799)
         #expect(window.defaultClip == 724...754)
     }
@@ -92,8 +93,8 @@ struct LoudnessBarsTests {
         let bars = LoudnessBars.bars(from: samples, count: 4)
         #expect(bars.count == 4)
         #expect(abs(bars[0] - 1) < 0.001 && abs(bars[1] - 1) < 0.001)
-        #expect(abs(bars[2] - (1 - 20 / LoudnessBars.range)) < 0.001) // 20 dB down
-        #expect(bars[3] == 0) // 60 dB down, past the range
+        #expect(abs(bars[2] - (1 - 20 / LoudnessBars.range)) < 0.001)  // 20 dB down
+        #expect(bars[3] == 0)  // 60 dB down, past the range
     }
 
     @Test func loudnessIsRelativeToTheLoudestBar() {
@@ -137,4 +138,3 @@ struct ClipBarsTests {
         #expect(LoudnessBars.bars([], over: 0...120, for: 0...30, count: 3) == [0, 0, 0])
     }
 }
-

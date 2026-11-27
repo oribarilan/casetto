@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import CasterrCore
 
 private let show = ShowKey(feedURL: URL(string: "https://example.com/feed")!)!
@@ -104,17 +105,23 @@ struct DownloadCountSettingTests {
 
 struct DownloadStateTests {
     @Test func aFileOnThePhoneIsDownloaded() {
-        #expect(DownloadState.of(downloaded: true, progress: .some(0.5), wanted: true, downloadsAllowed: false) == .downloaded)
+        #expect(
+            DownloadState.of(downloaded: true, progress: .some(0.5), wanted: true, downloadsAllowed: false)
+                == .downloaded)
     }
 
     @Test func aRunningDownloadShowsItsShare() {
-        #expect(DownloadState.of(downloaded: false, progress: .some(0.456), wanted: true, downloadsAllowed: true) == .downloading(0.456))
+        #expect(
+            DownloadState.of(downloaded: false, progress: .some(0.456), wanted: true, downloadsAllowed: true)
+                == .downloading(0.456))
         #expect(DownloadState.downloading(0.456).label == "Downloading 45%")
         #expect(DownloadState.downloading(0.999).label == "Downloading 99%")
     }
 
     @Test func aDownloadWithNoSizeShowsNoNumber() {
-        #expect(DownloadState.of(downloaded: false, progress: .some(nil), wanted: true, downloadsAllowed: true) == .downloading(nil))
+        #expect(
+            DownloadState.of(downloaded: false, progress: .some(nil), wanted: true, downloadsAllowed: true)
+                == .downloading(nil))
         #expect(DownloadState.downloading(nil).label == "Downloading")
     }
 
@@ -124,21 +131,30 @@ struct DownloadStateTests {
     }
 
     @Test func theLoadedEpisodeNeverWaitsForWiFi() {
-        #expect(DownloadState.of(downloaded: false, progress: nil, wanted: true, downloadsAllowed: false, loaded: true) == nil)
+        #expect(
+            DownloadState.of(downloaded: false, progress: nil, wanted: true, downloadsAllowed: false, loaded: true)
+                == nil)
     }
 
     @Test func theLoadedEpisodeKeepsItsDownloadWords() {
-        #expect(DownloadState.of(downloaded: true, progress: nil, wanted: true, downloadsAllowed: false, loaded: true) == .downloaded)
-        #expect(DownloadState.of(downloaded: false, progress: .some(0.3), wanted: true, downloadsAllowed: false, loaded: true) == .downloading(0.3))
-        #expect(DownloadState.of(downloaded: false, progress: nil, wanted: true, downloadsAllowed: true, loaded: true) == .downloading(0))
+        #expect(
+            DownloadState.of(downloaded: true, progress: nil, wanted: true, downloadsAllowed: false, loaded: true)
+                == .downloaded)
+        #expect(
+            DownloadState.of(
+                downloaded: false, progress: .some(0.3), wanted: true, downloadsAllowed: false, loaded: true)
+                == .downloading(0.3))
+        #expect(
+            DownloadState.of(downloaded: false, progress: nil, wanted: true, downloadsAllowed: true, loaded: true)
+                == .downloading(0))
     }
 
     @Test func aWantedEpisodeOnWiFiIsAboutToDownload() {
-        #expect(DownloadState.of(downloaded: false, progress: nil, wanted: true, downloadsAllowed: true) == .downloading(0))
+        #expect(
+            DownloadState.of(downloaded: false, progress: nil, wanted: true, downloadsAllowed: true) == .downloading(0))
     }
 
     @Test func anEpisodeOutsideTheKeptOnesSaysNothing() {
         #expect(DownloadState.of(downloaded: false, progress: nil, wanted: false, downloadsAllowed: false) == nil)
     }
 }
-

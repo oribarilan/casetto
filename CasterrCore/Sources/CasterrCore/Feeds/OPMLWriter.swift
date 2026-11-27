@@ -5,14 +5,16 @@ public enum OPMLWriter {
     public static func write(_ feeds: [(title: String, url: URL)]) -> Data {
         let outlines = feeds.map { feed in
             let title = escape(feed.title)
-            return "    <outline type=\"rss\" text=\"\(title)\" title=\"\(title)\" xmlUrl=\"\(escape(feed.url.absoluteString))\"/>"
+            return
+                "    <outline type=\"rss\" text=\"\(title)\" title=\"\(title)\" xmlUrl=\"\(escape(feed.url.absoluteString))\"/>"
         }
-        let lines = [
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
-            "<opml version=\"2.0\">",
-            "  <head><title>Casterr Shows</title></head>",
-            "  <body>",
-        ] + outlines + ["  </body>", "</opml>", ""]
+        let lines =
+            [
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                "<opml version=\"2.0\">",
+                "  <head><title>Casterr Shows</title></head>",
+                "  <body>",
+            ] + outlines + ["  </body>", "</opml>", ""]
         return Data(lines.joined(separator: "\n").utf8)
     }
 

@@ -65,7 +65,11 @@ struct ShowView: View {
                         HStack {
                             Text(speedOverride.title)
                             Button("Reset") {
-                                Task { await model.change(.follows) { try await model.library.setSpeedOverride(showKey, to: nil) } }
+                                Task {
+                                    await model.change(.follows) {
+                                        try await model.library.setSpeedOverride(showKey, to: nil)
+                                    }
+                                }
                             }
                         }
                     }
@@ -133,8 +137,10 @@ struct ShowView: View {
     @ViewBuilder private var followButtons: some View {
         if !isShared, let url = subscription?.feedURL ?? cachedFeedURL ?? feedURL {
             HStack(spacing: 10) {
-                ShowPageButton(title: following ? "Following" : "Follow", symbol: following ? "checkmark" : "plus",
-                               on: following, spin: (.degrees(-90), followSpins)) {
+                ShowPageButton(
+                    title: following ? "Following" : "Follow", symbol: following ? "checkmark" : "plus",
+                    on: following, spin: (.degrees(-90), followSpins)
+                ) {
                     if following {
                         confirmingUnfollow = true
                     } else {
@@ -160,8 +166,10 @@ struct ShowView: View {
                     if !wasFollowing { followSpins += 1 }
                     // Starring sends an Inbox show's new episodes to the Queue, as `setStarred` saves it.
                     let queues = star && (!wasFollowing || level == .inbox)
-                    act(follow: true, star: star, level: queues ? .autoQueue : nil,
-                        override: wasFollowing ? nil : .some(nil), touching: wasFollowing ? .follows : .following) {
+                    act(
+                        follow: true, star: star, level: queues ? .autoQueue : nil,
+                        override: wasFollowing ? nil : .some(nil), touching: wasFollowing ? .follows : .following
+                    ) {
                         if !wasFollowing { _ = try await model.feeds.subscribe(to: url, level: .autoQueue) }
                         try await model.library.setStarred(showKey, star)
                     }
@@ -183,8 +191,10 @@ struct ShowView: View {
 
     /// Shows the new choices at once, saves, then lets the saved state take over. A failed save goes back.
     /// A value left nil keeps what is shown, so a tap during an earlier save doesn't undo that save's choice.
-    private func act(follow: Bool? = nil, star: Bool? = nil, level: TriageLevel? = nil, override: InboxExpiry?? = nil,
-                     touching areas: DataArea, _ work: @escaping () async throws -> Void) {
+    private func act(
+        follow: Bool? = nil, star: Bool? = nil, level: TriageLevel? = nil, override: InboxExpiry?? = nil,
+        touching areas: DataArea, _ work: @escaping () async throws -> Void
+    ) {
         let previous = lastSave
         savesRunning += 1
         lastSave = Task {
@@ -278,36 +288,40 @@ struct ShowView: View {
     private func episodeRow(_ episode: EpisodeInfo) -> some View {
         let place = places[episode.key]
         let played = place == Place.archive(.played)
-        let art: ShowArt? = show.map { ShowArt(title: $0.title, artworkURL: preview?.artworkURL ?? $0.artworkURL, feedURL: $0.feedURL ?? feedURL) }
-        return EpisodeRow(episode: episode, identifier: "episode",
-                          statuses: caption(place).map { [$0] } ?? [], move: moves[episode.key],
-                          download: model.downloadState(episode), played: played,
-                          progress: progress[episode.key] ?? 0, art: art,
-                          isOpen: openRow == episode.key,
-                          toggle: { openRow = openRow == episode.key ? nil : episode.key },
-                          actions: actions(episode, place: place))
-            .swipeActions(edge: .leading) {
-                if place != .queue {
-                    Button("Add to Queue", systemImage: "text.badge.plus") {
-                        Task { await model.change(.episodes) { try await model.library.addToQueue(episode.key) } }
-                    }
-                    .tint(.accentColor)
+        let art: ShowArt? = show.map {
+            ShowArt(title: $0.title, artworkURL: preview?.artworkURL ?? $0.artworkURL, feedURL: $0.feedURL ?? feedURL)
+        }
+        return EpisodeRow(
+            episode: episode, identifier: "episode",
+            statuses: caption(place).map { [$0] } ?? [], move: moves[episode.key],
+            download: model.downloadState(episode), played: played,
+            progress: progress[episode.key] ?? 0, art: art,
+            isOpen: openRow == episode.key,
+            toggle: { openRow = openRow == episode.key ? nil : episode.key },
+            actions: actions(episode, place: place)
+        )
+        .swipeActions(edge: .leading) {
+            if place != .queue {
+                Button("Add to Queue", systemImage: "text.badge.plus") {
+                    Task { await model.change(.episodes) { try await model.library.addToQueue(episode.key) } }
+                }
+                .tint(.accentColor)
+            }
+        }
+        .swipeActions(edge: .trailing) {
+            if isShared {
+                Button("Delete", systemImage: "trash", role: .destructive) { delete(episode) }
+            }
+            if played {
+                Button("Mark Unplayed", systemImage: "circle") {
+                    Task { await model.change(.episodes) { try await model.library.markUnplayed(episode.key) } }
+                }
+            } else {
+                Button("Mark Played", systemImage: "checkmark.circle") {
+                    Task { await model.change(.episodes) { try await model.library.markPlayed(episode.key) } }
                 }
             }
-            .swipeActions(edge: .trailing) {
-                if isShared {
-                    Button("Delete", systemImage: "trash", role: .destructive) { delete(episode) }
-                }
-                if played {
-                    Button("Mark Unplayed", systemImage: "circle") {
-                        Task { await model.change(.episodes) { try await model.library.markUnplayed(episode.key) } }
-                    }
-                } else {
-                    Button("Mark Played", systemImage: "checkmark.circle") {
-                        Task { await model.change(.episodes) { try await model.library.markPlayed(episode.key) } }
-                    }
-                }
-            }
+        }
     }
 
     /// Play Next, Add to Queue, Played or Unplayed, Download, Share, Remove, and Delete for shared files,
@@ -321,8 +335,11 @@ struct ShowView: View {
         actions += RowAction.downloadOnCellular(episode, model)
         actions.append(.share)
         switch place {
-        case .inbox: actions.append(.change("Remove", "minus.circle", destructive: true, model) { try await $0.dismiss(key) })
-        case .queue: actions.append(.change("Remove", "minus.circle", destructive: true, model) { try await $0.removeFromQueue(key) })
+        case .inbox:
+            actions.append(.change("Remove", "minus.circle", destructive: true, model) { try await $0.dismiss(key) })
+        case .queue:
+            actions.append(
+                .change("Remove", "minus.circle", destructive: true, model) { try await $0.removeFromQueue(key) })
         default: break
         }
         if isShared {
@@ -350,11 +367,19 @@ struct ShowView: View {
         } else if !isShared, following {
             Section {
                 menuRow("New episodes go to", value: Self.levelTitle(level), identifier: "newEpisodesRow") {
-                    Picker("New episodes go to", selection: Binding(get: { level }, set: { value in
-                        act(level: value, touching: .follows) { try await model.library.setLevel(showKey, to: value) }
-                    })) {
+                    Picker(
+                        "New episodes go to",
+                        selection: Binding(
+                            get: { level },
+                            set: { value in
+                                act(level: value, touching: .follows) {
+                                    try await model.library.setLevel(showKey, to: value)
+                                }
+                            })
+                    ) {
                         ForEach(TriageLevel.allCases, id: \.self) { choice in
-                            Button {} label: {
+                            Button {
+                            } label: {
                                 Text(Self.levelTitle(choice))
                                 Text(Self.levelDetail(choice))
                             }
@@ -363,12 +388,19 @@ struct ShowView: View {
                     }
                 }
                 if level == .inbox {
-                    menuRow("Removed after", value: (expiryOverride ?? globalExpiry).title, identifier: "removedAfterRow") {
-                        Picker("Removed after", selection: Binding(get: { expiryOverride }, set: { value in
-                            act(override: .some(value), touching: .follows) {
-                                try await model.library.setExpiryOverride(showKey, to: value)
-                            }
-                        })) {
+                    menuRow(
+                        "Removed after", value: (expiryOverride ?? globalExpiry).title, identifier: "removedAfterRow"
+                    ) {
+                        Picker(
+                            "Removed after",
+                            selection: Binding(
+                                get: { expiryOverride },
+                                set: { value in
+                                    act(override: .some(value), touching: .follows) {
+                                        try await model.library.setExpiryOverride(showKey, to: value)
+                                    }
+                                })
+                        ) {
                             Text("My default (\(globalExpiry.title))").tag(InboxExpiry?.none)
                             ForEach(InboxExpiry.choices, id: \.self) { Text($0.title).tag(InboxExpiry?.some($0)) }
                         }
@@ -379,8 +411,10 @@ struct ShowView: View {
     }
 
     /// A row with its name on the left and its value, which cross-fades, on the right; tapping it opens the menu.
-    private func menuRow(_ title: String, value: String, identifier: String,
-                         @ViewBuilder content: () -> some View) -> some View {
+    private func menuRow(
+        _ title: String, value: String, identifier: String,
+        @ViewBuilder content: () -> some View
+    ) -> some View {
         Menu(content: content) {
             HStack {
                 // `Color.primary`, since `.primary` would take the menu's tangerine.
@@ -519,9 +553,13 @@ private struct ShowDescription: View {
             }
         }
         if cutOff {
-            Button { withAnimation { expanded.toggle() } } label: { content.contentShape(.rect) }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("showDescription")
+            Button {
+                withAnimation { expanded.toggle() }
+            } label: {
+                content.contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("showDescription")
         } else {
             content
         }

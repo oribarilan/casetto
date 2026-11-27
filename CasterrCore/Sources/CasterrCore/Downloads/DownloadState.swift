@@ -14,8 +14,10 @@ public enum DownloadState: Equatable, Sendable {
     ///   - wanted: It's among the Queue episodes to keep downloaded.
     ///   - downloadsAllowed: The phone is on Wi-Fi or a wired network, not expensive and not in Low Data Mode.
     ///   - loaded: It's the player's episode, which streams fine, so it never waits for Wi-Fi.
-    public static func of(downloaded: Bool, progress: Double??, wanted: Bool, downloadsAllowed: Bool,
-                          loaded: Bool = false) -> DownloadState? {
+    public static func of(
+        downloaded: Bool, progress: Double??, wanted: Bool, downloadsAllowed: Bool,
+        loaded: Bool = false
+    ) -> DownloadState? {
         if downloaded { return .downloaded }
         if let progress { return .downloading(progress) }
         guard wanted else { return nil }

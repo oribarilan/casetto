@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import CasterrCore
 
 @MainActor
@@ -94,8 +95,10 @@ struct PlayerTests {
     /// Adds an episode whose show notes list two chapters, and returns it.
     private func episodeWithNoteChapters(_ h: Harness) async throws -> EpisodeInfo {
         var feed = try FeedParser.parse(fixture("podcast.xml"))
-        feed.episodes.append(ParsedEpisode(guid: "chapters-1", title: "With chapters", audioURL: URL(string: "https://example.com/ch.mp3")!,
-                                           duration: 3600, description: "<p>0:00 Intro</p><p>10:00 Main topic</p>"))
+        feed.episodes.append(
+            ParsedEpisode(
+                guid: "chapters-1", title: "With chapters", audioURL: URL(string: "https://example.com/ch.mp3")!,
+                duration: 3600, description: "<p>0:00 Intro</p><p>10:00 Main topic</p>"))
         try await h.library.saveFeed(feed, for: show)
         return try #require(try await h.library.episodes(of: show).first { $0.title == "With chapters" })
     }
@@ -115,7 +118,8 @@ struct PlayerTests {
         let h = try await Harness()
         let episode = try await episodeWithNoteChapters(h)
         try await h.player.play(episode.key)
-        h.engine.onChapters?(episode.audioURL, [Chapter(start: 0, title: "File A"), Chapter(start: 60, title: "File B")])
+        h.engine.onChapters?(
+            episode.audioURL, [Chapter(start: 0, title: "File A"), Chapter(start: 60, title: "File B")])
         #expect(h.player.chapters.map(\.title) == ["File A", "File B"])
     }
 
@@ -123,7 +127,8 @@ struct PlayerTests {
         let h = try await Harness()
         try await h.player.play(h.episodes[0].key)
         try await h.player.play(h.episodes[1].key)
-        h.engine.onChapters?(h.episodes[0].audioURL, [Chapter(start: 0, title: "Old A"), Chapter(start: 60, title: "Old B")])
+        h.engine.onChapters?(
+            h.episodes[0].audioURL, [Chapter(start: 0, title: "Old A"), Chapter(start: 60, title: "Old B")])
         #expect(h.player.chapters.isEmpty)
         #expect(h.player.currentChapter == nil)
     }
@@ -357,8 +362,12 @@ struct SleepTimerTests {
         try await h.library.addToQueue(h.episodes[1].key)
         try await h.player.resume()
         let url = try #require(h.player.loadedURL)
-        h.engine.onChapters?(url, [Chapter(start: 0, title: "Intro"), Chapter(start: 300, title: "News"),
-                                   Chapter(start: 900, title: "Mail")])
+        h.engine.onChapters?(
+            url,
+            [
+                Chapter(start: 0, title: "Intro"), Chapter(start: 300, title: "News"),
+                Chapter(start: 900, title: "Mail"),
+            ])
         h.engine.onTime?(position, 1200)
         return h
     }
@@ -577,4 +586,3 @@ struct LevelTests {
         #expect(h.player.levels() == (0, 0))
     }
 }
-

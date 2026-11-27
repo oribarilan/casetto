@@ -3,7 +3,9 @@ import SwiftData
 
 /// Raw inserts that stand in for records another device created before syncing. Internal, for tests.
 extension Library {
-    func insertStateForTesting(_ key: EpisodeKey, place: Place?, queuePosition: Int? = nil, firstPlayedAt: Date? = nil) throws {
+    func insertStateForTesting(_ key: EpisodeKey, place: Place?, queuePosition: Int? = nil, firstPlayedAt: Date? = nil)
+        throws
+    {
         let state = EpisodeState(episodeKey: key.rawValue)
         state.place = place?.stored.place
         state.archiveReason = place?.stored.archiveReason
@@ -41,6 +43,7 @@ extension Library {
 
     func stateCountForTesting(_ key: EpisodeKey) throws -> Int {
         let raw = key.rawValue
-        return try modelContext.fetchCount(FetchDescriptor<EpisodeState>(predicate: #Predicate { $0.episodeKey == raw }))
+        return try modelContext.fetchCount(
+            FetchDescriptor<EpisodeState>(predicate: #Predicate { $0.episodeKey == raw }))
     }
 }

@@ -57,13 +57,15 @@ struct DiscoverView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if topShowsFailed && query.isEmpty {
-                CassyEmptyState(job: .error, title: "I couldn't load the top shows.",
-                                message: "Search still works. Try a show you love.") {
+                CassyEmptyState(
+                    job: .error, title: "I couldn't load the top shows.",
+                    message: "Search still works. Try a show you love."
+                ) {
                     Button("Try Again") { attempt += 1 }
                         .filledButton()
                         .buttonBorderShape(.capsule)
                 }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
                     if (starred && inOnboarding) || query.isEmpty {
@@ -92,11 +94,14 @@ struct DiscoverView: View {
 
     /// "Popular now · Israel". Outside the United States it's a menu to switch to the United States chart and back.
     @ViewBuilder private var popularHeading: some View {
-        let name = Locale.current.region.flatMap { _ in Locale.current.localizedString(forRegionCode: country.uppercased()) }
+        let name = Locale.current.region.flatMap { _ in
+            Locale.current.localizedString(forRegionCode: country.uppercased())
+        }
         let title = name.map { "Popular now · \($0)" } ?? "Popular now"
         if let region = Locale.current.region?.identifier, region != "US",
-           let regionName = Locale.current.localizedString(forRegionCode: region),
-           let us = Locale.current.localizedString(forRegionCode: "US") {
+            let regionName = Locale.current.localizedString(forRegionCode: region),
+            let us = Locale.current.localizedString(forRegionCode: "US")
+        {
             Menu {
                 Picker("Chart", selection: $chosenCountry) {
                     Text(regionName).tag("")
@@ -128,11 +133,14 @@ struct DiscoverView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(starred ? "Nice pick!" : "Let's add some shows!")
                     .font(.subheadline.weight(.heavy))
-                Text(starred
-                     ? (inOnboarding ? "I'll queue its new episodes. Keep going, or tap Done." : "I'll queue its new episodes.")
-                     : "Tap + to follow one, or search for a show you love.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    starred
+                        ? (inOnboarding
+                            ? "I'll queue its new episodes. Keep going, or tap Done." : "I'll queue its new episodes.")
+                        : "Tap + to follow one, or search for a show you love."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, 4)
@@ -166,8 +174,10 @@ struct DiscoverView: View {
                 tip = nil
                 if isStarred != true { spins["star.\(show.id)", default: 0] += 1 }
                 if isStarred == nil { spins["follow.\(show.id)", default: 0] += 1 }
-                act(show, showing: isStarred != true,
-                    touching: isStarred == nil ? DataArea.following : .follows) { try await star(show, starred: isStarred) }
+                act(
+                    show, showing: isStarred != true,
+                    touching: isStarred == nil ? DataArea.following : .follows
+                ) { try await star(show, starred: isStarred) }
             } label: {
                 Label {
                     Text(isStarred == true ? "Unstar" : "Star")
@@ -184,8 +194,9 @@ struct DiscoverView: View {
                     try await toggleSubscription(show, following: isStarred != nil)
                     // The first follow with + teaches the star, once.
                     if isStarred == nil, !anyStarred {
-                        tip = CassyTip.once("star", target: "star.\(show.id)",
-                                            text: "Never miss this one? Star it and I'll queue its new episodes.")
+                        tip = CassyTip.once(
+                            "star", target: "star.\(show.id)",
+                            text: "Never miss this one? Star it and I'll queue its new episodes.")
                     }
                 }
             } label: {
@@ -204,8 +215,10 @@ struct DiscoverView: View {
     }
 
     /// Shows the choice at once, saves it, then lets the saved state take over. A failed save goes back.
-    private func act(_ show: DirectoryShow, showing choice: Bool?, touching areas: DataArea,
-                     _ work: @escaping () async throws -> Void) {
+    private func act(
+        _ show: DirectoryShow, showing choice: Bool?, touching areas: DataArea,
+        _ work: @escaping () async throws -> Void
+    ) {
         guard let key = ShowKey(feedURL: show.feedURL) else { return }
         withAnimation(.snappy) { pending[key] = .some(choice) }
         let previous = lastSave[key]
@@ -262,7 +275,11 @@ struct DiscoverView: View {
         } catch is CancellationError {
         } catch {
             // A saved list stays when the fresh chart fails.
-            if term.isEmpty { topShowsFailed = results.isEmpty } else { message = "I couldn't search right now. Try again in a moment." }
+            if term.isEmpty {
+                topShowsFailed = results.isEmpty
+            } else {
+                message = "I couldn't search right now. Try again in a moment."
+            }
         }
     }
 
@@ -317,7 +334,9 @@ struct FindShowsView: View {
         NavigationStack {
             DiscoverView(query: query, inOnboarding: inOnboarding)
                 .routes()
-                .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search podcasts")
+                .searchable(
+                    text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search podcasts"
+                )
                 .navigationTitle("Find Shows")
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar {

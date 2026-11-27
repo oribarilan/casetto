@@ -54,7 +54,9 @@ final class OnboardingTests: UITestCase {
     func testStarTip() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "NO", "-hasSeenTip.star", "NO"]
+        app.launchArguments = [
+            "-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "NO", "-hasSeenTip.star", "NO",
+        ]
         app.launch()
 
         let start = app.buttons["Let's add some shows"]
@@ -78,8 +80,10 @@ final class OnboardingTests: UITestCase {
     func testWhatsNew() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES",
-                               "-lastSeenVersion", "0.1"]
+        app.launchArguments = [
+            "-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES",
+            "-lastSeenVersion", "0.1",
+        ]
         app.launch()
         let toast = app.buttons["cassyToast"]
         XCTAssertTrue(toast.waitForExistence(timeout: 5), "no update toast")
@@ -90,13 +94,15 @@ final class OnboardingTests: UITestCase {
         let oldest = app.staticTexts.matching(NSPredicate(format: "label ==[c] 'Version 0.2'")).firstMatch
         for _ in 0..<6 where !oldest.exists { app.swipeUp() }
         XCTAssertTrue(oldest.exists, "no 0.2 section")
-        XCTAssertFalse(app.staticTexts["VERSION 0.1"].exists || app.staticTexts["Version 0.1"].exists, "lists 0.1, already seen")
+        XCTAssertFalse(
+            app.staticTexts["VERSION 0.1"].exists || app.staticTexts["Version 0.1"].exists, "lists 0.1, already seen")
         snapshot("29 Whats New")
         app.navigationBars["What's New"].buttons["Done"].tap()
 
         app.navigationBars.buttons["Settings"].tap()
         let version = app.buttons["version"]
-        app.swipeUp(); app.swipeUp()
+        app.swipeUp()
+        app.swipeUp()
         XCTAssertTrue(version.waitForExistence(timeout: 3), "no version in Settings")
         let current = Bundle(for: Self.self).object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
         XCTAssertTrue(version.label.contains("Version \(current)"), "\(version.label) is not \(current)")

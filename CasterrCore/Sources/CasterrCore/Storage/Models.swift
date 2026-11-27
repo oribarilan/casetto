@@ -114,7 +114,8 @@ import SwiftData
     var episodeTitle: String = ""
     var audioURL: URL?
 
-    init(episodeKey: String, position: Double, showTitle: String, episodeTitle: String, audioURL: URL, createdAt: Date) {
+    init(episodeKey: String, position: Double, showTitle: String, episodeTitle: String, audioURL: URL, createdAt: Date)
+    {
         self.episodeKey = episodeKey
         self.position = position
         self.showTitle = showTitle

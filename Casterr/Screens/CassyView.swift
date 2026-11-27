@@ -65,7 +65,10 @@ extension CassyView {
             let next = CassyAnimation.nextIdleLoop(after: previous, using: &generator)
             previous = next
             loop = (next, .now)
-            do { try await Task.sleep(for: .seconds(next.duration ?? 1)) } catch { loop = nil; return }
+            do { try await Task.sleep(for: .seconds(next.duration ?? 1)) } catch {
+                loop = nil
+                return
+            }
             loop = nil
         }
     }
@@ -91,8 +94,9 @@ private struct CassyDrawing {
     static let star = Color(red: 1, green: 0.784, blue: 0.227)
 
     private func line(_ path: Path, _ width: CGFloat, in context: inout GraphicsContext, opacity: Double = 1) {
-        context.stroke(path, with: .color(Self.ink.opacity(opacity)),
-                       style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
+        context.stroke(
+            path, with: .color(Self.ink.opacity(opacity)),
+            style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
     }
 
     private func quad(_ points: [(CGFloat, CGFloat, CGFloat, CGFloat, CGFloat, CGFloat)]) -> Path {
@@ -108,7 +112,8 @@ private struct CassyDrawing {
         if let loop = animation, loop.isIdleLoop {
             // Loops that move her whole body turn or lift around the bottom center.
             let p = progress
-            var angle = 0.0, lift = 0.0
+            var angle = 0.0
+            var lift = 0.0
             switch loop {
             case .breathe: lift = 1.5 * sin(p * .pi)
             case .hum: angle = 2.5 * sin(p * 2 * .pi)
@@ -145,15 +150,20 @@ private struct CassyDrawing {
     }
 
     private func drawBody(in context: inout GraphicsContext) {
-        context.fill(Path(roundedRect: CGRect(x: 13, y: 19, width: 104, height: 66), cornerRadius: 16), with: .color(Self.orange))
+        context.fill(
+            Path(roundedRect: CGRect(x: 13, y: 19, width: 104, height: 66), cornerRadius: 16), with: .color(Self.orange)
+        )
         let body = Path(roundedRect: CGRect(x: 8, y: 14, width: 104, height: 66), cornerRadius: 16)
         context.fill(body, with: .color(Self.cream))
         line(body, 4, in: &context)
         line(Path(roundedRect: CGRect(x: 19, y: 23, width: 82, height: 36), cornerRadius: 9), 3, in: &context)
-        line(Path { p in
-            p.move(to: CGPoint(x: 42, y: 80)); p.addLine(to: CGPoint(x: 46, y: 74))
-            p.addLine(to: CGPoint(x: 74, y: 74)); p.addLine(to: CGPoint(x: 78, y: 80))
-        }, 2.5, in: &context, opacity: 0.55)
+        line(
+            Path { p in
+                p.move(to: CGPoint(x: 42, y: 80))
+                p.addLine(to: CGPoint(x: 46, y: 74))
+                p.addLine(to: CGPoint(x: 74, y: 74))
+                p.addLine(to: CGPoint(x: 78, y: 80))
+            }, 2.5, in: &context, opacity: 0.55)
     }
 
     private func eyeSocket(_ cx: CGFloat, in context: inout GraphicsContext) {
@@ -162,13 +172,16 @@ private struct CassyDrawing {
         line(socket, 3, in: &context)
     }
 
-    private func reel(_ cx: CGFloat, angle: Double, look: CGPoint = .zero, squash: Double = 1, in context: inout GraphicsContext) {
+    private func reel(
+        _ cx: CGFloat, angle: Double, look: CGPoint = .zero, squash: Double = 1, in context: inout GraphicsContext
+    ) {
         var eye = context
         eye.translateBy(x: cx, y: 42)
         eye.scaleBy(x: 1, y: max(squash, 0.08))
         eye.translateBy(x: -cx, y: -42)
         eyeSocket(cx, in: &eye)
-        let hx = cx + look.x, hy = 42 + look.y
+        let hx = cx + look.x
+        let hy = 42 + look.y
         eye.fill(Path(ellipseIn: CGRect(x: hx - 4.2, y: hy - 4.2, width: 8.4, height: 8.4)), with: .color(Self.ink))
         let spokes = Path { p in
             for k in 0..<4 {
@@ -188,7 +201,8 @@ private struct CassyDrawing {
         eye.scaleBy(x: 1, y: max(squash, 0.08))
         eye.translateBy(x: -cx, y: -42)
         eyeSocket(cx, in: &eye)
-        let px = cx + look.x, py = 42.5 + look.y
+        let px = cx + look.x
+        let py = 42.5 + look.y
         eye.fill(Path(ellipseIn: CGRect(x: px - 6.2, y: py - 6.2, width: 12.4, height: 12.4)), with: .color(Self.ink))
         eye.fill(Path(ellipseIn: CGRect(x: px + 0.2, y: py - 4.5, width: 4, height: 4)), with: .color(.white))
     }
@@ -244,8 +258,10 @@ private struct CassyDrawing {
             let open = bump(p, 0.1, 0.9)
             eye(42, squash: 1 - 0.75 * open, in: &context)
             eye(78, squash: 1 - 0.75 * open, in: &context)
-            let ry = 2.6 + 4.6 * open, rx = 3.5 + 1.5 * open
-            context.fill(Path(ellipseIn: CGRect(x: 60 - rx, y: 67 - ry, width: rx * 2, height: ry * 2)), with: .color(Self.ink))
+            let ry = 2.6 + 4.6 * open
+            let rx = 3.5 + 1.5 * open
+            context.fill(
+                Path(ellipseIn: CGRect(x: 60 - rx, y: 67 - ry, width: rx * 2, height: ry * 2)), with: .color(Self.ink))
         case .peek:
             let x = -3 * bump(p, 0, 0.5) + 3 * bump(p, 0.5, 1)
             eye(42, look: CGPoint(x: x, y: -1), in: &context)
@@ -288,14 +304,17 @@ private struct CassyDrawing {
             let angle = time * 2 * .pi / 1.8
             spiral(42, angle: angle, in: &context)
             spiral(78, angle: angle, in: &context)
-            line(Path { p in
-                p.move(to: CGPoint(x: 47, y: 67))
-                var x: CGFloat = 47
-                for k in 0..<4 {
-                    p.addQuadCurve(to: CGPoint(x: x + 6.5, y: 67), control: CGPoint(x: x + 3.25, y: k.isMultiple(of: 2) ? 63 : 71))
-                    x += 6.5
-                }
-            }, 3, in: &context)
+            line(
+                Path { p in
+                    p.move(to: CGPoint(x: 47, y: 67))
+                    var x: CGFloat = 47
+                    for k in 0..<4 {
+                        p.addQuadCurve(
+                            to: CGPoint(x: x + 6.5, y: 67),
+                            control: CGPoint(x: x + 3.25, y: k.isMultiple(of: 2) ? 63 : 71))
+                        x += 6.5
+                    }
+                }, 3, in: &context)
         default:
             drawIdleFace(animation, in: &context)
         }
@@ -307,26 +326,33 @@ private struct CassyDrawing {
             // Speed lines flicker behind her.
             var lines = context
             lines.opacity = still ? 0.7 : 0.2 + 0.7 * (0.5 + 0.5 * sin(time * 2 * .pi / 0.5))
-            line(Path { p in
-                for (x0, y, x1) in [(-4.0, 32.0, 6.0), (-8, 44, 6), (-4, 56, 6)] {
-                    p.move(to: CGPoint(x: x0, y: y)); p.addLine(to: CGPoint(x: x1, y: y))
-                }
-            }, 2.6, in: &lines)
+            line(
+                Path { p in
+                    for (x0, y, x1) in [(-4.0, 32.0, 6.0), (-8, 44, 6), (-4, 56, 6)] {
+                        p.move(to: CGPoint(x: x0, y: y))
+                        p.addLine(to: CGPoint(x: x1, y: y))
+                    }
+                }, 2.6, in: &lines)
         case .dozing:
             for (offset, size, x, y) in [(0.0, 13.0, 98.0, 14.0), (0.5, 10.0, 107.0, 6.0)] {
                 let phase = still ? 0.3 : (time / 2.6 + offset).truncatingRemainder(dividingBy: 1)
                 let opacity = phase < 0.3 ? phase / 0.3 * 0.9 : 0.9 * (1 - (phase - 0.3) / 0.7)
                 var z = context
                 z.opacity = still ? 0.8 : opacity
-                z.draw(Text("z").font(.system(size: size, weight: .heavy, design: .rounded)).foregroundStyle(Self.ink),
-                       at: CGPoint(x: x + 8 * phase, y: y + 4 - 18 * phase))
+                z.draw(
+                    Text("z").font(.system(size: size, weight: .heavy, design: .rounded)).foregroundStyle(Self.ink),
+                    at: CGPoint(x: x + 8 * phase, y: y + 4 - 18 * phase))
             }
         case .cheer:
-            context.stroke(Path { p in
-                for (x0, y0, x1, y1) in [(4.0, 6.0, 7.0, 11.0), (116, 6, 113, 11), (12, 2, 13, 6), (108, 2, 107, 6)] {
-                    p.move(to: CGPoint(x: x0, y: y0)); p.addLine(to: CGPoint(x: x1, y: y1))
-                }
-            }, with: .color(Self.orange), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+            context.stroke(
+                Path { p in
+                    for (x0, y0, x1, y1) in [
+                        (4.0, 6.0, 7.0, 11.0), (116, 6, 113, 11), (12, 2, 13, 6), (108, 2, 107, 6),
+                    ] {
+                        p.move(to: CGPoint(x: x0, y: y0))
+                        p.addLine(to: CGPoint(x: x1, y: y1))
+                    }
+                }, with: .color(Self.orange), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
         case .dizzy:
             let bob = still ? 0 : -2 * sin(time * 2 * .pi / 1.6)
             for (x, y, s) in [(18.0, 8.0, 6.0), (104, 4, 5), (60, -1, 4)] {

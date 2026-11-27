@@ -35,8 +35,11 @@ public struct AppleDirectory: Sendable {
 
     /// Top shows in chart order. The chart has no feed addresses, so one lookup call adds them;
     /// shows the lookup can't give a feed address for are left out.
-    public func topShows(country: String = deviceCountry, limit: Int = 25) async throws(DirectoryError) -> [DirectoryShow] {
-        let chartURL = URL(string: "https://rss.marketingtools.apple.com/api/v2/\(country)/podcasts/top/\(limit)/podcasts.json")!
+    public func topShows(country: String = deviceCountry, limit: Int = 25) async throws(DirectoryError)
+        -> [DirectoryShow]
+    {
+        let chartURL = URL(
+            string: "https://rss.marketingtools.apple.com/api/v2/\(country)/podcasts/top/\(limit)/podcasts.json")!
         // The chart endpoint fails now and then on its own; one retry hides most of those.
         let chart: Chart
         do { chart = try await get(chartURL) } catch { chart = try await get(chartURL) }
@@ -54,7 +57,8 @@ public struct AppleDirectory: Sendable {
     }
 
     /// Up to 25 shows matching the term.
-    public func search(_ term: String, country: String = deviceCountry) async throws(DirectoryError) -> [DirectoryShow] {
+    public func search(_ term: String, country: String = deviceCountry) async throws(DirectoryError) -> [DirectoryShow]
+    {
         var search = URLComponents(string: "https://itunes.apple.com/search")!
         search.queryItems = [
             URLQueryItem(name: "media", value: "podcast"),
@@ -101,8 +105,8 @@ private struct ITunesResults: Decodable {
         var seen: Set<ShowKey> = []
         return results.compactMap { result in
             guard let id = result.collectionId, let title = result.collectionName,
-                  let feed = result.feedUrl.flatMap(URL.init(string:)), let key = ShowKey(feedURL: feed),
-                  seen.insert(key).inserted
+                let feed = result.feedUrl.flatMap(URL.init(string:)), let key = ShowKey(feedURL: feed),
+                seen.insert(key).inserted
             else { return nil }
             return DirectoryShow(
                 id: String(id), title: title, author: result.artistName,
@@ -120,11 +124,11 @@ public struct ApplePodcastsLink: Equatable, Sendable {
     /// Nil for anything that isn't an Apple Podcasts link to one episode.
     public init?(_ url: URL) {
         guard let host = url.host()?.lowercased(), host == "podcasts.apple.com" || host == "itunes.apple.com",
-              let showID = url.pathComponents.last(where: { $0.hasPrefix("id") }).map({ String($0.dropFirst(2)) }),
-              !showID.isEmpty, showID.allSatisfy(\.isNumber),
-              let episodeID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
-                  .queryItems?.first(where: { $0.name == "i" })?.value,
-              !episodeID.isEmpty, episodeID.allSatisfy(\.isNumber)
+            let showID = url.pathComponents.last(where: { $0.hasPrefix("id") }).map({ String($0.dropFirst(2)) }),
+            !showID.isEmpty, showID.allSatisfy(\.isNumber),
+            let episodeID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first(where: { $0.name == "i" })?.value,
+            !episodeID.isEmpty, episodeID.allSatisfy(\.isNumber)
         else { return nil }
         self.showID = showID
         self.episodeID = episodeID
@@ -150,11 +154,13 @@ extension AppleDirectory {
         ]
         let found: EpisodeResults = try await get(lookup.url!)
         guard let episode = found.results.first(where: { $0.trackId.map(String.init) == link.episodeID }),
-              let title = episode.trackName,
-              let feed = (episode.feedUrl ?? found.results.first { $0.feedUrl != nil }?.feedUrl).flatMap(URL.init(string:))
+            let title = episode.trackName,
+            let feed = (episode.feedUrl ?? found.results.first { $0.feedUrl != nil }?.feedUrl).flatMap(
+                URL.init(string:))
         else { return nil }
-        return DirectoryEpisode(title: title, feedURL: feed, guid: episode.episodeGuid,
-                                audioURL: episode.episodeUrl.flatMap(URL.init(string:)))
+        return DirectoryEpisode(
+            title: title, feedURL: feed, guid: episode.episodeGuid,
+            audioURL: episode.episodeUrl.flatMap(URL.init(string:)))
     }
 
 }

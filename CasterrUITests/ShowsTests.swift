@@ -20,7 +20,9 @@ final class ShowsTests: UITestCase {
         snapshot("2 Not a Podcast")
         app.buttons["Cancel"].tap()
         subscribe(to: "https://nonexistent.invalid/feed.xml")
-        XCTAssertTrue(app.staticTexts["Couldn't reach that feed. Check the address and your connection."].waitForExistence(timeout: 20))
+        XCTAssertTrue(
+            app.staticTexts["Couldn't reach that feed. Check the address and your connection."].waitForExistence(
+                timeout: 20))
         app.buttons["Cancel"].tap()
         subscribe(to: feed)
         let show = app.buttons["Planet Money, NPR"]
@@ -53,7 +55,9 @@ final class ShowsTests: UITestCase {
             episodes.element(boundBy: index).swipeRight()
             app.buttons["Add to Queue"].tap()
         }
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Queued'")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Queued'")).firstMatch.waitForExistence(
+                timeout: 5))
         // Played in the line folds the third away.
         episodes.element(boundBy: 2).tap()
         app.buttons["Played"].tap()
@@ -109,11 +113,14 @@ final class ShowsTests: UITestCase {
 
         // Long-press and drag reorders without an Edit button.
         let firstBefore = queue.element(boundBy: 0).label
-        queue.element(boundBy: 1).press(forDuration: 1.5, thenDragTo: queue.element(boundBy: 0),
-                                        withVelocity: .slow, thenHoldForDuration: 0.8)
+        queue.element(boundBy: 1).press(
+            forDuration: 1.5, thenDragTo: queue.element(boundBy: 0),
+            withVelocity: .slow, thenHoldForDuration: 0.8)
         XCTAssertTrue(queue.element(boundBy: 1).waitForExistence(timeout: 5))
-        XCTAssertTrue(queue.element(boundBy: 1).label.contains(firstBefore.components(separatedBy: ", ").dropFirst().first ?? "?"),
-                      "first: \(queue.element(boundBy: 0).label)")
+        XCTAssertTrue(
+            queue.element(boundBy: 1).label.contains(
+                firstBefore.components(separatedBy: ", ").dropFirst().first ?? "?"),
+            "first: \(queue.element(boundBy: 0).label)")
         queue.element(boundBy: 1).swipeLeft()
         app.buttons["Remove"].tap()
         XCTAssertEqual(queue.count, 1)
@@ -188,9 +195,12 @@ final class ShowsTests: UITestCase {
         let row = app.buttons.matching(identifier: "directoryShow").firstMatch
         let title = String(row.label.split(separator: ",").first ?? "")
         row.tap()
-        XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 2), "the directory's name \(title) didn't show at once")
+        XCTAssertTrue(
+            app.staticTexts[title].waitForExistence(timeout: 2), "the directory's name \(title) didn't show at once")
         snapshot("25a Show Loading")
-        XCTAssertTrue(app.buttons.matching(identifier: "episode").firstMatch.waitForExistence(timeout: 30), "no episodes on a Find Shows page")
+        XCTAssertTrue(
+            app.buttons.matching(identifier: "episode").firstMatch.waitForExistence(timeout: 30),
+            "no episodes on a Find Shows page")
         XCTAssertEqual(app.buttons["followShow"].label, "Follow")
         snapshot("25b Show From Find Shows")
         app.navigationBars.buttons.element(boundBy: 0).tap()
@@ -222,10 +232,14 @@ final class ShowsTests: UITestCase {
         search.tap()
         search.typeText("planet")
         XCTAssertTrue(app.buttons["Planet Money, NPR"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons.matching(identifier: "starButton").firstMatch.waitForExistence(timeout: 3), "directory shows in the Shows search")
+        XCTAssertFalse(
+            app.buttons.matching(identifier: "starButton").firstMatch.waitForExistence(timeout: 3),
+            "directory shows in the Shows search")
         snapshot("26 Search Your Shows")
         search.typeText("zzz")
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'No Results'")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'No Results'")).firstMatch.waitForExistence(
+                timeout: 5))
     }
 
     /// Follow, Star, the New episodes row and Settings show a tap at once, before the save lands.
@@ -234,7 +248,9 @@ final class ShowsTests: UITestCase {
     func testInstantControls() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenTip.star", "YES", "-hasSeenOnboarding", "NO"]
+        app.launchArguments = [
+            "-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenTip.star", "YES", "-hasSeenOnboarding", "NO",
+        ]
         app.launch()
         // Onboarding's Find Shows stays open after a follow, unlike the Shows tab, which then shows the grid.
         app.buttons["Let's add some shows"].tap()
@@ -311,7 +327,9 @@ final class ShowsTests: UITestCase {
     func testChartCountry() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES", "-AppleLocale", "en_IL"]
+        app.launchArguments = [
+            "-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES", "-AppleLocale", "en_IL",
+        ]
         app.launch()
         app.tabBars.buttons["Shows"].tap()
         XCTAssertTrue(waitForTopShows())
@@ -328,11 +346,13 @@ final class ShowsTests: UITestCase {
         app.launch()
         app.tabBars.buttons["Shows"].tap()
         XCTAssertTrue(waitForTopShows())
-        XCTAssertTrue(app.buttons["chartCountry"].label.hasPrefix("Popular now · United States"), "the choice wasn't kept")
+        XCTAssertTrue(
+            app.buttons["chartCountry"].label.hasPrefix("Popular now · United States"), "the choice wasn't kept")
 
         // Both charts are saved now, so switching shows the other one at once, with no loading.
         pickChart("Israel")
-        XCTAssertFalse(app.staticTexts["Flipping through the shelves…"].exists, "switching to a saved chart showed loading")
+        XCTAssertFalse(
+            app.staticTexts["Flipping through the shelves…"].exists, "switching to a saved chart showed loading")
         XCTAssertTrue(app.buttons.matching(identifier: "starButton").firstMatch.waitForExistence(timeout: 1))
     }
 

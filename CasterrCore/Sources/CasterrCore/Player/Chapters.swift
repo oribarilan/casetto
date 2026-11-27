@@ -66,7 +66,7 @@ public enum ShowNotesChapters {
     private static func chapter(in line: String) -> Chapter? {
         let pattern = /^\s*[\(\[]?(?:(\d{1,2}):)?(\d{1,2}):(\d{2})[\)\]]?\s*[-–—:|]?\s*(.+?)\s*$/
         guard let match = line.wholeMatch(of: pattern),
-              let minutes = Int(match.2), let seconds = Int(match.3), seconds < 60
+            let minutes = Int(match.2), let seconds = Int(match.3), seconds < 60
         else { return nil }
         let hours = match.1.flatMap { Int($0) } ?? 0
         if match.1 != nil, minutes >= 60 { return nil }
@@ -87,7 +87,9 @@ enum HTMLText {
 
     static func decodingEntities(_ text: String) -> String {
         var text = text
-        for (entity, character) in ["&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": "\"", "&#39;": "'", "&apos;": "'", "&nbsp;": " "] {
+        for (entity, character) in [
+            "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": "\"", "&#39;": "'", "&apos;": "'", "&nbsp;": " ",
+        ] {
             text = text.replacing(entity, with: character)
         }
         return text

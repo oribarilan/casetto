@@ -1,9 +1,12 @@
 import Testing
+
 @testable import CasterrCore
 
 struct PlaceTests {
-    @Test(arguments: [Place.inbox, .queue, .archive(.played), .archive(.dismissed), .archive(.expired),
-                      .archive(.skipped), .archive(.unsubscribed)])
+    @Test(arguments: [
+        Place.inbox, .queue, .archive(.played), .archive(.dismissed), .archive(.expired),
+        .archive(.skipped), .archive(.unsubscribed),
+    ])
     func roundTripsThroughStoredForm(place: Place) throws {
         let stored = place.stored
         #expect(try Place(storedPlace: stored.place, archiveReason: stored.archiveReason) == place)

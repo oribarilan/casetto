@@ -38,7 +38,9 @@ public struct ClipWindow: Equatable, Sendable {
 
     /// Moves one edge of `clip` toward `time`. The clip stays 5 to 60 s long and within the span,
     /// and the other edge stays put.
-    public func dragging(_ edge: Edge, of clip: ClosedRange<TimeInterval>, to time: TimeInterval) -> ClosedRange<TimeInterval> {
+    public func dragging(_ edge: Edge, of clip: ClosedRange<TimeInterval>, to time: TimeInterval) -> ClosedRange<
+        TimeInterval
+    > {
         switch edge {
         case .start:
             let earliest = max(span.lowerBound, clip.upperBound - Self.longest)
@@ -74,8 +76,10 @@ public struct ClipWindow: Equatable, Sendable {
     }
 
     /// `length` centered on `time`, shifted to fit `bounds`, and no longer than `bounds`.
-    private static func centered(on time: TimeInterval, length: TimeInterval,
-                                 in bounds: ClosedRange<TimeInterval>) -> ClosedRange<TimeInterval> {
+    private static func centered(
+        on time: TimeInterval, length: TimeInterval,
+        in bounds: ClosedRange<TimeInterval>
+    ) -> ClosedRange<TimeInterval> {
         let length = min(length, bounds.upperBound - bounds.lowerBound)
         let start = min(max(time - length / 2, bounds.lowerBound), bounds.upperBound - length)
         return start...(start + length)

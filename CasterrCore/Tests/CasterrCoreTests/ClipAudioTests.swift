@@ -1,11 +1,13 @@
 import Foundation
 import Testing
+
 @testable import CasterrCore
 
 struct LoudnessReadingsTests {
     @Test func oneReadingPerTenMillisecondsTimedFromTheStart() {
         // 25 ms at 1 kHz: 10 samples a reading, the last 5 samples dropped.
-        let samples = [Float](repeating: 0.5, count: 10) + [Float](repeating: 0, count: 10) + [Float](repeating: 1, count: 5)
+        let samples =
+            [Float](repeating: 0.5, count: 10) + [Float](repeating: 0, count: 10) + [Float](repeating: 1, count: 5)
         let readings = Loudness.readings(from: samples, sampleRate: 1000, startingAt: 677)
         #expect(readings == [Loudness(time: 677, level: 0.5), Loudness(time: 677.01, level: 0)])
     }
@@ -66,7 +68,7 @@ struct MP3HeaderTests {
     // Built like ATP 718's failing part: an MPEG-2 header at 9 that's really audio data, then 64 kbps
     // MPEG-1 frames from 140. The episode's first frame, the reference, is the same format unpadded.
     private let reference = Data([0xFF, 0xFB, 0x50, 0xC4] + [UInt8](repeating: 0, count: 60))
-    private let paddedFrame = [0xFF, 0xFB, 0x52, 0xC4] + [UInt8](repeating: 0, count: 205) // 209 bytes
+    private let paddedFrame = [0xFF, 0xFB, 0x52, 0xC4] + [UInt8](repeating: 0, count: 205)  // 209 bytes
 
     @Test func skipsBytesThatOnlyLookLikeAFrame() {
         var lead = [UInt8](repeating: 0x11, count: 140)
@@ -79,7 +81,8 @@ struct MP3HeaderTests {
 
     @Test func aLoneLookalikeWithoutASecondFrameIsSkipped() {
         // The same format, but nothing where its frame would end.
-        let part = Data([0x11, 0xFF, 0xFB, 0x50, 0xC4] + [UInt8](repeating: 0x11, count: 300) + paddedFrame + paddedFrame)
+        let part = Data(
+            [0x11, 0xFF, 0xFB, 0x50, 0xC4] + [UInt8](repeating: 0x11, count: 300) + paddedFrame + paddedFrame)
         #expect(MP3Header.firstFrame(in: part, like: reference)?.offset == 305)
     }
 
@@ -95,7 +98,7 @@ struct MP3HeaderTests {
 
     private func frame(_ header: [UInt8], marker: String?, at offset: Int) -> Data {
         var bytes = header + [UInt8](repeating: 0, count: 60)
-        if let marker { bytes.replaceSubrange(offset ..< offset + 4, with: Array(marker.utf8)) }
+        if let marker { bytes.replaceSubrange(offset..<offset + 4, with: Array(marker.utf8)) }
         return Data(bytes)
     }
 }

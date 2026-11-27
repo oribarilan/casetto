@@ -15,7 +15,8 @@ public enum ButtonAction: String, CaseIterable, Sendable {
 
     /// The Settings footer: what each press does now, joined when both match.
     public static func footer(double: ButtonAction, triple: ButtonAction) -> String {
-        let presses = double == triple
+        let presses =
+            double == triple
             ? "Double and triple press \(double.phrase(plural: true))."
             : "Double press \(double.phrase(plural: false)). Triple press \(triple.phrase(plural: false))."
         return presses + " Other headphones and cars do the same with their next and previous buttons."

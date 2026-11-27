@@ -44,8 +44,9 @@ final class AppModel {
     /// The releases What's New lists while its sheet is open.
     var whatsNew: [Changelog.Release]?
     /// The bundled CHANGELOG.md.
-    static let changelog = Changelog(Bundle.main.url(forResource: "CHANGELOG", withExtension: "md")
-        .flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? "")
+    static let changelog = Changelog(
+        Bundle.main.url(forResource: "CHANGELOG", withExtension: "md")
+            .flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? "")
     static let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
     static let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
     /// The bookmark the toast confirms.
@@ -76,9 +77,11 @@ final class AppModel {
         let store = try DownloadStore.standard()
         let shared = try? SharedStore.standard()
         sharedStore = shared
-        player = Player(library: library, engine: AVPlayerEngine(), localFile: { key, audioURL in
-            shared?.file(for: audioURL) ?? store.localFile(for: key, audioURL: audioURL)
-        })
+        player = Player(
+            library: library, engine: AVPlayerEngine(),
+            localFile: { key, audioURL in
+                shared?.file(for: audioURL) ?? store.localFile(for: key, audioURL: audioURL)
+            })
         downloader = Downloader(store: store)
         if ProcessInfo.processInfo.arguments.contains("-fastClock") {
             // UI tests: one second passes as one day, so Inbox expiry can be tested.
@@ -157,10 +160,13 @@ final class AppModel {
 
     private func performSync() async {
         // Shared files are already on the device.
-        let queue = ((try? await library.playableQueue()) ?? []).filter { $0.rawValue.hasPrefix(ShowKey.shared.rawValue + "|") == false }
+        let queue = ((try? await library.playableQueue()) ?? []).filter {
+            $0.rawValue.hasPrefix(ShowKey.shared.rawValue + "|") == false
+        }
         let keep = (try? await library.downloadCount()) ?? 0
         let running = await downloader.running()
-        let plan = DownloadPlan.make(queue: queue, keep: keep, files: downloader.store.stems(), running: Set(running.keys))
+        let plan = DownloadPlan.make(
+            queue: queue, keep: keep, files: downloader.store.stems(), running: Set(running.keys))
         wantedDownloads = Set(queue.prefix(max(keep, 0)))
         for key in plan.cancel { running[key]?.cancel() }
         for stem in plan.delete { downloader.store.delete(stem: stem) }
@@ -174,7 +180,7 @@ final class AppModel {
     @discardableResult
     func bookmark() async -> Bool {
         guard let episode = player.episode,
-              let id = try? await library.addBookmark(episode, showTitle: player.show?.title ?? "", at: player.position)
+            let id = try? await library.addBookmark(episode, showTitle: player.show?.title ?? "", at: player.position)
         else { return false }
         lastBookmark = RecentBookmark(id: id, position: player.position)
         bump(.bookmarks)
@@ -218,16 +224,18 @@ final class AppModel {
         if last == nil, !hasSeenOnboarding || uiTesting { return }
         let releases = last.map { Self.changelog.releases(after: $0) } ?? Array(Self.changelog.releases.prefix(1))
         guard !releases.isEmpty else { return }
-        cassyToast = CassyMessage(job: .success, text: "I learned some new tricks.", actionTitle: "See") { [weak self] in
+        cassyToast = CassyMessage(job: .success, text: "I learned some new tricks.", actionTitle: "See") {
+            [weak self] in
             self?.whatsNew = releases
         }
     }
 
     /// What the episode's row says about its download, the same on every screen.
     func downloadState(_ episode: EpisodeInfo) -> DownloadState? {
-        DownloadState.of(downloaded: isDownloaded(episode), progress: downloadProgress[episode.key],
-                         wanted: wantedDownloads.contains(episode.key), downloadsAllowed: downloadsAllowed,
-                         loaded: player.episode?.key == episode.key)
+        DownloadState.of(
+            downloaded: isDownloaded(episode), progress: downloadProgress[episode.key],
+            wanted: wantedDownloads.contains(episode.key), downloadsAllowed: downloadsAllowed,
+            loaded: player.episode?.key == episode.key)
     }
 
     /// The episode should download, isn't, and the phone has a network only the listener may let it use.
@@ -383,17 +391,20 @@ final class AppModel {
             // The Queue ran out: Cassy offers to look for more.
             Task { [weak self] in
                 for await ranOut in Observations({ player.queueRanOutAt }) where ranOut != nil {
-                    self?.cassyToast = CassyMessage(job: .asleep, text: "That's the lot. Want me to check for new episodes?",
-                                                    actionTitle: "Check Now") { [weak self] in await self?.refresh() }
+                    self?.cassyToast = CassyMessage(
+                        job: .asleep, text: "That's the lot. Want me to check for new episodes?",
+                        actionTitle: "Check Now"
+                    ) { [weak self] in await self?.refresh() }
                 }
             },
         ]
     }
 
     private func startNowPlaying() {
-        let session = MediaSession(NowPlayingBridge(player: player) { [weak self] press in
-            await self?.button(press)
-        })
+        let session = MediaSession(
+            NowPlayingBridge(player: player) { [weak self] press in
+                await self?.button(press)
+            })
         nowPlaying = session
         Task { try? await session.requestToBecomeSystemPrimary() }
     }
@@ -406,20 +417,23 @@ final class AppModel {
         eventTasks = [
             Task {
                 for await note in center.notifications(named: AVAudioSession.didBecomeInactiveNotification) {
-                    let context = note.userInfo?[AVAudioSession.deactivationContextKey] as? AVAudioSession.DeactivationContext
+                    let context =
+                        note.userInfo?[AVAudioSession.deactivationContextKey] as? AVAudioSession.DeactivationContext
                     if context?.source == .system { try? await player.pause() }
                 }
             },
             Task {
                 for await note in center.notifications(named: AVAudioSession.resumptionRecommendationNotification) {
-                    let context = note.userInfo?[AVAudioSession.resumptionContextKey] as? AVAudioSession.ResumptionContext
+                    let context =
+                        note.userInfo?[AVAudioSession.resumptionContextKey] as? AVAudioSession.ResumptionContext
                     if context?.recommendation == .shouldResume { try? await player.resume() }
                 }
             },
             Task {
                 for await note in center.notifications(named: AVAudioSession.routeChangeNotification) {
                     guard let raw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
-                          AVAudioSession.RouteChangeReason(rawValue: raw) == .oldDeviceUnavailable else { continue }
+                        AVAudioSession.RouteChangeReason(rawValue: raw) == .oldDeviceUnavailable
+                    else { continue }
                     try? await player.pause()
                 }
             },

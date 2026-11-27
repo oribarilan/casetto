@@ -14,7 +14,8 @@ public struct Changelog: Equatable, Sendable {
         for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
             let line = line.trimmingCharacters(in: .whitespaces)
             if line.hasPrefix("## ") {
-                releases.append(Release(version: String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces), lines: []))
+                releases.append(
+                    Release(version: String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces), lines: []))
             } else if line.hasPrefix("- "), !releases.isEmpty {
                 releases[releases.count - 1].lines.append(String(line.dropFirst(2)))
             }

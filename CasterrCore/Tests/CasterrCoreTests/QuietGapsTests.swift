@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import CasterrCore
 
 struct QuietGapsTests {
@@ -16,7 +17,8 @@ struct QuietGapsTests {
     }
 
     @Test func neighborhoodFindsAGapInAQuietStretchNextToALoudOne() {
-        let readings = speech(from: 0, to: 14, level: 0.6)
+        let readings =
+            speech(from: 0, to: 14, level: 0.6)
             + speech(from: 14, to: 20, level: 0.03, quiet: [18.0...18.19], quietLevel: 0.003)
         let local = QuietGaps.find(in: readings, neighborhood: QuietGaps.editorNeighborhood)
         #expect(local.count == 1)
@@ -44,7 +46,7 @@ struct QuietGapsTests {
 }
 
 struct ClipSnapTests {
-    let window = ClipWindow(position: 739, duration: 3600) // 12:19
+    let window = ClipWindow(position: 739, duration: 3600)  // 12:19
 
     @Test func snapsToAGapWithinHalfASecond() {
         // A pause from 12:03.1 to 12:03.3.

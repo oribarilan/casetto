@@ -29,9 +29,11 @@ public actor Library: ModelActor {
     /// User data syncs through iCloud when the app has an iCloud container, and stays local otherwise.
     public static func open(inMemory: Bool = false) throws -> Library {
         try open(configurations: [
-            ModelConfiguration("FeedCache", schema: Schemas.feedCache, isStoredInMemoryOnly: inMemory, cloudKitDatabase: .none),
-            ModelConfiguration("UserData", schema: Schemas.userData, isStoredInMemoryOnly: inMemory,
-                               cloudKitDatabase: inMemory ? .none : .automatic),
+            ModelConfiguration(
+                "FeedCache", schema: Schemas.feedCache, isStoredInMemoryOnly: inMemory, cloudKitDatabase: .none),
+            ModelConfiguration(
+                "UserData", schema: Schemas.userData, isStoredInMemoryOnly: inMemory,
+                cloudKitDatabase: inMemory ? .none : .automatic),
         ])
     }
 
@@ -39,16 +41,20 @@ public actor Library: ModelActor {
     /// which is how tests stand in for two devices writing before a sync.
     static func open(directory: URL) throws -> Library {
         try open(configurations: [
-            ModelConfiguration("FeedCache", schema: Schemas.feedCache, url: directory.appending(path: "FeedCache.store"),
-                               cloudKitDatabase: .none),
-            ModelConfiguration("UserData", schema: Schemas.userData, url: directory.appending(path: "UserData.store"),
-                               cloudKitDatabase: .none),
+            ModelConfiguration(
+                "FeedCache", schema: Schemas.feedCache, url: directory.appending(path: "FeedCache.store"),
+                cloudKitDatabase: .none),
+            ModelConfiguration(
+                "UserData", schema: Schemas.userData, url: directory.appending(path: "UserData.store"),
+                cloudKitDatabase: .none),
         ])
     }
 
     private static func open(configurations: [ModelConfiguration]) throws -> Library {
-        let schema = Schema([ShowRecord.self, EpisodeRecord.self, Subscription.self, EpisodeState.self, UserSettings.self,
-                             Bookmark.self])
+        let schema = Schema([
+            ShowRecord.self, EpisodeRecord.self, Subscription.self, EpisodeState.self, UserSettings.self,
+            Bookmark.self,
+        ])
         return Library(modelContainer: try ModelContainer(for: schema, configurations: configurations))
     }
 
@@ -80,15 +86,18 @@ public actor Library: ModelActor {
     /// Queue states come back in play order.
     func states(in place: Place) throws -> [EpisodeState] {
         let raw = place.stored.place
-        return try modelContext.fetch(FetchDescriptor<EpisodeState>(
-            predicate: #Predicate { $0.place == raw },
-            sortBy: [SortDescriptor(\.queuePosition)]
-        ))
+        return try modelContext.fetch(
+            FetchDescriptor<EpisodeState>(
+                predicate: #Predicate { $0.place == raw },
+                sortBy: [SortDescriptor(\.queuePosition)]
+            ))
     }
 
     func state(_ key: EpisodeKey, creating: Bool = false) throws -> EpisodeState? {
         let raw = key.rawValue
-        if let existing = try modelContext.fetch(FetchDescriptor<EpisodeState>(predicate: #Predicate { $0.episodeKey == raw })).first {
+        if let existing = try modelContext.fetch(
+            FetchDescriptor<EpisodeState>(predicate: #Predicate { $0.episodeKey == raw })
+        ).first {
             return existing
         }
         guard creating else { return nil }

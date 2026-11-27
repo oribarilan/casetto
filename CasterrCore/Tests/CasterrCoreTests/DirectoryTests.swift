@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import CasterrCore
 
 /// Serves the chart, lookup, and search fixtures by path.
@@ -10,7 +11,9 @@ private final class DirectoryStub: URLProtocol {
 
     override func startLoading() {
         let url = request.url!
-        let name = url.path().hasSuffix("podcasts.json") ? "chart.json" : url.path() == "/lookup" ? "lookup.json" : "search.json"
+        let name =
+            url.path().hasSuffix("podcasts.json")
+            ? "chart.json" : url.path() == "/lookup" ? "lookup.json" : "search.json"
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: try! fixture(name))
@@ -112,7 +115,8 @@ private final class EpisodeLookupStub: URLProtocol {
 
 struct ApplePodcastsLinkTests {
     @Test func readsShowAndEpisode() {
-        let link = ApplePodcastsLink(URL(string: "https://podcasts.apple.com/us/podcast/the-warp-zone/id617416468?i=1000803195167")!)
+        let link = ApplePodcastsLink(
+            URL(string: "https://podcasts.apple.com/us/podcast/the-warp-zone/id617416468?i=1000803195167")!)
         #expect(link?.showID == "617416468" && link?.episodeID == "1000803195167")
     }
 
@@ -126,20 +130,26 @@ struct ApplePodcastsLinkTests {
     }
 
     @Test func findsTheLinkedEpisode() async throws {
-        let link = try #require(ApplePodcastsLink(URL(string: "https://podcasts.apple.com/us/podcast/x/id617416468?i=1000801592580")!))
+        let link = try #require(
+            ApplePodcastsLink(URL(string: "https://podcasts.apple.com/us/podcast/x/id617416468?i=1000801592580")!))
         let episode = try await directory(EpisodeLookupStub.self).episode(for: link)
-        #expect(episode == DirectoryEpisode(
-            title: "Two Hot Streaks", feedURL: URL(string: "https://cdn.atp.fm/rss/public?wtvryzdm")!,
-            guid: "t3vbwlfpueremdht", audioURL: URL(string: "https://atp.fm/audio/t3vbwlfpueremdht/atp717.mp3")!))
+        #expect(
+            episode
+                == DirectoryEpisode(
+                    title: "Two Hot Streaks", feedURL: URL(string: "https://cdn.atp.fm/rss/public?wtvryzdm")!,
+                    guid: "t3vbwlfpueremdht", audioURL: URL(string: "https://atp.fm/audio/t3vbwlfpueremdht/atp717.mp3")!
+                ))
     }
 
     @Test func anEpisodeAppleDoesNotListIsNil() async throws {
-        let link = try #require(ApplePodcastsLink(URL(string: "https://podcasts.apple.com/us/podcast/x/id617416468?i=42")!))
+        let link = try #require(
+            ApplePodcastsLink(URL(string: "https://podcasts.apple.com/us/podcast/x/id617416468?i=42")!))
         #expect(try await directory(EpisodeLookupStub.self).episode(for: link) == nil)
     }
 
     @Test func offlineIsUnreachable() async throws {
-        let link = try #require(ApplePodcastsLink(URL(string: "https://podcasts.apple.com/us/podcast/x/id617416468?i=42")!))
+        let link = try #require(
+            ApplePodcastsLink(URL(string: "https://podcasts.apple.com/us/podcast/x/id617416468?i=42")!))
         await #expect(throws: DirectoryError.unreachable) { try await directory(OfflineStub.self).episode(for: link) }
     }
 }

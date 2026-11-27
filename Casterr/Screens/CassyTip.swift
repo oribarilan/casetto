@@ -132,7 +132,9 @@ private struct TipShape: Shape {
     let tailOnTop: Bool
 
     func path(in rect: CGRect) -> Path {
-        let r: CGFloat = 14, t = Self.tail, half: CGFloat = 8
+        let r: CGFloat = 14
+        let t = Self.tail
+        let half: CGFloat = 8
         let body = CGRect(x: rect.minX, y: rect.minY + (tailOnTop ? t : 0), width: rect.width, height: rect.height - t)
         let tx = min(max(tailX, body.minX + r + half), body.maxX - r - half)
         return Path { p in
@@ -143,18 +145,26 @@ private struct TipShape: Shape {
                 p.addLine(to: CGPoint(x: tx + half, y: body.minY))
             }
             p.addLine(to: CGPoint(x: body.maxX - r, y: body.minY))
-            p.addArc(tangent1End: CGPoint(x: body.maxX, y: body.minY), tangent2End: CGPoint(x: body.maxX, y: body.minY + r), radius: r)
+            p.addArc(
+                tangent1End: CGPoint(x: body.maxX, y: body.minY), tangent2End: CGPoint(x: body.maxX, y: body.minY + r),
+                radius: r)
             p.addLine(to: CGPoint(x: body.maxX, y: body.maxY - r))
-            p.addArc(tangent1End: CGPoint(x: body.maxX, y: body.maxY), tangent2End: CGPoint(x: body.maxX - r, y: body.maxY), radius: r)
+            p.addArc(
+                tangent1End: CGPoint(x: body.maxX, y: body.maxY), tangent2End: CGPoint(x: body.maxX - r, y: body.maxY),
+                radius: r)
             if !tailOnTop {
                 p.addLine(to: CGPoint(x: tx + half, y: body.maxY))
                 p.addLine(to: CGPoint(x: tx, y: body.maxY + t))
                 p.addLine(to: CGPoint(x: tx - half, y: body.maxY))
             }
             p.addLine(to: CGPoint(x: body.minX + r, y: body.maxY))
-            p.addArc(tangent1End: CGPoint(x: body.minX, y: body.maxY), tangent2End: CGPoint(x: body.minX, y: body.maxY - r), radius: r)
+            p.addArc(
+                tangent1End: CGPoint(x: body.minX, y: body.maxY), tangent2End: CGPoint(x: body.minX, y: body.maxY - r),
+                radius: r)
             p.addLine(to: CGPoint(x: body.minX, y: body.minY + r))
-            p.addArc(tangent1End: CGPoint(x: body.minX, y: body.minY), tangent2End: CGPoint(x: body.minX + r, y: body.minY), radius: r)
+            p.addArc(
+                tangent1End: CGPoint(x: body.minX, y: body.minY), tangent2End: CGPoint(x: body.minX + r, y: body.minY),
+                radius: r)
             p.closeSubpath()
         }
     }

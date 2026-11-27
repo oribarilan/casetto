@@ -22,8 +22,10 @@ final class SharingTests: UITestCase {
         XCTAssertTrue(elapsed.waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["nowPlayingShare"].exists, "a shared file offers sharing")
         let advanced = NSPredicate(format: "label != '0:00'")
-        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: advanced, object: elapsed)], timeout: 10), .completed,
-                       "shared file didn't play")
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: advanced, object: elapsed)], timeout: 10),
+            .completed,
+            "shared file didn't play")
         snapshot("22 Shared Now Playing")
 
         // It lives on the Shared with Casterr page, where Delete removes it everywhere.
@@ -56,7 +58,9 @@ final class SharingTests: UITestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-hasSeenTip.inboxCardSwipe", "YES", "-hasSeenOnboarding", "YES"]
-        app.launchEnvironment = ["SHARED_LINK": "https://podcasts.apple.com/us/podcast/two-hot-streaks/id617416468?i=1000801592580"]
+        app.launchEnvironment = [
+            "SHARED_LINK": "https://podcasts.apple.com/us/podcast/two-hot-streaks/id617416468?i=1000801592580"
+        ]
         app.launch()
 
         let row = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Two Hot Streaks'")).firstMatch

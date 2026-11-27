@@ -1,20 +1,21 @@
 import Testing
+
 @testable import CasterrCore
 
 struct ChangelogTests {
     private let text = """
-    # Changelog
+        # Changelog
 
-    ## 0.5
-    - Five.
+        ## 0.5
+        - Five.
 
-    ## 0.4
-    - Four, first.
-    - Four, second.
+        ## 0.4
+        - Four, first.
+        - Four, second.
 
-    ## 0.3
-    - Three.
-    """
+        ## 0.3
+        - Three.
+        """
 
     @Test func parsesVersionsAndLines() {
         let changelog = Changelog(text)

@@ -6,10 +6,10 @@ let package = Package(
     name: "CasterrCore",
     platforms: [.iOS(.v27), .macOS(.v27)],
     products: [
-        .library(name: "CasterrCore", targets: ["CasterrCore"]),
+        .library(name: "CasterrCore", targets: ["CasterrCore"])
     ],
     dependencies: [
-        .package(url: "https://github.com/nmdias/FeedKit.git", exact: "10.10.2"),
+        .package(url: "https://github.com/nmdias/FeedKit.git", exact: "10.10.2")
     ],
     targets: [
         .target(

@@ -8,7 +8,9 @@ struct ArtShareLink<Label: View>: View {
 
     var body: some View {
         if let art {
-            ShareLink(item: share.url, message: Text(share.text), preview: SharePreview(share.text, image: Image(uiImage: art)), label: label)
+            ShareLink(
+                item: share.url, message: Text(share.text),
+                preview: SharePreview(share.text, image: Image(uiImage: art)), label: label)
         } else {
             ShareLink(item: share.url, message: Text(share.text), preview: SharePreview(share.text), label: label)
         }

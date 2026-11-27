@@ -17,8 +17,10 @@ struct RowAction: Identifiable {
 
     /// An action that changes where an episode is, then reloads the screens that show episodes.
     @MainActor
-    static func change(_ title: String, _ symbol: String, destructive: Bool = false, _ model: AppModel,
-                       _ work: @escaping (Library) async throws -> Void) -> RowAction {
+    static func change(
+        _ title: String, _ symbol: String, destructive: Bool = false, _ model: AppModel,
+        _ work: @escaping (Library) async throws -> Void
+    ) -> RowAction {
         RowAction(title: title, symbol: symbol, destructive: destructive) {
             Task { await model.change(.episodes) { try await work(model.library) } }
         }
@@ -27,9 +29,11 @@ struct RowAction: Identifiable {
     /// Download, when the episode waits for Wi-Fi and the phone has cellular data.
     @MainActor static func downloadOnCellular(_ episode: EpisodeInfo, _ model: AppModel) -> [RowAction] {
         guard model.canDownloadOnCellular(episode) else { return [] }
-        return [RowAction(title: "Download", symbol: "arrow.down.circle") {
-            model.downloadOnCellular(episode)
-        }]
+        return [
+            RowAction(title: "Download", symbol: "arrow.down.circle") {
+                model.downloadOnCellular(episode)
+            }
+        ]
     }
 
     @MainActor static func playNext(_ key: EpisodeKey, _ model: AppModel) -> RowAction {
@@ -116,8 +120,13 @@ struct EpisodeRow: View {
                         if card.more {
                             RoundedRectangle(cornerRadius: 24)
                                 // In dark mode the shadow doesn't show on black, so the card behind is a lighter grey.
-                                .fill(Color(uiColor: UIColor { $0.userInterfaceStyle == .dark
-                                    ? .systemGray5 : .secondarySystemGroupedBackground }))
+                                .fill(
+                                    Color(
+                                        uiColor: UIColor {
+                                            $0.userInterfaceStyle == .dark
+                                                ? .systemGray5 : .secondarySystemGroupedBackground
+                                        })
+                                )
                                 .stroke(Color(.separator).opacity(0.5), lineWidth: 0.5)
                                 .shadow(color: .black.opacity(0.1), radius: 6, y: 2)
                                 .scaleEffect(0.97)
@@ -181,7 +190,8 @@ struct EpisodeRow: View {
 
     private var playAction: RowAction {
         let pausing = isLoaded && player.isPlaying
-        return RowAction(title: pausing ? "Pause" : "Play", symbol: pausing ? "pause.fill" : "play.fill", filled: true) {
+        return RowAction(title: pausing ? "Pause" : "Play", symbol: pausing ? "pause.fill" : "play.fill", filled: true)
+        {
             Task {
                 await model.change(.episodes) {
                     if isLoaded { try await player.togglePlayPause() } else { try await player.play(episode.key) }
@@ -203,20 +213,22 @@ struct EpisodeRow: View {
     }
 
     @ViewBuilder private func actionButton(_ action: RowAction) -> some View {
-                if action.isShare {
-                    ArtShareLink(share: ShareText.episode(episode, showTitle: art?.title, feedURL: art?.feedURL),
-                                 art: art?.artworkURL.flatMap { ArtCache.kept($0, pixels: 52 * scale) }) { actionLabel(action) }
-                        .buttonStyle(.borderless)
-                } else {
-                    Button {
-                        animate(toggle)
-                        action.run()
-                    } label: {
-                        actionLabel(action)
-                    }
-                    .buttonStyle(.borderless)
-                    .accessibilityIdentifier(action.filled ? "rowPlay" : action.title)
-                }
+        if action.isShare {
+            ArtShareLink(
+                share: ShareText.episode(episode, showTitle: art?.title, feedURL: art?.feedURL),
+                art: art?.artworkURL.flatMap { ArtCache.kept($0, pixels: 52 * scale) }
+            ) { actionLabel(action) }
+            .buttonStyle(.borderless)
+        } else {
+            Button {
+                animate(toggle)
+                action.run()
+            } label: {
+                actionLabel(action)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityIdentifier(action.filled ? "rowPlay" : action.title)
+        }
     }
 
     private func actionLabel(_ action: RowAction) -> some View {
@@ -241,7 +253,8 @@ struct EpisodeRow: View {
     /// "Up next" in orange, then the gray words, joined by " · ".
     private var statusText: Text? {
         let gray = statuses + [move?.reason.label, download?.label].compactMap(\.self)
-        let words = (label.map { [Text($0).foregroundStyle(.tint)] } ?? []) + gray.map { Text($0).foregroundStyle(.secondary) }
+        let words =
+            (label.map { [Text($0).foregroundStyle(.tint)] } ?? []) + gray.map { Text($0).foregroundStyle(.secondary) }
         guard let first = words.first else { return nil }
         return words.dropFirst().reduce(first) { Text("\($0)\(Text(" · ").foregroundStyle(.secondary))\($1)") }
     }

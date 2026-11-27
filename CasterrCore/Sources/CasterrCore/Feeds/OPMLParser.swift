@@ -40,8 +40,10 @@ public enum OPMLParser {
         /// An outline with no `xmlUrl`. It is a folder if another outline starts before it ends.
         private var pendingNoURL: String??
 
-        func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?,
-                    qualifiedName: String?, attributes: [String: String]) {
+        func parser(
+            _ parser: XMLParser, didStartElement name: String, namespaceURI: String?,
+            qualifiedName: String?, attributes: [String: String]
+        ) {
             if !sawOPMLRoot {
                 sawOPMLRoot = name == "opml"
                 if !sawOPMLRoot { parser.abortParsing() }
@@ -62,8 +64,10 @@ public enum OPMLParser {
             }
         }
 
-        func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?,
-                    qualifiedName: String?) {
+        func parser(
+            _ parser: XMLParser, didEndElement name: String, namespaceURI: String?,
+            qualifiedName: String?
+        ) {
             guard name == "outline", let title = pendingNoURL else { return }
             result.invalidEntries.append(OPMLInvalidEntry(title: title, reason: .missingURL))
             pendingNoURL = nil

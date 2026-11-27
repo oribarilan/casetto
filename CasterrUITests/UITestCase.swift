@@ -11,7 +11,9 @@ class UITestCase: XCTestCase {
     func waitForTopShows() -> Bool {
         for _ in 0..<4 {
             // Plain text, or a menu outside the United States.
-            let heading = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Popular now'")).firstMatch
+            let heading = app.descendants(matching: .any).matching(
+                NSPredicate(format: "label BEGINSWITH 'Popular now'")
+            ).firstMatch
             if heading.waitForExistence(timeout: 25) { return true }
             let retry = app.buttons["Try Again"]
             guard retry.exists else { return false }

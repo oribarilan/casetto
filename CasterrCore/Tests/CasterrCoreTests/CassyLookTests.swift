@@ -1,16 +1,19 @@
 import CoreGraphics
 import Foundation
 import Testing
+
 @testable import CasterrCore
 
 struct RefreshSummaryTests {
     @Test func mixedRefresh() {
-        #expect(RefreshSummary(arrived: 1, queued: 1, expired: 2).sentence
+        #expect(
+            RefreshSummary(arrived: 1, queued: 1, expired: 2).sentence
                 == "2 new episodes. I queued 1 and removed 2 old ones from your Inbox.")
     }
 
     @Test func singularAndThreeActions() {
-        #expect(RefreshSummary(arrived: 0, queued: 1, skipped: 1, expired: 1).sentence
+        #expect(
+            RefreshSummary(arrived: 0, queued: 1, skipped: 1, expired: 1).sentence
                 == "2 new episodes. I queued 1, skipped 1, and removed 1 old one from your Inbox.")
         #expect(RefreshSummary(arrived: 1).sentence == "1 new episode.")
         #expect(RefreshSummary(expired: 3).sentence == "I removed 3 old ones from your Inbox.")
@@ -21,15 +24,17 @@ struct RefreshSummaryTests {
     }
 
     @Test func summariesAdd() {
-        #expect(RefreshSummary(arrived: 1, queued: 2) + RefreshSummary(arrived: 3, skipped: 1)
+        #expect(
+            RefreshSummary(arrived: 1, queued: 2) + RefreshSummary(arrived: 3, skipped: 1)
                 == RefreshSummary(arrived: 4, queued: 2, skipped: 1))
     }
 }
 
 struct ArtworkTintTests {
     private func solid(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> CGImage {
-        let context = CGContext(data: nil, width: 8, height: 8, bitsPerComponent: 8, bytesPerRow: 32,
-                                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        let context = CGContext(
+            data: nil, width: 8, height: 8, bitsPerComponent: 8, bytesPerRow: 32,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
         context.setFillColor(red: r, green: g, blue: b, alpha: 1)
         context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
         return context.makeImage()!
@@ -58,12 +63,14 @@ struct ShowArtTests {
         let library = try Library.open(inMemory: true)
         let a = ShowKey(feedURL: URL(string: "https://a.example.com/feed")!)!
         let b = ShowKey(feedURL: URL(string: "https://b.example.com/feed")!)!
-        try await library.saveFeed(ParsedShow(title: "A", artworkURL: URL(string: "https://a.example.com/art.jpg"), episodes: []), for: a)
+        try await library.saveFeed(
+            ParsedShow(title: "A", artworkURL: URL(string: "https://a.example.com/art.jpg"), episodes: []), for: a)
         try await library.saveFeed(ParsedShow(title: "B", episodes: []), for: b)
-        #expect(try await library.showArt() == [
-            a: ShowArt(title: "A", artworkURL: URL(string: "https://a.example.com/art.jpg")),
-            b: ShowArt(title: "B", artworkURL: nil),
-        ])
+        #expect(
+            try await library.showArt() == [
+                a: ShowArt(title: "A", artworkURL: URL(string: "https://a.example.com/art.jpg")),
+                b: ShowArt(title: "B", artworkURL: nil),
+            ])
     }
 }
 

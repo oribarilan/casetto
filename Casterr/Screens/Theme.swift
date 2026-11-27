@@ -5,20 +5,22 @@ import UIKit
 
 extension Color {
     /// The accent: tangerine, a little lighter in dark mode.
-    static let tangerine = Color(uiColor: UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 1, green: 0.478, blue: 0.271, alpha: 1)
-            : UIColor(red: 1, green: 0.353, blue: 0.122, alpha: 1)
-    })
+    static let tangerine = Color(
+        uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 1, green: 0.478, blue: 0.271, alpha: 1)
+                : UIColor(red: 1, green: 0.353, blue: 0.122, alpha: 1)
+        })
 }
 
 extension Color {
     /// Tangerine for text: darker in light mode and lighter in dark mode, so it passes 4.5:1 contrast.
-    static let tangerineText = Color(uiColor: UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 1, green: 0.541, blue: 0.361, alpha: 1)
-            : UIColor(red: 0.761, green: 0.255, blue: 0.047, alpha: 1)
-    })
+    static let tangerineText = Color(
+        uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 1, green: 0.541, blue: 0.361, alpha: 1)
+                : UIColor(red: 0.761, green: 0.255, blue: 0.047, alpha: 1)
+        })
 }
 
 extension Color {
@@ -117,13 +119,15 @@ struct Shimmer: View {
             .overlay {
                 if !reduceMotion {
                     GeometryReader { proxy in
-                        LinearGradient(colors: [.clear, .white.opacity(colorScheme == .dark ? 0.08 : 0.35), .clear],
-                                       startPoint: .leading, endPoint: .trailing)
-                            .frame(width: proxy.size.width * 0.6)
-                            .offset(x: proxy.size.width * (sweeping ? 1 : -0.6))
-                            // Only the band repeats. `withAnimation` in onAppear gave the endless animation to every
-                            // change in the same update, so a List settling at launch scrolled up and down forever.
-                            .animation(.linear(duration: 1.2).repeatForever(autoreverses: false), value: sweeping)
+                        LinearGradient(
+                            colors: [.clear, .white.opacity(colorScheme == .dark ? 0.08 : 0.35), .clear],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                        .frame(width: proxy.size.width * 0.6)
+                        .offset(x: proxy.size.width * (sweeping ? 1 : -0.6))
+                        // Only the band repeats. `withAnimation` in onAppear gave the endless animation to every
+                        // change in the same update, so a List settling at launch scrolled up and down forever.
+                        .animation(.linear(duration: 1.2).repeatForever(autoreverses: false), value: sweeping)
                     }
                     .onAppear { sweeping = true }
                 }
@@ -152,9 +156,11 @@ enum ArtCache {
     static func image(for url: URL, pixels: CGFloat) async -> UIImage? {
         let key = key(url, pixels)
         if let image = memory.object(forKey: key) { return image }
-        let file = folder.appending(path: SHA256.hash(data: Data((key as String).utf8)).map { String(format: "%02x", $0) }.joined())
+        let file = folder.appending(
+            path: SHA256.hash(data: Data((key as String).utf8)).map { String(format: "%02x", $0) }.joined())
         if let saved = UIImage(contentsOfFile: file.path(percentEncoded: false)),
-           let image = await saved.byPreparingForDisplay() {
+            let image = await saved.byPreparingForDisplay()
+        {
             memory.setObject(image, forKey: key)
             return image
         }

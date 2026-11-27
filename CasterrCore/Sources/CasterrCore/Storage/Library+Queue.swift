@@ -20,7 +20,9 @@ extension Library {
     }
 
     public func lastMove(of key: EpisodeKey) throws -> LastMove? {
-        guard let state = try state(key), let raw = state.moveReason, let reason = MoveReason(stored: raw) else { return nil }
+        guard let state = try state(key), let raw = state.moveReason, let reason = MoveReason(stored: raw) else {
+            return nil
+        }
         return LastMove(reason: reason)
     }
 

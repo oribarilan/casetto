@@ -17,8 +17,9 @@ public struct RefreshSummary: Equatable, Sendable {
     }
 
     public static func + (a: RefreshSummary, b: RefreshSummary) -> RefreshSummary {
-        RefreshSummary(arrived: a.arrived + b.arrived, queued: a.queued + b.queued,
-                       skipped: a.skipped + b.skipped, expired: a.expired + b.expired)
+        RefreshSummary(
+            arrived: a.arrived + b.arrived, queued: a.queued + b.queued,
+            skipped: a.skipped + b.skipped, expired: a.expired + b.expired)
     }
 
     /// Cassy's line, e.g. "3 new episodes. I queued 1 and removed 2 old ones from your Inbox." Nil when nothing moved.
